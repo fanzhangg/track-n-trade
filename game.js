@@ -658,6 +658,12 @@ $('import-file').onchange=async event=>{
   accumulator=0;last=performance.now();mapKey='';save();cancelGesture();fitAll();toast('已恢复存档');
  }catch(error){toast('导入失败：'+error.message);}finally{event.target.value='';}
 };
+// Developer cheats: open the page with `?cheat` to reveal a dev section in the menu. Money is added directly
+// and not counted in `earned`, so income stats stay honest. Nothing here touches engine.js.
+if(new URLSearchParams(location.search).has('cheat')){
+ $('dev-menu').hidden=false;
+ $('cheat-money').onclick=()=>{world.money+=1_000_000;save();render();toast('作弊：+1,000,000 金币');};
+}
 $('reset').onclick=()=>{
  if(!confirm('重新开始？可先导出当前进度。'))return;
  world=E.newWorld(Math.floor(Math.random()*2**31));selected=E.START_TILE;selectedEdge=null;selectedFlower=null;storageBlocked=false;
