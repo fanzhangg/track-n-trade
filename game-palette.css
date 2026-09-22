@@ -53,4 +53,4 @@ button.danger{color:var(--bottleneck-1)}
 .chain .glbl{fill:var(--text-primary)}.chain .gsub{fill:var(--text-secondary)}
 .chain .e{stroke:var(--text-secondary)}.chain .e.log{stroke:var(--road-base)}.chain .e.locked{stroke:var(--terrain-fog)}
 /* Keep the sandy dirt-road color without changing its original geometry. */
-.road.level0:not(.water):not(.selected){stroke:#d9ba80}
+.road:not(.water):not(.selected){stroke:#d9ba80}
