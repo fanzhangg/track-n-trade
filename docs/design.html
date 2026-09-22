@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tracks &amp; Trade — 设计文档</title>
+<style>
+:root{--paper:#f4efe3;--ink:#17212b;--muted:#57656a;--green:#486b3a;--line:#d7cfbe;--panel:#fffaf0;--amber:#bd8726;
+--t-grass:#b9cf8a;--t-forest:#5f8b4a;--t-rock:#a89f8f;--t-ore:#c0714f;--t-mountain:#6b5e52;--t-lake:#7fb0d6;--t-town:#e8c46a;--t-fog:#3a3f47}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:80px}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.8 system-ui,"Microsoft YaHei",sans-serif}a{color:var(--green)}
+.wrap{max-width:1100px;margin:auto;padding:0 24px}header{padding:48px 0 28px}h1{font-size:clamp(30px,5vw,50px);line-height:1.2;margin:12px 0 20px;letter-spacing:-.03em}h2{font-size:28px;line-height:1.4;margin:0 0 18px}h3{font-size:19px;margin:28px 0 10px}h4{margin:18px 0 6px;font-size:16px}section{border-top:1px solid var(--line);padding:40px 0}.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--green);font-weight:800}.lede{font-size:20px;max-width:850px}
+.callout{background:var(--panel);border-left:4px solid var(--amber);padding:16px 20px;margin:20px 0;border-radius:6px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:var(--panel);padding:20px;border:1px solid var(--line);border-radius:12px}.card h3{margin-top:0}
+.table{overflow-x:auto;margin:18px 0}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid var(--line);text-align:left;vertical-align:top;padding:8px 10px}th{background:#e9e3d4}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+code{background:#eae4d6;padding:2px 5px;border-radius:4px;font-size:.9em}pre{background:#17212b;color:#f4efe3;padding:20px;overflow:auto;border-radius:10px;font-size:13px;line-height:1.7}pre code{background:transparent;padding:0}li{margin:6px 0}
+footer{border-top:1px solid var(--line);padding:24px 0 48px;font-size:13px;color:var(--muted)}
+.status{display:inline-block;background:var(--amber);color:#fff;font-size:12px;font-weight:800;letter-spacing:.08em;padding:3px 10px;border-radius:999px;vertical-align:middle}
+svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:18px 0}.figure figcaption{font-size:13px;color:var(--muted);margin-top:10px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;margin:10px 0}.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid #0002}
+.flowerctl{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.flowerctl button{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer}.flowerctl button:hover{background:#e7e2d4}
+.model-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 16px;margin:14px 0}.model-controls label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}.model-controls input{width:90px;font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;text-align:right}
+.plan-table input{width:80px;font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);border-radius:6px;text-align:right}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}.toolbar button{font:inherit;font-size:14px;padding:8px 14px;border:0;background:var(--green);color:#fff;border-radius:8px;cursor:pointer}.toolbar button.secondary{background:#e7e2d4;color:var(--ink)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}.kpi div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px}.kpi b{display:block;font-size:24px;letter-spacing:-.02em}.kpi small{color:var(--muted)}
+.stuck{color:#a33}
+@media(max-width:800px){.grid,.grid3{grid-template-columns:1fr}.wrap{padding:0 18px}}
+@media print{body{background:white;font-size:11pt}h2,h3{break-after:avoid}.toolbar,.flowerctl{display:none}}
+</style><link rel="stylesheet" href="../site-nav.css">
+</head><body>
+<nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="../docs/design.html" aria-current="page">设计文档</a></div></nav>
+<div class="page-sections" role="navigation" aria-label="本页章节"><a href="#philosophy">设计哲学</a><a href="#loops">三条循环</a><a href="#clock">时钟与整数</a><a href="#map">地图</a><a href="#tutorial">教学地图</a><a href="#production">生产</a><a href="#logistics">物流与城镇</a><a href="#tech">科技树</a><a href="#economy">经济模型</a><a href="#ui">界面</a><a href="#engine">实现契约</a><a href="#history">沿革与下一版</a></div>
+
+<div class="wrap">
+<header>
+<div class="eyebrow">设计文档 · 当前版本 v0.12 · 2026-09-21 · <span class="status">已实现</span></div>
+<h1>用正在运转的网络，<br>建设下一张网络。</h1>
+<p class="lede">Tracks &amp; Trade 是一个单人 idle 物流建设游戏。玩家点击、雇人、铺路、揭开地图、买科技；系统自动把货送到该去的地方、卖成金币。核心乐趣只有一句话：<strong>发现东西没有到达需要它的地方，设计一张更好的网络，看它自己运转；再用它挣来的钱去揭开下一块地。</strong></p>
+<p>这是唯一的设计文档，取代此前的概念设计、玩法规格与 v0.10 到 v0.12 各版设计稿。实现（<code>engine.js</code>、<code>game.js</code>、<code>tests/economy.test.cjs</code>）以本页为准：先读第一节的哲学和原则，再读各节的规则与数值；数值是初值，实现后按手感调整，调整后回来改这一页。本页可交互：教学地图上的每朵花都能旋转，经济模型里的价格都能改、改完立刻重算（命令行版是 <code>tools/v12-projection.cjs</code>）。</p>
+</header>
+
+<section id="philosophy">
+<div class="eyebrow">一</div><h2>设计哲学</h2>
+<p>三个来源，各借一件事。<strong>Roads &amp; Boats</strong>：资源是当地的实物，要靠运输才能到别处；生产链和运输工具的阶梯。<strong>Cookie Clicker</strong>：点击起步、买下自动生产者、价格递增、效率跃升，以及「围着饼干点的手指」这种把速率画出来的办法。<strong>Recall</strong>：面朝下的区域板块，揭开、旋转、放下，地图由玩家自己拼出来。</p>
+<div class="table"><table>
+<tr><th>来源</th><th>借来的</th><th>改掉的</th><th>不做的</th></tr>
+<tr><td>Roads &amp; Boats</td><td>局部资源、当地加工、地形决定能建什么、道路与水路、越复杂的物流越值钱</td><td>实时替代回合；连上路就自动运货，玩家不操作运输单位；拆建全额退款</td><td>船只与手动车辆、多人争抢、围墙、鹅、证券与终局计分</td></tr>
+<tr><td>Cookie Clicker</td><td>点击产出、买工人后自动生产、同建筑工人递增涨价、可重复的全局效率科技、手指光标动画</td><td>不照搬全局钱包：货物永远不进口袋，只有金币是货币</td><td>金饼干、飞升、离线收益、无限内容</td></tr>
+<tr><td>Recall</td><td>面朝下的板块、揭开后旋转再放下、放下不可逆</td><td>板块不是预设池而是按局势生成；地图无边界</td><td>记忆与竞速要素</td></tr>
+</table></div>
+
+<h3>不可破坏的原则</h3>
+<div class="grid">
+<div class="card"><h3>金币是唯一货币</h3><p>货物只存在于生产地的堆场和路上，永远不进玩家的口袋，它们只是把物流转成金币的途径。科技、板块、建筑、工人、道路、扩建全部用金币买。没有材料造价，没有第二种货币。</p></div>
+<div class="card"><h3>玩家设计网络，系统跑网络</h3><p>玩家只决定：建筑放哪、路怎么连、板块往哪探怎么转、钱花在哪。要货的建筑和城镇自动提出需求，道路自动配送，玩家不买驴、不指挥任何一趟运货。</p></div>
+<div class="card"><h3>永远有瓶颈，永远三选一</h3><p>产量、道路运力、城镇需求是三层互相独立的上限。任何一层卡住，往另外两层花钱都是浪费。数值要保证玩家每一步都在「加产量、加运力、加需求」之间做真实选择，而不是只剩一种操作。</p></div>
+<div class="card"><h3>没有死局</h3><p>收入只来自这台经济引擎，没有绕过它的兜底。所以第一条路一定修得起，拆什么都全额退款，花钱不会伤到已有产线。玩家优化的是「等多久」，不是「能不能」。详见第二节。</p></div>
+<div class="card"><h3>狠，但可逆</h3><p>板块放下就不能再转，钱花掉就花掉了，加工厂饿着就是饿着。有后果的决定才有分量。但布局错了永远可以拆掉重来，钱一分不少，所以玩家敢试。</p></div>
+<div class="card"><h3>教学是软约束</h3><p>教学只保证「学这一课的机会一定出现」，不保证「课一定上到」：方向任选，湖和山可以被转到无害的位置，玩家可以从此不买航道。教学里的每个决定都留到沙盒里。</p></div>
+<div class="card"><h3>地图回应局势，不是随机噪声</h3><p>新板块在揭开那一刻按解锁次序、当前经济和存档种子生成：缺森林就补森林，产了没人买的货就出现收它的城镇。同一存档、同一决定序列，结果一样。</p></div>
+<div class="card"><h3>界面只说结论</h3><p>地图只画会改变决策的东西；面板给结论和动作，不给原始数据；颜色只有三种含义。一个提示如果不带一个能点的动作，只是焦虑。</p></div>
+</div>
+
+<h3>不做什么</h3>
+<ul>
+<li><strong>不做失败与时限。</strong>没有游戏结束，没有倒计时；教学不按分钟锁关。</li>
+<li><strong>不做离线收益。</strong>只有前台模拟，页面隐藏即暂停，恢复不追赶墙钟时间。界面说明这一点，不用「你错过了多少」制造惩罚感。</li>
+<li><strong>不做多货币与材料造价。</strong>v0.5 到 v0.7 用木板和石头当建材，试玩证明太抽象。</li>
+<li><strong>不做手动车辆、交通模拟、随机事件、市场交易、多人。</strong>道路上的小点是真实货物在走，不是装饰车流。</li>
+</ul>
+
+<h3>验收的是乐趣，不是数字上涨</h3>
+<ul>
+<li>玩家能指出任何一件货现在在哪里、为什么还没卖掉。</li>
+<li>同一个瓶颈至少有两种解法（修第二条路 / 升级道路 / 就近加工 / 开新城镇），玩家会比较。</li>
+<li>玩家敢拆掉已有网络试另一种组合，不因退款或涨价后悔。</li>
+<li>每买一样东西之后，玩家能在地图上看到货流和收入的变化。</li>
+<li>走开一会儿回来，有积累，不需要频繁手动救运输。</li>
+</ul>
+</section>
+
+<section id="loops">
+<div class="eyebrow">二</div><h2>三条循环，一种货币</h2><p>v0.11 只有一条循环：产货、运货、卖钱、买产能。现在是三条互相咬合的循环，并用前五块板块的探索顺序把玩法一步一步教给玩家。目标是把<strong>游戏前一小时</strong>打磨好；可重玩性和后期内容留到下一版。</p>
+<div class="grid3">
+<div class="card"><h3>经济</h3><p>点击、雇工人、修路、扩城，把货变成金币。</p></div>
+<div class="card"><h3>空间</h3><p>花金币揭开相邻板块，旋转决定地形朝向，地形改变路网可行性。参考桌游 Recall 的面朝下区域板块。</p></div>
+<div class="card"><h3>科技</h3><p>花金币买科技，科技解锁建筑和道路等级，建筑之间靠配方交织。参考桌游 Roads &amp; Boats 的生产链与运输工具阶梯。</p></div>
+</div>
+<div class="callout"><strong>金币是唯一的全局货币。</strong>货物只存在于生产地的堆场和路上，永远不进玩家的口袋；它们只是把物流转成金币的途径。科技、板块、建筑、工人、道路全部用金币买。</div>
+<div class="callout"><strong>没有死局。</strong>收入只来自这台经济引擎，没有任何绕过它的兜底。三条规则保证引擎永远转得起来（第一节原则的展开）：<br><strong>1. 第一条路一定修得起。</strong>开局 2 000 金币，解锁 F1 花 500，剩下 1 500 覆盖从 F0 伐木营到 F1 城镇的最坏最短路，测试穷举验证。收入为零时，预览里余额修不起到新城镇的最短路就不允许放下，提示再转转；有收入之后只警告不阻止。<br><strong>2. 拆什么都全额退款。</strong>建筑、道路、工人拆除或辞退都退实付全款，玩家永远可以把整台引擎拆掉重组，布局错了不是死局，只是重来一次。<br><strong>3. 花钱不会伤到引擎。</strong>科技、板块、扩建都不改变已有产线；板块价格指数增长、收入至少线性增长，引擎再慢，等足够久总能攒够下一件事。玩家优化的是等多久，不是能不能。<br>设计上可以狠：板块放下就不能再转，钱花掉就花掉了，但绝不会让玩家走进一个什么都做不了的局面。</div>
+</section>
+
+<section id="clock">
+<div class="eyebrow">三</div><h2>时钟与整数</h2>
+<ul>
+<li><strong>1 tick = 1 回合，1× 速度下一回合 2 秒。</strong>让每一次 +1 都看得清。2× / 5× 只压缩真实时长，不改变任何数量。</li>
+<li><strong>所有数量都是整数件。</strong>产量按件、运力按件每回合、城镇需求按件每回合、价格按件。没有小数、没有四分之一单位。</li>
+<li><strong>货物过一段路 1 回合。</strong>路越长到得越晚，但稳定吞吐由最窄的一段决定，不除以距离。</li>
+<li><strong>统计窗口 30 回合。</strong>面板上所有「实际」「近期」都指近 30 回合，不足 30 回合按已有样本并标注。</li>
+<li><strong>确定性。</strong>固定步长、稳定 ID、持久的轮转指针、种子存进存档：同一存档加同一操作序列得到同一结果。渲染与模拟分离。</li>
+<li><strong>金币账本。</strong>每一笔支出、退款、卖货都记账，测试验证余额 = 开局 + 卖货收入 − 支出 + 退款，且永不为负。</li>
+</ul>
+</section>
+
+<section id="map">
+<div class="eyebrow">四</div><h2>地图：7 格花、无限延伸、按局势生成</h2>
+<div class="grid">
+<div>
+<h3>板块是 7 格花</h3>
+<p>一块板块是一朵六边形「花」：中心格加六个邻居，按行看就是 2-3-2。花能无缝铺满六边形平面：花心落在轴坐标 <code>a·(3,−1) + b·(1,2)</code> 的格点上，每朵花恰好有六个相邻的花，已用脚本验证无重叠、无缺口。<strong>花的位置是格点决定的，玩家决定往哪个方向探、以及每朵花的朝向。</strong></p>
+<h3>无限、无预设、按局势生成</h3>
+<ul>
+<li>地图没有边界，也没有预设内容，只有起始花 F0 是固定的。每放下一朵花，它周围所有还没有花的位置都变成迷雾；迷雾朝任何方向无限延伸，地图的整体形状由玩家的探索路径决定。</li>
+<li>迷雾花在被解锁的那一刻才生成内容。生成器的输入是：这是第几次解锁、已解锁地图的全部状态（地形、建筑、城镇、科技、近期各种货的产销）、存档里的随机种子。</li>
+<li>前五次解锁用教学规格（第五节），之后用沙盒规格（下表）。两者是同一个生成器，只是约束不同。</li>
+</ul>
+<h3>迷雾与解锁</h3>
+<ul>
+<li>与已解锁区域相邻的任何迷雾花都可以解锁，方向任选。价格按<strong>解锁次序</strong>算：前五次固定；之后第 n 次 <code>40000 × 1.5^(n−5)</code>。</li>
+<li>解锁后进入预览：<strong>模拟暂停</strong>，板块以随机朝向出现，玩家可以旋转六个朝向。预览里叠画最短路和造价。余额不够时：收入为零就不允许放下（见第二节的无死局规则），否则只警告。</li>
+<li><strong>放下即固定，之后永远不能再转。</strong>这是有意的：旋转是这个游戏里分量最重的一次决定，就要让它有分量。</li>
+<li>迷雾花外观一致，看不出内容差别。</li>
+</ul>
+</div>
+<div>
+<figure class="figure"><svg id="tiling" viewBox="0 0 420 380" role="img" aria-label="七格花铺满平面示意"></svg><figcaption>七格花的铺设：中心那朵是起始花 F0，六朵相邻的花是第一圈迷雾。每朵花都有六个邻居，放下一朵就多出新的迷雾。</figcaption></figure>
+</div>
+</div>
+<h3>沙盒生成规则（第六次解锁起）</h3>
+<div class="table"><table>
+<tr><th>规则</th><th>内容</th><th>目的</th></tr>
+<tr><td>连通</td><td>新花里所有非山格连通，且至少两条边与已有的可通行格相接</td><td>永远不会把玩家围死</td></tr>
+<tr><td>城镇密度</td><td>每三朵花至少一座城镇，两座城镇不相邻</td><td>探索总有回报，市场不挤在一起</td></tr>
+<tr><td>城镇收什么</td><td>优先从「玩家已能生产、但买家少于两个」的货里选；其次选下一级科技解锁的货；最多两种</td><td>新市场消化过剩产能，或者拉玩家往科技树上走</td></tr>
+<tr><td>价格</td><td>基础价 × (1 + 0.1 × 到 F0 的花距离)</td><td>越远越贵，探索本身值钱</td></tr>
+<tr><td>资源跟着经济走</td><td>近期缺什么补什么：伐木营都满编且原木缺口大就补森林；石头卖不出去就不补岩地。铁矿只出现在山旁边，每朵最多一格</td><td>地图回应玩家的局势，不是随机噪声</td></tr>
+<tr><td>地形配比</td><td>山最多 3 且连片，湖最多 3 且连片，草地不少于 2</td><td>不出废板块</td></tr>
+<tr><td>没有捷径</td><td>城镇收的货所需的原料地形不出现在同一朵花</td><td>不存在「资源就在城镇旁边」</td></tr>
+</table></div>
+<h3>地形</h3>
+<div class="table"><table>
+<tr><th>地形</th><th>通行</th><th>能建什么</th><th>道路造价系数</th></tr>
+<tr><td><i class="sw" style="background:var(--t-grass)"></i> 草地</td><td>可</td><td>锯木厂、石匠铺、铁厂</td><td>×1</td></tr>
+<tr><td><i class="sw" style="background:var(--t-town)"></i> 城镇</td><td>可</td><td>无</td><td>×1</td></tr>
+<tr><td><i class="sw" style="background:var(--t-forest)"></i> 森林</td><td>可</td><td>伐木营</td><td>×2</td></tr>
+<tr><td><i class="sw" style="background:var(--t-rock)"></i> 岩地</td><td>可</td><td>采石场</td><td>×2</td></tr>
+<tr><td><i class="sw" style="background:var(--t-ore)"></i> 铁矿</td><td>可</td><td>矿山</td><td>×2</td></tr>
+<tr><td><i class="sw" style="background:var(--t-mountain)"></i> 山</td><td><strong>不可通行、不可建</strong></td><td>无</td><td>不能修路</td></tr>
+<tr><td><i class="sw" style="background:var(--t-lake)"></i> 湖</td><td>买了「航道」后可以铺路</td><td>无</td><td>×3</td></tr>
+</table></div>
+<ul>
+<li>山是硬障碍，路只能绕，这是旋转板块时要考虑的第一件事。</li>
+<li>铁矿是独立地形，一眼能读，以后金矿、银矿照此办理。生成器只把铁矿放在山旁边，所以玩家看到的永远是「山边上有矿」，但这只是生成规则，不是玩家需要知道的机制。</li>
+<li>湖是整格水，可以单格也可以几格连成一片。买了航道之后湖格就是普通的路网节点。桥、河流、密林、富岩地删掉，地形系数只剩 1 / 2 / 3 三档。</li>
+</ul>
+</section>
+
+<section id="tutorial">
+<div class="eyebrow">五</div><h2>教学地图：前五朵花，每朵教一件事</h2>
+<p>每朵花引入一个新玩法，并和前面的花产生联动。教学不是独立关卡：玩家在这里的选择（往哪个方向探、板块朝向、路怎么修、先雇谁）直接留到沙盒里。开局 2 000 金币。<strong>方向不限</strong>：玩家可以点任何一朵与已解锁区域相邻的迷雾花，第 n 次解锁出现的一定是 Fn 的内容，所以 F3 可能贴着 F0，也可能挂在 F1 或 F2 外面的第二圈。<strong>障碍是软的</strong>：湖和山的位置由玩家旋转决定，玩家可以把 F4 的湖转到背面、从此不买航道。教学保证的是「机会一定出现」，不是「课一定上到」，核心还是鼓励自由探索。<strong>内容半随机</strong>：每朵教学花只固定必有的元素、不会出现的地形和每种地形的上限，其余格子从填充池随机抽，七格排列也随机。生成后检查三项，不通过就重抽：花内所有非山格连通（湖算可通）；城镇的六个邻格里至多两座山；湖和山各自连成片。随机种子存进存档。下面地图里的「重新生成」就是这个生成器。<strong>两条布局规则</strong>：一座城镇最多收两种货；城镇收的货所需的地形不出现在同一朵花里，所以每条卖货路线至少跨一朵花，不存在「资源就在城镇旁边」的捷径。城镇没有名字，界面上只按收的货区分。下面的地图里每朵花都可以旋转，看看不同朝向下山、湖、城镇和你路网的关系。</p>
+<figure class="figure">
+<div class="flowerctl" id="flowerctl"></div>
+<svg id="tutmap" viewBox="0 0 900 640" role="img" aria-label="教学地图"></svg>
+<div class="legend"><span><i style="background:var(--t-grass)"></i>草地</span><span><i style="background:var(--t-forest)"></i>森林</span><span><i style="background:var(--t-rock)"></i>岩地</span><span><i style="background:var(--t-ore)"></i>铁矿</span><span><i style="background:var(--t-mountain)"></i>山</span><span><i style="background:var(--t-lake)"></i>湖</span><span><i style="background:var(--t-town)"></i>城镇</span><span><i style="background:var(--t-fog)"></i>迷雾</span><span>⛺ 起始伐木营</span></div>
+<figcaption>灰色的是玩家还没揭开的花。旋转按钮对应游戏里放下前的旋转，游戏里放下后就不能再转。「重新生成教学板块」用另一个种子按规格重新抽 F1 到 F5 的随机部分；「换个方向探」把它们重新分配到 F0 周围不同的位置，模拟玩家选了别的邻居；游戏里 F3 之后也可以挂在第二圈。</figcaption>
+</figure>
+
+<div class="table"><table>
+<tr><th>花</th><th>价格</th><th>必有 · 随机填充 · 不会出现</th><th>学到</th><th>旋转的意义</th><th>联动</th></tr>
+<tr><td><b>F0</b> 起始</td><td class="num">—</td><td>中心草地；1 森林（伐木营）；2 岩地；1 草地；1 铁矿（贴着山）；1 山。没有城镇，没有路</td><td>点击伐木营出原木；堆场 20 件满了就点不动。目标条先写「点击伐木营」，堆场满了换成「原木卖不掉，探索周围看看」，六朵相邻的迷雾花全部标出 500，任选一朵揭开的都是 F1</td><td>固定朝向</td><td>两格岩地是给 F2 埋的伏笔；铁矿从第一分钟就看得见，到 F5 才知道是干什么的</td></tr>
+<tr><td><b>F1</b> 收原木</td><td class="num">500</td><td><b>必有</b> 1 城镇（只收原木 20）、至少 1 山<br><b>随机</b> 草地为主，山最多 2，岩地最多 1<br><b>不会出现</b> 森林、湖。原木只能从 F0 运来</td><td><strong>旋转</strong>，然后是第一条路、第一笔收入、第一名工人</td><td>城镇和山的相对位置：转得好两段路到城镇，转得差要绕四段。预览里叠画最短路和造价，修不起的朝向放不下</td><td>F0 的伐木营</td></tr>
+<tr><td><b>F2</b> 收石头</td><td class="num">2 000</td><td><b>必有</b> 1 城镇（只收石头 30）、1 森林<br><b>随机</b> 草地为主，山最多 2<br><b>不会出现</b> 岩地、湖。石头只能从 F0 的岩地运来</td><td><strong>科技树</strong>。采石场是唯一亮着的节点；买完拖采石场，合法地形高亮，玩家发现只有 F0 的岩地能放</td><td>城镇朝向 F0 路就短，朝外就要绕 F2 自己的山（如果抽到）；森林是以后第二座伐木营的位置，它和城镇的相对位置随机</td><td>F0 的岩地；第二条产业链</td></tr>
+<tr><td><b>F3</b> 收木板</td><td class="num">5 000</td><td><b>必有</b> 1 城镇（只收木板 50）<br><b>随机</b> 草地为主，山最多 2，岩地最多 1<br><b>不会出现</b> 森林、湖</td><td><strong>加工链</strong>。伐木营 → 锯木厂 → 城镇两段式路线，第一次看到「缺原木」。原木不够，F2 的森林是第二座伐木营的位置，它离 F3 很远，所以锯木厂放哪很要紧</td><td>锯木厂放在哪块草地，让 F0 和 F2 两座伐木营到它都不太远；如果抽到山，别让它挡在城镇和锯木厂之间</td><td>原木第一次有两个去处</td></tr>
+<tr><td><b>F4</b> 湖与工具</td><td class="num">15 000</td><td><b>必有</b> 1 城镇（收石头工具 120、木板 30）、至少 2 格连片的湖<br><b>随机</b> 草地为主，湖可能 3 格，山最多 1<br><b>不会出现</b> 森林、岩地</td><td><strong>双输入配方</strong>与<strong>湖</strong>。石匠铺要原木和石头同时到；湖横在中间，绕路或买航道</td><td>最关键的一次：湖挡在城镇和路网之间，还是躺在旁边。预览写出买航道和绕路两种造价</td><td>采石场和伐木营的货第一次汇合到一座建筑</td></tr>
+<tr><td><b>F5</b> 山脉与铁</td><td class="num">40 000</td><td><b>必有</b> 1 城镇（只收铁 150）、至少 2 格相连的山<br><b>随机</b> 草地为主，山可能 3 格，岩地最多 1<br><b>不会出现</b> 森林、湖、铁矿。矿在 F0，铁要横穿整个路网</td><td><strong>矿山与铁厂</strong>（第二个双输入配方）、<strong>全局道路升级</strong>。矿山科技只要 5 000，买下后玩家终于知道 F0 那格铁矿是干什么的；铁矿石没有城镇收，只能炼成铁；到这一步驴道 4 件/回合明显不够</td><td>山连成的墙决定城镇在哪一侧、铁运过来要不要绕过整道墙</td><td>全部：铁厂放在 F0 的铁矿和伐木营旁边，铁走 F1 到 F4 修出的路网卖到 F5，是全图最长的一条线</td></tr>
+</table></div>
+<p>F5 之后目标条隐藏，里程碑列表换成「沙盒」：迷雾花按公式定价、从池子里抽；铁路、货运马车、更多工人培训成为长期目标。</p>
+</section>
+
+<section id="production">
+<div class="eyebrow">六</div><h2>生产：点击、工人与配方</h2>
+<p>建筑不会自己生产。玩家点击建筑才出一件货；买了工人，建筑才开始每回合自动生产。这是 Cookie Clicker 的节奏：开局每一件货都是自己点出来的，第一名工人是用点出来的钱买的，之后每一次扩张都是「把手上的活交给工人」。物流永远自动。</p>
+<h3>三件事决定产量</h3>
+<div class="table"><table>
+<tr><th>来源</th><th>每次 / 每回合产出</th></tr>
+<tr><td>一次点击</td><td><code>1 + 工具改良等级</code> 件</td></tr>
+<tr><td>一名工人</td><td><code>1 + 工人培训等级</code> 件/回合</td></tr>
+<tr><td>建筑本身</td><td>0</td></tr>
+</table></div>
+<ul>
+<li>建筑类型、地形、设备都不影响产量。<strong>影响一座建筑产量的只有它的工人数</strong>，工人本身的效率是全局科技。地形只决定能建什么和道路造价。</li>
+<li><strong>每座建筑最多 3 名工人。</strong>上限把纵向堆叠封死，产量到顶之后只剩两条出路：开新建筑（逼玩家往地图外走）或买工人培训（唯一的无限轴）。3 还让工人能画成三个一眼数得清的手指。</li>
+<li>每座建筑每种货一个 <strong>20 件堆场</strong>：输出满 20 停工；加工建筑每种输入各一个 20 件堆场。点击和自动生产都受堆场约束：堆满拒绝，缺输入拒绝。错误提示每秒最多弹一次。</li>
+<li>点击产出记进当回合的统计，所以「近 30 回合实际」同时包含手点和工人的量。倍速不影响点击。</li>
+<li>第一名伐木工 400 金币 = 20 根原木卖进第一座城镇，正好是开局点 20 下的量，和 Cookie Clicker 开局点十几下买第一个 cursor 是同一个节奏。</li>
+</ul>
+<h3 id="recipes">配方：六种货、六座建筑</h3>
+<p>配方统一是每种输入各一件出一件；产量只看工人数（每座最多 3 名）。第一版做到「铁」为止，铁匠铺留到下一版。</p>
+<figure class="figure"><svg id="recipes-svg" viewBox="0 0 900 400" role="img" aria-label="资源转化图"></svg><figcaption>圆角方块是建筑，圆是货物。原木是三条链的公共输入。</figcaption></figure>
+<div class="table"><table>
+<tr><th>货物</th><th>来源</th><th>输入</th><th class="num">卖价</th><th>谁收</th></tr>
+<tr><td>原木</td><td>伐木营（森林）</td><td>无</td><td class="num">20</td><td>F1 城镇 20</td></tr>
+<tr><td>石头</td><td>采石场（岩地）</td><td>无</td><td class="num">30</td><td>F2 城镇 30</td></tr>
+<tr><td>木板</td><td>锯木厂（草地）</td><td>原木</td><td class="num">50</td><td>F3 城镇 50、F4 城镇 30</td></tr>
+<tr><td>石头工具</td><td>石匠铺（草地）</td><td>原木 + 石头</td><td class="num">120</td><td>F4 城镇 120</td></tr>
+<tr><td>铁矿石</td><td>矿山（铁矿）</td><td>无</td><td class="num">—</td><td>没有城镇收，只能炼铁</td></tr>
+<tr><td>铁</td><td>铁厂（草地）</td><td>铁矿石 + 原木</td><td class="num">150</td><td>F5 城镇 150</td></tr>
+</table></div>
+<ul>
+<li><strong>原木是三条链的公共起点。</strong>一座满编伐木营每回合 3 根，喂不饱两座加工厂，玩家很快要开第二座伐木营。这是有意的。</li>
+<li><strong>双输入配方的物流复杂度。</strong>石匠铺要同时连伐木营和采石场，任何一条路堵了它就停工。这就是「复杂的物流更值钱」：石头工具 120 是原木 20 加石头 30 的 2.4 倍。</li>
+<li>每座加工建筑门口每种输入各有一个 20 件的堆场，输出也是 20 件。缺哪种输入面板就写「缺原木」或「缺石头」，地图上用琥珀色标。向上游要货的规则：每种输入只要到 <code>min(20, 5 × 工人数)</code> 件作缓冲。</li>
+<li>连接合法性：只能在「产这种货」和「收这种货」的两点之间修路（第七节）。</li>
+<li><strong>派货按下游价值排优先级。</strong>原木同时被 F1 城镇（20）、锯木厂（木板 50）、石匠铺（石头工具 120）、铁厂（铁 150）要，引擎按每个需求最终能卖出的价格从高到低满足，价格相同再看距离。没有这条，伐木营会一直把原木卖给隔壁城镇，石匠铺饿死而玩家毫无办法。</li>
+</ul>
+
+</section>
+
+<section id="logistics">
+<div class="eyebrow">七</div><h2>物流与城镇</h2>
+<h3>道路</h3>
+<ul>
+<li><strong>只能在有货可运的两点之间修路</strong>：一方产某种货、另一方收这种货（城镇收购，或加工建筑把它当输入）。路沿着六边形邻接边走，占边不占格；起点和终点之间的中间格只要可通行即可。</li>
+<li><strong>每段造价 <code>250 × 地形系数</code></strong>，系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3），与道路等级无关。复用已有路段不再收费。</li>
+<li><strong>道路等级是全局的</strong>：驴道 4 件/回合、石头路 12、铁路 36，货运马车再 ×2。买下道路科技那一刻全图一起升级。升级的成本全部在科技价格里，所以路越长的时候玩家不会觉得升级道路是在惩罚扩张。</li>
+<li><strong>一段路的运力由所有货、两个方向共享</strong>，多个需求争同一段时轮流放行（持久轮转，存读档不重置），有限运力不会永久饿死某一个需求。运力由路段决定，与连了几座建筑无关。</li>
+<li><strong>选路</strong>：最短路优先，同长选当前排队量较小的；已经上路的货不能掉头。玩家拆旧路可以改变拓扑。修第二条路会分担流量，但严格更长的绕路不会自动取代短路。</li>
+<li>拆路立即禁止新货进入，已在路上的货走完再退款。</li>
+</ul>
+<h3>派货：需求拉货，按下游价值排序</h3>
+<ul>
+<li>每个需求带一个<strong>价值</strong>：城镇需求的价值是收购价；加工建筑某种输入的价值是它的产出最终能卖到的最高价（递归到城镇）。</li>
+<li>加工建筑每种输入只要到 <code>min(20, 5 × 工人数)</code> 件作缓冲，不无限吸货；请求缺口 = 目标 − 门口库存 − 已分配在途。</li>
+<li>每回合按价值从高到低满足需求，价值相同按距离近的优先。原木同时被 F1 城镇（20）、锯木厂（木板 50）、石匠铺（石头工具 120）、铁厂（铁 150）要，引擎先喂铁厂。没有这条规则，伐木营会一直把原木卖给隔壁城镇，加工厂饿死而玩家毫无办法。</li>
+<li>只在货真的进入第一段路时扣产地库存，不提前预扣。目标失效或断路的货在当前节点落地为当地库存，不销毁、不瞬移。</li>
+</ul>
+<h3>城镇</h3>
+<ul>
+<li>城镇随板块出现，<strong>没有名字</strong>，界面上只按收的货区分；每座最多收两种货，收购价由生成器按到起点的距离算，之后<strong>固定按件</strong>，不随等级、供货量浮动。</li>
+<li>每种货每回合收 <code>2 × (1 + 等级)</code> 件，需求池最多攒 20 回合；需求用完就暂停收购，货在产地积压，地图上标琥珀色。城镇不会自己升级。</li>
+<li><strong>扩建</strong>由玩家花钱：每级每种货多收 2 件/回合，价格 = 该级新增收入 × 30 回合 × 1.5^等级 = <code>2 × Σ收购价 × 30 × 1.5^L</code>。按价值定价后所有扩建的回本期都是 30 回合，扩建高价城镇不再是碾压一切的选项。</li>
+<li>连上路就自动卖，没有接单操作。</li>
+</ul>
+<h3>为什么总有瓶颈</h3>
+<p>一名工人（1 件/回合）喂不满一座一级城镇的一种货（2 件/回合），所以前期一直有「再雇一个还是先修路」的选择；一座满编建筑（3 件/回合）刚好压过一级城镇、还填不满一条驴道（4 件/回合）；同一条路上挂到第二座满编建筑，路就成了瓶颈。加产量、加运力、加需求三种花钱方式价格相近，所以每一步都是真实的三选一，而扩建城镇是最先出现的那一个。</p>
+<h3>瓶颈的计算</h3>
+<p>每回合派货结束后，引擎检查每个还有缺口、且有货源可达的需求：沿最优路线走一遍，把这一回合跑满的路段记一笔 <code>blocked += 需求价值 × min(缺口, 需求速度)</code>。界面按近 30 回合的 <code>blocked</code> 总和排序，只取前三名，在地图上标红、橙、黄。道路面板上直接给出三个应对动作：修第二条路分流、买下一级道路、买货运马车。</p>
+</section>
+
+<section id="tech">
+<div class="eyebrow">八</div><h2>全局科技树</h2>
+<p>一棵树，全部金币，前置全部是科技（不要求地图上建成对应建筑）。三类节点：建筑（解锁后才能建）、道路（全局升级）、经济（可重复）。</p>
+<figure class="figure"><svg id="tech-svg" viewBox="0 0 900 520" role="img" aria-label="科技树"></svg><figcaption>绿色是建筑科技，棕色是道路，蓝色是航道，灰色是可重复的经济科技。虚线框的铁路在教学之后。</figcaption></figure>
+<div class="callout"><strong>道路是全局升级。</strong>全图只有一个道路等级：驴道 4 件/回合、石头路 12、铁路 36。买下道路科技那一刻所有已有路段一起升级，之后新修的路段直接是当前等级。<strong>每段造价永远按驴道算</strong>：<code>250 × 地形系数</code>，与等级无关，升级的成本全部在科技价格里，这样越往后路越长的时候玩家不会觉得升级是在惩罚扩张。顶三段瓶颈标红，道路面板上直接给三个动作：修第二条路分流、买下一级道路、买货运马车。</div>
+</section>
+
+<section id="economy">
+<div class="eyebrow">九</div><h2>经济模型：前一小时的收益预测</h2>
+<p>下面的模型按一位<strong>一直做最优选择、从不闲置金币</strong>的玩家，逐回合模拟整个教学流程。每回合收入 = 每种货 <code>min(产量, 城镇需求, 道路运力) × 价格</code>，加工链取上游供给的最小值，原木优先喂加工厂。它是下界：真实玩家会转错板块、看地图、让钱闲一会儿，并且会切 2× / 5×，按经验放大 1.5 到 2 倍。</p>
+<p>所有数字都可以改，改完自动重算。「购买顺序」是这位玩家的行动脚本，价格那一列就是设计定价。</p>
+<h3>参数</h3>
+<div class="model-controls" id="params"></div>
+<h3>购买顺序与定价</h3>
+<div class="table plan-table"><table id="plan"></table></div>
+<div class="toolbar"><button id="run">重新计算</button><button class="secondary" id="reset">恢复默认</button><span id="summary"></span></div>
+<div class="kpi" id="kpi"></div>
+<figure class="figure"><svg id="chart" viewBox="0 0 900 320" role="img" aria-label="收入曲线"></svg><figcaption>横轴是 1× 速度下的分钟，纵轴是每回合收入。竖线是五朵花解锁的时刻。</figcaption></figure>
+<h3>时间线</h3>
+<div class="table"><table id="timeline"></table></div>
+<div class="table"><h3>其余定价</h3><table>
+<tr><th>项目</th><th>价格</th></tr>
+<tr><td>第一名工人：伐木营 / 采石场 / 矿山 / 锯木厂 / 石匠铺 / 铁厂</td><td>400 / 600 / 600 / 1 000 / 1 000 / 1 000，每多一名 ×1.3，最多 3 名</td></tr>
+<tr><td>道路每段</td><td>250 × 地形系数（1 / 2 / 3），与道路等级无关</td></tr>
+<tr><td>城镇扩建</td><td>该城镇每级新增收入 × 30 回合 × 1.5^L = 2 × Σ收购价 × 30 × 1.5^L：F1 城镇 1 200、F2 1 800、F3 3 000、F4 9 000、F5 9 000。所有扩建回本期一致，高价城镇不再是碾压一切的选项</td></tr>
+<tr><td>工人培训 Lv n / 工具改良 Lv n</td><td>5 000 × 2ⁿ / 2 000 × 2ⁿ</td></tr>
+<tr><td>货运马车 / 铁路</td><td>16 000 / 100 000（教学之后）</td></tr>
+<tr><td>开局金币</td><td>2 000（= F1 解锁 500 + 最坏第一条路 1 500）</td></tr>
+<tr><td>板块 F5 之后第 n 朵</td><td>40 000 × 1.5^(n−5)</td></tr>
+<tr><td>拆除 / 辞退退款</td><td>全额，见第二节无死局规则</td></tr>
+</table></div>
+</section>
+
+<section id="ui">
+<div class="eyebrow">十</div><h2>界面</h2>
+<h3>颜色只有三种含义</h3>
+<div class="table"><table>
+<tr><th>颜色</th><th>含义</th><th>出现位置</th></tr>
+<tr><td>红 / 橙 / 黄</td><td>瓶颈排名第 1 / 2 / 3 位</td><td>地图道路、道路面板</td></tr>
+<tr><td>琥珀</td><td>正在损失价值</td><td>堆场已满、缺输入、城镇需求已满、修不起的造价</td></tr>
+<tr><td>默认黑灰</td><td>其余一切</td><td>价格、库存、产能、说明</td></tr>
+</table></div>
+<h3>地图只画会改变决策的东西</h3>
+<ul>
+<li>建筑：每回合产能，堆场非空时显示数量，满 20 用琥珀色；加工建筑缺哪种输入就写「缺原木」「缺石头」；每回合生产时冒一个 +N。</li>
+<li>城镇：等级、每回合收入、收的每种货和单价、待收需求条，需求已满的条用琥珀色。</li>
+<li>道路：正在运输的货是小点，颜色是货物种类，按回合内进度平滑移动；顶三段瓶颈标红橙黄。</li>
+<li>迷雾花：半透明深色，外观一致，中间写价格，买得起时边缘亮。</li>
+<li>图例、页脚、面板里的教学句都去掉；教学句只在第一次出现时用提示。</li>
+</ul>
+<h3>工人的画法：Cookie Clicker 的 cursor</h3>
+<ul>
+<li>格子上不写「工人 n」，画一排手指（Kenney Cursor Pack 的 <code>hand_point_n</code>，32×32，CC0），一名工人一只。<strong>不画空槽位，侧栏不写 n / 3，满员时「雇工人」按钮直接消失。</strong>上限是结构约束，不是玩家需要盯的数字。</li>
+<li><strong>每只手指按自己的节拍朝建筑点一下</strong>，一回合里 n 名工人的节拍均匀错开：工人越多，动作越密，这就是把速率画出来的办法。工人培训不加手指，它缩短节拍（下限 0.25 秒）并在格子上补一个「×n」。</li>
+<li>这是抽象的节拍，引擎里所有工人在回合边界同一瞬间出货。允许这个抽象的前提是它在一件事上绝不撒谎：<strong>建筑停工的时候动画必须停。</strong>堆场满、缺输入、玩家暂停，手指就整个去掉动画（不是暂停，所以一定回到静止位置）并转灰。不动了就是出问题了，不用读字。</li>
+<li>实现上动画是纯 CSS，跑在合成层；工人放在独立的 <code>&lt;g class="tile-crew"&gt;</code> 里，只在工人数、堵塞状态或节拍变化时重建；侧栏里同一批手指靠负的 <code>animation-delay</code> 对齐相位。</li>
+</ul>
+<h3>操作</h3>
+<ul>
+<li>点地图上的建筑 = 生产一件并选中它；点城镇只选中。按住建筑拖到另一座建筑或城镇 = 连路，沿途显示造价；6 像素阈值区分点击和拖动。点击时格子弹一下、飘出「+n」，工人的每回合产量也飘「+n」，两者互不覆盖。</li>
+<li>从工具栏拖建筑到地图，合法地形高亮。建筑要先在科技树里解锁，解锁后按钮才出现在工具栏。</li>
+<li>点迷雾花进入预览：模拟暂停，板块以随机朝向出现，两个旋转按钮、一个「放下」按钮，预览里叠画从已有建筑到新城镇的最短路和造价（有湖时写出买航道和绕路两种造价）；余额不够时造价变琥珀色，收入为零时「放下」禁用并写「修不起路，换个朝向试试」，有收入时只警告。预览期间地图上其他操作被拒绝。</li>
+</ul>
+<h3>面板只说结论</h3>
+<ul>
+<li><strong>科技树</strong>：工具栏一个「科技」按钮打开从上到下的树。可买的亮，买过的打勾，前置没满足的灰并写出缺什么。</li>
+<li><strong>建筑面板</strong>：产能、近 30 回合实际、每种货一行堆场 <code>n / 20</code>（缺的那行琥珀色）、一句诊断。第一个动作是「雇第 n 名工人」并标价，满员时消失；「手工生产」是次级按钮；还没有工人时写「还没有工人，先手工生产攒钱」。拆除按钮写明退款。</li>
+<li><strong>道路面板</strong>：每回合几件（全图当前等级）· 近 30 回合实际 · 瓶颈排名 · 堵住约多少金币/回合，下面三个动作：修第二条路分流、买下一级道路、买货运马车。</li>
+<li><strong>城镇面板</strong>：每件价格、待收 n / 池、实收、扩建按钮与价格。</li>
+<li><strong>顶栏</strong>：金币、每回合收入、暂停、速度、更多菜单（导入 / 导出 / 重新开始 / 本文档）。</li>
+</ul>
+<h3>目标条与里程碑</h3>
+<p>目标条只显示下一步一句话，按局势切换：点击伐木营 → 原木卖不掉，探索周围看看 → 修路 → 雇工人 → 解锁产该货的建筑 → 攒钱探索。里程碑顺着五朵花走：点第一下 → 堆场满 → 解锁 F1 → 第一笔收入 → 第一名工人 → 第一项科技 → 采石场建成 → 解锁 F3 → 第一块木板 → 第二座伐木营 → 解锁 F4 → 第一件石头工具 → 航道 → 石头路 → 解锁 F5 → 矿山 → 第一块铁。F5 之后目标条隐藏，里程碑列表换成「沙盒」。里程碑达成即入账，拆建不重复触发。</p>
+</section>
+
+<section id="engine">
+<div class="eyebrow">十一</div><h2>实现契约</h2>
+<p>供实现与测试对照，不是玩家可见内容。</p>
+<ol>
+<li><strong>世界</strong>：<code>w.flowers[fid] = {center, state:'fog'|'preview'|'placed', design, rotation}</code>，<code>w.tiles</code> 只包含已放下的花的格子。只有 F0 有预设内容。每放下一朵花，它周围还没有的位置补成迷雾。</li>
+<li><strong>生成器</strong> <code>generateFlower(w, n, seed)</code>：输入解锁次序、整个世界状态和种子，输出七格内容。n ≤ 5 用教学规格（必有 / 不会出现 / 上限 / 填充池），之后用沙盒规则。规格表和规则都是数据，测试直接跑它。</li>
+<li><strong>探索命令</strong>：<code>explore(fid)</code> 扣钱、生成内容、进入预览并暂停模拟；<code>rotate(fid, dir)</code>；<code>place(fid)</code> 生成格子、恢复模拟。预览期间其他命令一律拒绝。放下后没有任何命令能改朝向。</li>
+<li><strong>无死局守卫</strong>：<code>place</code> 在全图收入为零且余额不足以修到新城镇的最短路时拒绝。<code>REFUND = 1</code>，起始伐木营 <code>paid: 1200</code>，<code>START_MONEY = 2000</code>。</li>
+<li><strong>地形</strong> <code>grass / town / forest / rock / ore / mountain / lake</code>，<code>TERRAIN_FACTOR = {grass:1, town:1, forest:2, rock:2, ore:2, lake:3}</code>。山不可进；湖只有 <code>w.tech.waterway</code> 为真时可进。<code>path()</code> 与 <code>validate()</code> 同步。</li>
+<li><strong>配方表</strong>：<code>{camp:{in:{},out:'log',fits:['forest']}, quarry:{in:{},out:'stone',fits:['rock']}, sawmill:{in:{log:1},out:'board',fits:['grass']}, mason:{in:{log:1,stone:1},out:'tool',fits:['grass']}, mine:{in:{},out:'ore',fits:['ore']}, smelter:{in:{ore:1,log:1},out:'iron',fits:['grass']}}</code>。生产量取 <code>min(工人产量, 每种输入库存, 输出堆场余量)</code>；点击同理。建筑命令先检查对应科技。</li>
+<li><strong>派货</strong>：每个需求带「下游价值」（城镇收购价，或加工产出可卖到的最高价，递归）。每回合按价值从高到低满足，价值相同按距离。共用路段持久轮转。</li>
+<li><strong>科技表</strong> <code>TECH</code>，每项 <code>{name, cost | (base, growth), requires:[...], kind:'building'|'road'|'economy'|'waterway'}</code>。</li>
+<li><strong>道路</strong>：全局 <code>w.roadLevel ∈ {0,1,2}</code>，<code>capacity()</code> 读它并乘货运马车；<code>edgeCost</code> 不看等级。没有按段升级的命令。</li>
+<li><strong>城镇</strong>：定义随花走，<code>townLevelCost(town) = 2 × Σ收购价 × 30 × 1.5^level</code>。<code>linkReason</code> 对多输入泛化：两点之间只要有任一种货是「一方产、另一方收」就合法。</li>
+<li><strong>存档</strong>键 <code>tnt-mvp-v12</code>，种子和解锁次序都在存档里；旧键的存档保留不读。加载时校验非负、引用、唯一 ID 与金币账本。</li>
+<li><strong>测试</strong>（<code>node --test tests/economy.test.cjs</code>）覆盖：花的铺满与相邻、迷雾随放下无限延伸、任意相邻迷雾花都可解锁且第 n 次解锁得到 Fn 规格、教学生成器和沙盒生成器各在一千个种子下满足全部约束、生成结果只依赖状态和种子、迷雾里不能修路、预览期间命令被拒且时间不走、放下后无法旋转、旋转后地形对应、山不可通行、湖需航道、矿山只能在铁矿、多输入生产取最小值、派货按下游价值、共用道路轮流放行、开局金币穷举 F1 六个方向 × 六个朝向 × 一百个种子都存在修得起的朝向且守卫拦住其余朝向、拆除与辞退全额退款、科技前置、全局道路等级与造价不随等级变、扩建价按价值、金币账本与整数不变量、存读档一致、收益预测里的关键节点在引擎里可复现。</li>
+</ol>
+</section>
+
+<section id="history">
+<div class="eyebrow">十二</div><h2>沿革、删掉的东西与下一版</h2>
+<p>每一版都是对上一版试玩结论的回答。留下这张表是为了让后来的改动不重犯同样的错。</p>
+<div class="table"><table>
+<tr><th>版本</th><th>做了什么</th><th>学到什么</th></tr>
+<tr><td>v0.5</td><td>局部库存、木板和石头当建材、需求拉货、施工蓝图、全额拆建</td><td>「用网络建网络」和自动配送成立；但资源只能用来买更多资源，没有游玩理由</td></tr>
+<tr><td>v0.6–0.7</td><td>集镇发订单，货物真实送到才结算金币</td><td>无聊的原因不是数字太小，而是资源没有出口、地图没有理由、瓶颈看不见</td></tr>
+<tr><td>v0.8–0.9</td><td>金币成为唯一货币；三座固定城镇按清单收购、需求有上限；价格随全图数量指数增长，拆除退一半</td><td>材料造价太抽象；按数量涨价把后期逼成只剩「扩路」一种操作；退一半让人不敢拆</td></tr>
+<tr><td>v0.10</td><td>每回合一件的整数模型；价格不随数量涨；瓶颈按损失金币排名只取前三；颜色三义</td><td>玩家要的是结论不是数据：七层信息各说各的、全图变红后颜色就失去信号</td></tr>
+<tr><td>v0.11</td><td>点击生产、工人上限 3、工人培训与工具改良、Cookie Clicker 手指动画</td><td>自动生产让前十分钟没有手上的事做；把节奏交回玩家的手</td></tr>
+<tr><td>v0.12</td><td>迷雾探索与旋转、按局势生成、六种货六座建筑的配方树、全局科技树与道路等级、全额退款、无死局规则</td><td>一条循环不够；三条互相咬合的循环加上前五朵花的教学，把前一小时做完整</td></tr>
+</table></div>
+<div class="grid">
+<div class="card"><h3>删掉的（不要再加回来）</h3><ul>
+<li>材料造价、施工蓝图与 escrow：被金币即时购买取代。</li>
+<li>订单与接单：城镇连上路就自动收购。</li>
+<li>按全图数量涨价的建筑、按连接段数涨价的道路：价格只随同一建筑的工人数和科技等级涨。</li>
+<li>高效设备、蒸汽锯、密林 / 富岩地 ×2：与「只有工人数影响产量」冲突。</li>
+<li>河流与桥：被湖和航道科技取代。按段扩容：道路改成全局升级。</li>
+<li>固定的三座有名字的城镇与固定 37 格地图、预设板块池：城镇随花出现，内容按局势生成。</li>
+<li>浮动价格、城镇自动升级、退一半、暂停生产按钮、建筑模块。</li>
+</ul></div>
+<div class="card"><h3>留到下一版</h3><ul>
+<li>铁匠铺与铁器（铁 + 木板 → 400），第四层配方。</li>
+<li>金矿、银矿：矿山产出按板块不同。</li>
+<li>炼油 → 公路，机场 → 航线：道路第四、第五级。蒸汽船：航道的升级。</li>
+<li>板块池的扩充与可重玩性：更多花的配方、稀有板块、探索奖励。</li>
+<li>里程碑全部完成后的长期目标。</li>
+</ul></div>
+</div>
+</section>
+<footer>Tracks &amp; Trade · 设计文档 · 当前版本 v0.12 · 2026-09-21 · 唯一设计依据，改设计先改这一页</footer>
+</div>
+<script>
+/* ---------- 通用六边形 ---------- */
+const SQ3=Math.sqrt(3);
+const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];           // 轴坐标六个方向，逆时针
+const TCOL={grass:'var(--t-grass)',forest:'var(--t-forest)',rock:'var(--t-rock)',ore:'var(--t-ore)',mountain:'var(--t-mountain)',lake:'var(--t-lake)',town:'var(--t-town)',fog:'var(--t-fog)'};
+const TNAME={grass:'草',forest:'林',rock:'岩',ore:'矿',mountain:'山',lake:'湖',town:'镇'};
+function hexPts(cx,cy,s){let p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);p.push((cx+s*Math.cos(a)).toFixed(1)+','+(cy+s*Math.sin(a)).toFixed(1));}return p.join(' ');}
+function axialToPx(q,r,s){return [s*SQ3*(q+r/2), s*1.5*r];}
+function svgEl(tag,attrs,text){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;return e;}
+// 花心格点：a·(3,−1)+b·(1,2)。相邻花的六个偏移：
+const FLOWER_NEIGHBORS=[[3,-1],[2,-3],[-1,-2],[-3,1],[-2,3],[1,2]];
+
+/* ---------- 图 1：铺设示意 ---------- */
+(function(){
+ const svg=document.getElementById('tiling'),s=14,ox=210,oy=190;
+ const centers=[[0,0],...FLOWER_NEIGHBORS];
+ // 第二圈
+ const ring2=new Set();
+ for(const [a,b] of FLOWER_NEIGHBORS)for(const [c,d] of FLOWER_NEIGHBORS){const k=(a+c)+','+(b+d);if(!(a+c===0&&b+d===0)&&!FLOWER_NEIGHBORS.some(n=>n[0]===a+c&&n[1]===b+d))ring2.add(k);}
+ const all=[...centers.map(c=>({c,kind:c[0]===0&&c[1]===0?'start':'ring1'})),...[...ring2].map(k=>({c:k.split(',').map(Number),kind:'ring2'}))];
+ for(const f of all){
+  const fill=f.kind==='start'?'#e8c46a':f.kind==='ring1'?'#b9cf8a':'#d9d2c2';
+  for(let i=-1;i<=6;i++){const [dq,dr]=i<0?[0,0]:(i<6?DIRS[i]:[0,0]);if(i===6)continue;const [x,y]=axialToPx(f.c[0]+dq,f.c[1]+dr,s);svg.appendChild(svgEl('polygon',{points:hexPts(ox+x,oy+y,s-1),fill,stroke:'#17212b',"stroke-width":.6,opacity:f.kind==='ring2'?.7:1}));}
+  const [x,y]=axialToPx(f.c[0],f.c[1],s);
+  if(f.kind!=='ring2')svg.appendChild(svgEl('text',{x:ox+x,y:oy+y+4,"text-anchor":'middle',"font-size":11,"font-weight":700,fill:'#17212b'},f.kind==='start'?'F0':''));
+ }
+})();
+
+/* ---------- 图 2：教学地图 ---------- */
+// 每朵花：中心 + 六个邻居（按 DIRS 顺序）。旋转 = 六个邻居循环移位。
+// 教学花的规格：must 必有，pool 填充池（按权重重复），cap 上限，forbid 不会出现。F0 固定。
+const SPEC={
+ F1:{must:{town:1,mountain:1},pool:['grass','grass','grass','mountain','rock'],cap:{mountain:2,rock:1}},
+ F2:{must:{town:1,forest:1},pool:['grass','grass','grass','mountain'],cap:{mountain:2}},
+ F3:{must:{town:1},pool:['grass','grass','grass','mountain','rock'],cap:{mountain:2,rock:1}},
+ F4:{must:{town:1,lake:2},pool:['grass','grass','lake','mountain'],cap:{lake:3,mountain:1}},
+ F5:{must:{town:1,mountain:2},pool:['grass','grass','grass','mountain','rock'],cap:{mountain:3,rock:1}},
+};
+// 简单的可复现随机数
+function rng(seed){let x=seed>>>0||1;return()=>{x^=x<<13;x>>>=0;x^=x>>>17;x^=x<<5;x>>>=0;return x/4294967296;};}
+// 花内邻接：索引 0 中心，1..6 为 DIRS 顺序的邻居
+const LOCAL=[[0,0],...DIRS];
+function localAdj(a,b){const [q1,r1]=LOCAL[a],[q2,r2]=LOCAL[b];return DIRS.some(d=>q1+d[0]===q2&&r1+d[1]===r2);}
+function connected(idx){if(!idx.length)return true;const seen=new Set([idx[0]]),st=[idx[0]];while(st.length){const a=st.pop();for(const b of idx)if(!seen.has(b)&&localAdj(a,b)){seen.add(b);st.push(b);}}return seen.size===idx.length;}
+function genFlower(spec,rand){
+ for(let tries=0;tries<500;tries++){
+  const tiles=[];for(const t in spec.must)for(let k=0;k<spec.must[t];k++)tiles.push(t);
+  const count=t=>tiles.filter(x=>x===t).length;
+  let guard=0;while(tiles.length<7&&guard++<100){const t=spec.pool[Math.floor(rand()*spec.pool.length)];if(spec.cap[t]!=null&&count(t)>=spec.cap[t])continue;tiles.push(t);}
+  if(tiles.length<7)continue;
+  for(let i=tiles.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[tiles[i],tiles[j]]=[tiles[j],tiles[i]];}
+  const idxOf=t=>tiles.map((x,i)=>x===t?i:-1).filter(i=>i>=0);
+  const town=idxOf('town')[0],mts=idxOf('mountain'),lakes=idxOf('lake'),rocks=idxOf('rock');
+  if(mts.filter(m=>localAdj(town,m)).length>2)continue;              // 城镇不被山围
+  if(!connected(tiles.map((x,i)=>x==='mountain'?-1:i).filter(i=>i>=0)))continue; // 非山格连通
+  if(lakes.length&&!connected(lakes))continue;                         // 湖连片
+  if(mts.length>1&&!connected(mts))continue;                           // 山连片
+  return {center:tiles[0],ring:tiles.slice(1)};
+ }
+ throw Error('生成失败');
+}
+const FLOWERS=[
+ {id:'F0',name:'起始',pos:[0,0],fixed:true,rot:0,center:'grass',ring:['forest','rock','grass','rock','ore','mountain'],marks:{1:'⛺'}},
+ {id:'F1',name:'收原木 · 500',pos:[-3,1],rot:0,town:'原木 20'},
+ {id:'F2',name:'收石头 · 2000',pos:[-1,-2],rot:0,town:'石头 30'},
+ {id:'F3',name:'收木板 · 5000',pos:[1,2],rot:0,town:'木板 50'},
+ {id:'F4',name:'收石头工具 · 15000',pos:[3,-1],rot:0,town:'石头工具 120 · 木板 30'},
+ {id:'F5',name:'收铁 · 40000',pos:[2,-3],rot:0,town:'铁 150'},
+];
+let SEED=7;
+function regen(){const rand=rng(SEED);for(const f of FLOWERS){if(f.fixed)continue;Object.assign(f,genFlower(SPEC[f.id],rand));}}
+regen();
+let FOG=[[-2,3]];
+function flowerTiles(f){const tiles=[{q:f.pos[0],r:f.pos[1],t:f.center,i:0}];for(let i=0;i<6;i++){const j=(i-f.rot+6)%6;const d=DIRS[i];tiles.push({q:f.pos[0]+d[0],r:f.pos[1]+d[1],t:f.ring[j],i:j+1});}return tiles;}
+function drawTutorial(){
+ const svg=document.getElementById('tutmap');svg.innerHTML='';
+ const s=30,ox=450,oy=330;
+ const terrainAt={};
+ for(const f of FLOWERS)for(const t of flowerTiles(f))terrainAt[t.q+','+t.r]=t.t;
+ for(const [fq,fr] of FOG)for(let i=-1;i<6;i++){const d=i<0?[0,0]:DIRS[i];const [x,y]=axialToPx(fq+d[0],fr+d[1],s);svg.appendChild(svgEl('polygon',{points:hexPts(ox+x,oy+y,s-1.5),fill:TCOL.fog,opacity:.55}));}
+ for(const f of FLOWERS){
+  for(const t of flowerTiles(f)){
+   const [x,y]=axialToPx(t.q,t.r,s);
+   svg.appendChild(svgEl('polygon',{points:hexPts(ox+x,oy+y,s-1.5),fill:TCOL[t.t],stroke:'#17212b',"stroke-width":.8}));
+   let label=TNAME[t.t];
+   if(f.marks&&f.marks[t.i])label=f.marks[t.i];
+   svg.appendChild(svgEl('text',{x:ox+x,y:oy+y+4,"text-anchor":'middle',"font-size":t.t==='town'?11:12,"font-weight":t.t==='town'?800:500,fill:t.t==='mountain'||t.t==='forest'?'#fff':'#17212b'},t.t==='town'?'镇':label));
+  }
+  // 花的标签放在远离 F0 的一侧，避免压到相邻的花
+  const [x,y]=axialToPx(f.pos[0],f.pos[1],s);const len=Math.hypot(x,y)||1;const ux=len>1?x/len:0,uy=len>1?y/len:-1;
+  const lx=ox+x+ux*s*3.6,ly=oy+y+uy*s*3.6;
+  svg.appendChild(svgEl('text',{x:lx,y:ly+4,"text-anchor":'middle',"font-size":12,"font-weight":800,fill:'#486b3a'},f.id+' · '+f.name));
+ }
+ const ctl=document.getElementById('flowerctl');ctl.innerHTML='';
+ for(const f of FLOWERS){if(f.fixed)continue;const b=document.createElement('button');b.textContent=`↻ 旋转 ${f.id}（朝向 ${f.rot}）`;b.onclick=()=>{f.rot=(f.rot+1)%6;drawTutorial();};ctl.appendChild(b);}
+ const rnd=document.createElement('button');rnd.textContent='随机朝向（模拟解锁时的初始状态）';rnd.onclick=()=>{for(const f of FLOWERS)if(!f.fixed)f.rot=Math.floor(Math.random()*6);drawTutorial();};ctl.appendChild(rnd);
+ const rg=document.createElement('button');rg.textContent='重新生成教学板块（种子 '+SEED+'）';rg.onclick=()=>{SEED=Math.floor(Math.random()*1e6);regen();drawTutorial();};ctl.appendChild(rg);
+ const dir=document.createElement('button');dir.textContent='换个方向探（F1 到 F5 换位置）';dir.onclick=()=>{const slots=FLOWER_NEIGHBORS.slice();for(let i=slots.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[slots[i],slots[j]]=[slots[j],slots[i]];}FLOWERS.filter(f=>!f.fixed).forEach((f,i)=>{f.pos=slots[i];});FOG=[slots[5]];drawTutorial();};ctl.appendChild(dir);
+}
+drawTutorial();
+
+/* ---------- 图 3：配方图 ---------- */
+(function(){
+ const svg=document.getElementById('recipes-svg');
+ const G={ // 货物（圆）与建筑（方块）坐标
+  camp:{x:110,y:70,label:'伐木营\n森林',b:1},log:{x:280,y:70,label:'原木 20'},
+  quarry:{x:110,y:200,label:'采石场\n岩地',b:1},stone:{x:280,y:200,label:'石头 30'},
+  mine:{x:110,y:330,label:'矿山\n铁矿',b:1},ore:{x:280,y:330,label:'铁矿石（无买家）'},
+  sawmill:{x:470,y:40,label:'锯木厂\n原木',b:1},board:{x:660,y:40,label:'木板 50'},
+  mason:{x:470,y:170,label:'石匠铺\n原木 + 石头',b:1},tool:{x:660,y:170,label:'石头工具 120'},
+  smelter:{x:470,y:300,label:'铁厂\n铁矿石 + 原木',b:1},iron:{x:660,y:300,label:'铁 150'},
+ };
+ const E=[['camp','log'],['quarry','stone'],['mine','ore'],['log','sawmill'],['sawmill','board'],['log','mason'],['stone','mason'],['mason','tool'],['ore','smelter'],['log','smelter'],['smelter','iron']];
+ svg.appendChild(svgEl('defs',{})).innerHTML='<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#57656a"/></marker>';
+ for(const [a,b] of E){const A=G[a],B=G[b];const ax=A.x+(A.b?60:48),bx=B.x-(B.b?60:48);const path=`M${ax},${A.y} C${ax+50},${A.y} ${bx-50},${B.y} ${bx},${B.y}`;svg.appendChild(svgEl('path',{d:path,fill:'none',stroke:a==='log'?'#8b5a2b':'#57656a',"stroke-width":a==='log'?2.2:1.6,"marker-end":'url(#arr)'}));}
+ for(const k in G){const n=G[k];if(n.b){svg.appendChild(svgEl('rect',{x:n.x-60,y:n.y-26,width:120,height:52,rx:10,fill:'#486b3a'}));}else{svg.appendChild(svgEl('ellipse',{cx:n.x,cy:n.y,rx:48,ry:22,fill:'#fff',stroke:'#17212b',"stroke-width":1}));}
+  const lines=n.label.split('\n');lines.forEach((l,i)=>svg.appendChild(svgEl('text',{x:n.x,y:n.y+(i-(lines.length-1)/2)*15+4,"text-anchor":'middle',"font-size":i?11:13,"font-weight":i?400:700,fill:n.b?'#fff':'#17212b'},l)));}
+ svg.appendChild(svgEl('text',{x:800,y:385,"text-anchor":'end',"font-size":12,fill:'#57656a'},'棕色粗线：原木，三条链的公共输入'));
+})();
+
+/* ---------- 图 4：科技树 ---------- */
+(function(){
+ const svg=document.getElementById('tech-svg');
+ const N={
+  camp:{x:450,y:40,l:'伐木营 · 驴道',s:'开局已有',k:'start'},
+  sawmill:{x:250,y:130,l:'锯木厂',s:'3 000',k:'b'},quarry:{x:520,y:130,l:'采石场',s:'1 200',k:'b'},
+  training:{x:760,y:130,l:'工人培训 Lv n',s:'5 000 × 2ⁿ',k:'e'},tools:{x:760,y:200,l:'工具改良 Lv n',s:'2 000 × 2ⁿ',k:'e'},
+  cart:{x:80,y:230,l:'货运马车',s:'16 000',k:'r'},waterway:{x:250,y:230,l:'航道',s:'8 000',k:'w'},mason:{x:400,y:230,l:'石匠铺',s:'8 000',k:'b'},stoneroad:{x:560,y:230,l:'石头路',s:'20 000 · 全图 12/回合',k:'r'},
+  mine:{x:480,y:330,l:'矿山',s:'5 000 · 铁矿上',k:'b'},
+  smelter:{x:400,y:420,l:'铁厂',s:'40 000',k:'b'},
+  rail:{x:640,y:470,l:'铁路',s:'100 000 · 全图 36/回合',k:'r',later:true},
+ };
+ const E=[['camp','sawmill'],['camp','quarry'],['sawmill','cart'],['sawmill','waterway'],['sawmill','mason'],['quarry','mason'],['quarry','stoneroad'],['mason','mine'],['stoneroad','mine'],['mine','smelter'],['smelter','rail'],['stoneroad','rail']];
+ const COL={start:'#17212b',b:'#486b3a',r:'#8b5a2b',w:'#3f7fa6',e:'#6b7075'};
+ for(const [a,b] of E){const A=N[a],B=N[b];svg.appendChild(svgEl('path',{d:`M${A.x},${A.y+22} C${A.x},${A.y+60} ${B.x},${B.y-60} ${B.x},${B.y-22}`,fill:'none',stroke:'#9a938a',"stroke-width":1.6}));}
+ for(const k in N){const n=N[k];svg.appendChild(svgEl('rect',{x:n.x-75,y:n.y-22,width:150,height:44,rx:9,fill:n.later?'#fff':COL[n.k],stroke:COL[n.k],"stroke-width":1.5,"stroke-dasharray":n.later?'5 4':'none'}));
+  svg.appendChild(svgEl('text',{x:n.x,y:n.y-2,"text-anchor":'middle',"font-size":13,"font-weight":700,fill:n.later?COL[n.k]:'#fff'},n.l));
+  svg.appendChild(svgEl('text',{x:n.x,y:n.y+14,"text-anchor":'middle',"font-size":11,fill:n.later?'#57656a':'#fffc'},n.s));}
+ const layers=[[40,'第 0 层'],[130,'第 1 层'],[230,'第 2 层'],[330,'第 3 层'],[420,'第 4 层'],[470,'教学之后']];
+ for(const [y,t] of layers)svg.appendChild(svgEl('text',{x:8,y:y+4,"font-size":11,fill:'#57656a'},t));
+})();
+
+/* ---------- 经济模型 ---------- */
+const P0={log:20,stone:30,board:50,tool:120,iron:150};
+const PARAMS0={startMoney:2000,roundSec:2,clickPerSec:3,townRate:2,cap0:4,cap1:12,workerGrowth:1.3};
+const PLAN0=[
+ ['解锁 F1（城镇收原木 20）',500,'town.log=rate'],
+ ['修路 伐木营→F1 城镇 2 段',500,'road=1'],
+ ['伐木工 #1',400,'w.camp=1'],
+ ['伐木工 #2','worker:400:2','w.camp=2'],
+ ['解锁 F2（城镇收石头 30）',2000,'town.stone=rate'],
+ ['科技 采石场',1200,''],
+ ['建 采石场',1600,''],
+ ['修路 F0 采石场→F2 城镇 4 段（岩地 ×2）',1500,''],
+ ['采石工 #1',600,'w.quarry=1'],
+ ['伐木工 #3','worker:400:3','w.camp=3'],
+ ['采石工 #2','worker:600:2','w.quarry=2'],
+ ['解锁 F3（城镇收木板 50）',5000,'town.board=rate'],
+ ['科技 锯木厂',3000,''],
+ ['建 锯木厂',2400,''],
+ ['修路 伐木营→锯木厂→F3 城镇 5 段',1500,''],
+ ['锯木工 #1',1000,'w.sawmill=1'],
+ ['建 第二座伐木营（F2 的森林）',1200,''],
+ ['伐木工 #1（二营）',400,'w.camp2=1'],
+ ['伐木工 #2（二营）','worker:400:2','w.camp2=2'],
+ ['锯木工 #2','worker:1000:2','w.sawmill=2'],
+ ['解锁 F4（湖，城镇收石头工具 120）',15000,'town.tool=rate'],
+ ['科技 石匠铺',8000,''],
+ ['建 石匠铺',2000,''],
+ ['科技 航道',8000,''],
+ ['修路 石匠铺→F4 城镇 过湖 4 段（湖 ×3）',2000,''],
+ ['石匠 #1',1000,'w.mason=1'],
+ ['采石工 #3','worker:600:3','w.quarry=3'],
+ ['石匠 #2','worker:1000:2','w.mason=2'],
+ ['扩建 F1 城镇 Lv1（2 × 20 × 30）',1200,'town.log=rate*2'],
+ ['科技 石头路（全图 12 件/回合）',20000,'cap=cap1'],
+ ['解锁 F5（山脉，城镇收铁 150）',40000,'town.iron=rate'],
+ ['科技 矿山',5000,''],
+ ['建 矿山',2000,''],
+ ['修路 F0 矿山→铁厂 2 段（矿 ×2）',750,''],
+ ['矿工 #1',600,'w.mine=1'],
+ ['矿工 #2','worker:600:2','w.mine=2'],
+ ['科技 铁厂',40000,''],
+ ['建 铁厂',3000,''],
+ ['修路 铁厂 ↔ 伐木营 / F5 城镇 5 段',2500,''],
+ ['炼铁工 #1',1000,'w.smelter=1'],
+ ['炼铁工 #2','worker:1000:2','w.smelter=2'],
+ ['教学结束：进入沙盒',0,''],
+];
+let P={...P0},PARAMS={...PARAMS0},PLAN=PLAN0.map(r=>[...r]);
+const PLABEL={startMoney:'开局金币',roundSec:'一回合秒数（1×）',clickPerSec:'手点速度 件/秒',townRate:'城镇每级每回合收 件',cap0:'驴道运力 件/回合',cap1:'石头路运力 件/回合',workerGrowth:'同建筑每多一名工人 ×'};
+const GLABEL={log:'原木价',stone:'石头价',board:'木板价',tool:'石头工具价',iron:'铁价'};
+function costOf(c){if(typeof c==='number')return c;const m=/^worker:(\d+):(\d+)$/.exec(c);if(m)return Math.round(+m[1]*Math.pow(PARAMS.workerGrowth,+m[2]-1));return +c||0;}
+function applyFx(s,fx){if(!fx)return;const rate=PARAMS.townRate,cap1=PARAMS.cap1;for(const stmt of fx.split(';')){const [lhs,rhs]=stmt.split('=');const val=Function('rate','cap1','return ('+rhs+')')(rate,cap1);const path=lhs.trim().split('.');let o=s;for(let i=0;i<path.length-1;i++)o=o[path[i]];o[path[path.length-1]]=val;}}
+function income(s){
+ if(!s.road)return 0;const cap=s.cap;
+ let logs=s.w.camp+s.w.camp2,st=s.w.quarry,or=s.w.mine;
+ const boards=Math.min(s.w.sawmill,logs,s.town.board||0,cap);logs-=boards;
+ const tools=Math.min(s.w.mason,logs,st,s.town.tool||0,cap);logs-=tools;st-=tools;
+ const iron=Math.min(s.w.smelter,logs,or,s.town.iron||0,cap);logs-=iron;or-=iron;
+ const sl=Math.min(logs,s.town.log||0,cap),ss=Math.min(st,s.town.stone||0,cap);
+ return boards*P.board+tools*P.tool+iron*P.iron+sl*P.log+ss*P.stone;
+}
+function simulate(){
+ const s={money:PARAMS.startMoney,road:0,cap:PARAMS.cap0,town:{},w:{camp:0,camp2:0,quarry:0,sawmill:0,mason:0,mine:0,smelter:0}};
+ let t=20/PARAMS.clickPerSec,yard=20;const rows=[],series=[[t,0]];let stuck=null;
+ for(const [name,c,fx] of PLAN){const cost=costOf(c);let guard=0;
+  while(s.money<cost){let inc=income(s);if(inc===0&&s.road&&yard>0){inc=Math.min(PARAMS.townRate,yard)*P.log;yard-=Math.min(PARAMS.townRate,yard);}
+   if(inc===0||++guard>200000){stuck=name;break;}s.money+=inc;t+=PARAMS.roundSec;}
+  if(stuck)break;s.money-=cost;applyFx(s,fx);const inc=income(s);rows.push({name,cost,t,money:s.money,inc});series.push([t,inc]);}
+ return {rows,series,total:t,stuck};
+}
+function fmtT(sec){const m=Math.floor(sec/60),s=Math.round(sec%60);return `${m} 分 ${String(s).padStart(2,'0')} 秒`;}
+function renderControls(){
+ const pd=document.getElementById('params');pd.innerHTML='';
+ for(const k in PARAMS){const l=document.createElement('label');l.innerHTML=`<span>${PLABEL[k]}</span>`;const i=document.createElement('input');i.type='number';i.step='any';i.value=PARAMS[k];i.oninput=()=>{PARAMS[k]=+i.value;run();};l.appendChild(i);pd.appendChild(l);}
+ for(const k in P){const l=document.createElement('label');l.innerHTML=`<span>${GLABEL[k]}</span>`;const i=document.createElement('input');i.type='number';i.value=P[k];i.oninput=()=>{P[k]=+i.value;run();};l.appendChild(i);pd.appendChild(l);}
+ const tb=document.getElementById('plan');tb.innerHTML='<tr><th>#</th><th>购买</th><th class="num">价格</th><th>模型里的效果</th></tr>';
+ PLAN.forEach((r,idx)=>{const tr=document.createElement('tr');const isWorker=typeof r[1]==='string'&&r[1].startsWith('worker:');
+  tr.innerHTML=`<td>${idx+1}</td><td>${r[0]}</td><td class="num"></td><td><code>${r[2]||'—'}</code></td>`;
+  const td=tr.children[2];if(isWorker){td.textContent=costOf(r[1])+'（按第一名 × 增长）';}else{const i=document.createElement('input');i.type='number';i.value=r[1];i.oninput=()=>{r[1]=+i.value;run();};td.appendChild(i);}
+  tb.appendChild(tr);});
+}
+function run(){
+ const res=simulate();
+ const tl=document.getElementById('timeline');tl.innerHTML='<tr><th>购买</th><th class="num">花费</th><th class="num">累计时间（1×）</th><th class="num">余额</th><th class="num">之后每回合收入</th></tr>';
+ for(const r of res.rows){const tr=document.createElement('tr');tr.innerHTML=`<td>${r.name}</td><td class="num">${r.cost}</td><td class="num">${fmtT(r.t)}</td><td class="num">${Math.round(r.money)}</td><td class="num">${r.inc}</td>`;if(/解锁|科技|教学/.test(r.name))tr.style.fontWeight='700';tl.appendChild(tr);}
+ if(res.stuck){const tr=document.createElement('tr');tr.innerHTML=`<td colspan="5" class="stuck">收入为 0，卡死在「${res.stuck}」：这位玩家买不起下一项。</td>`;tl.appendChild(tr);}
+ const mins=res.total/60;const last=res.rows[res.rows.length-1];
+ document.getElementById('summary').textContent=res.stuck?'模型卡死，见时间线':`最优玩家 ${Math.round(mins)} 分钟走完教学（1×）；按 1.5 到 2 倍估计真实玩家 ${Math.round(mins*1.5)} 到 ${Math.round(mins*2)} 分钟。`;
+ const marks=res.rows.filter(r=>/^解锁 F\d/.test(r.name));
+ const spend=res.rows.reduce((a,r)=>a+r.cost,0);
+ document.getElementById('kpi').innerHTML=[[`${Math.round(mins)} 分`,'最优玩家总时长（1×）'],[`${last?last.inc:0}`,'教学结束时每回合收入'],[`${spend.toLocaleString()}`,'教学期间总花费'],...marks.map(m=>[fmtT(m.t).replace(' 秒',''),m.name.replace(/（.*/,'')])].map(([b,s])=>`<div><b>${b}</b><small>${s}</small></div>`).join('');
+ // 图
+ const svg=document.getElementById('chart');svg.innerHTML='';const W=900,H=320,L=60,R=20,T=20,B=40;
+ const maxT=Math.max(res.total,60),maxI=Math.max(...res.series.map(p=>p[1]),50);
+ const X=t=>L+(W-L-R)*t/maxT,Y=v=>H-B-(H-T-B)*v/maxI;
+ for(let m=0;m<=maxT/60;m+=5){svg.appendChild(svgEl('line',{x1:X(m*60),x2:X(m*60),y1:T,y2:H-B,stroke:'#e2dccd'}));svg.appendChild(svgEl('text',{x:X(m*60),y:H-B+16,"text-anchor":'middle',"font-size":11,fill:'#57656a'},m+' 分'));}
+ for(let v=0;v<=maxI;v+=100){svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:'#e2dccd'}));svgEl('text',{});svg.appendChild(svgEl('text',{x:L-6,y:Y(v)+4,"text-anchor":'end',"font-size":11,fill:'#57656a'},v));}
+ let d='';let prev=null;for(const [t,v] of res.series){if(prev){d+=` L${X(t)},${Y(prev)}`;}d+=(prev?' L':'M')+`${X(t)},${Y(v)}`;prev=v;}
+ d+=` L${X(res.total)},${Y(prev||0)}`;
+ svg.appendChild(svgEl('path',{d,fill:'none',stroke:'#486b3a',"stroke-width":2.5}));
+ for(const m of marks){svg.appendChild(svgEl('line',{x1:X(m.t),x2:X(m.t),y1:T,y2:H-B,stroke:'#bd8726',"stroke-dasharray":'4 3'}));svg.appendChild(svgEl('text',{x:X(m.t)+4,y:T+12,"font-size":11,fill:'#bd8726',"font-weight":700},m.name.slice(3,5)));}
+ svg.appendChild(svgEl('text',{x:L,y:12,"font-size":11,fill:'#57656a'},'每回合收入（金币）'));
+}
+document.getElementById('run').onclick=run;
+document.getElementById('reset').onclick=()=>{P={...P0};PARAMS={...PARAMS0};PLAN=PLAN0.map(r=>[...r]);renderControls();run();};
+renderControls();run();
+</script>
+<style>.sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #0002;vertical-align:-1px;margin-right:4px}</style>
+</body></html>
