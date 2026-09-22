@@ -26,7 +26,7 @@
   // One badge per tile; a blocking warning takes precedence over empty stock.
   const full=type==='town'?offers.some(o=>o.full):count>=capacity;
   const kind=full?'full':alert?'warning':null;
-  if(kind)html+=marker(kind,type==='town'?(offers.length>1?42:23):25,25,kind==='full'?(type==='town'?'高亮货物收购已饱和':'产物满仓，等待运出'):kind==='empty'?'产物库存为空':status||'需要注意');
+  if(kind)html+=marker(kind,type==='town'?(offers.length>1?42:23):25,25,kind==='full'?(type==='town'?'高亮货物积压，点城镇收购':'产物满仓，等待运出'):kind==='empty'?'产物库存为空':status||'需要注意');
   return html+'</g>';
  }
  function people({kind='worker',count=0,active=true,paused=false,beat=1,clock=0,base='assets/icons/v1/'}){
