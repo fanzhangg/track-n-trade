@@ -47,7 +47,10 @@ const ROAD_BASE=250;
 // Towns mirror workshops: up to MAX_RESIDENTS residents, each taking TOWN_RATE of every good per round times the
 // global era. Residents, crafts and eras are all priced by what they add: PAYBACK rounds of it, x GROWTH per step.
 const TOWN_RATE=2,MAX_RESIDENTS=3,PAYBACK=30,GROWTH=1.5,REFUND=1,START_MONEY=2000,START_CAMP_PAID=1200;
-const FLOWER_PRICES=[500,2000,5000,15000,40000],FLOWER_BASE=40000,FLOWER_GROWTH=1.5,TUTORIAL=5;
+// The five tutorial flowers have fixed prices. After that a flower costs PAYBACK rounds of the current income
+// (floored at FLOWER_MIN), like every other purchase: the wait for the next flower stays constant instead of
+// growing geometrically, and idling to lower the price costs exactly as much as it saves.
+const FLOWER_PRICES=[500,2000,5000,15000,40000],FLOWER_MIN=5000,TUTORIAL=5;
 const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 const zero=()=>Object.fromEntries(RES.map(r=>[r,0])),copy=x=>JSON.parse(JSON.stringify(x));
 const add=(a,b)=>{for(const r of RES)a[r]=(a[r]||0)+(b[r]||0);};
@@ -62,7 +65,7 @@ const key=(q,r)=>`${q},${r}`;
 const flowerCenter=(a,b)=>({q:3*a+b,r:-a+2*b});
 const fidOf=(a,b)=>`${a},${b}`;
 const flowerDistance=f=>Math.max(Math.abs(f.a),Math.abs(f.b),Math.abs(f.a+f.b));
-function flowerCost(w,n=w.unlocked+1){return n<=TUTORIAL?FLOWER_PRICES[n-1]:Math.round(FLOWER_BASE*FLOWER_GROWTH**(n-TUTORIAL));}
+function flowerCost(w,n=w.unlocked+1){return n<=TUTORIAL?FLOWER_PRICES[n-1]:Math.max(FLOWER_MIN,Math.round(income(w)*PAYBACK));}
 // Tile i of a flower: 0 is the centre, 1..6 the neighbours in DIRS order. Rotation shifts the ring.
 function flowerTiles(f){const c=f.center,out=[{q:c.q,r:c.r,slot:0}];for(let i=0;i<6;i++)out.push({q:c.q+DIRS[i][0],r:c.r+DIRS[i][1],slot:1+((i-f.rotation+6)%6)});return out;}
 const slotTerrain=(design,slot)=>slot===0?design.center:design.ring[slot-1];
@@ -338,7 +341,7 @@ function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
  qty(w.initial);qty(w.production);qty(w.consumption);const total=totals(w);for(const r of RES)if(total[r]!==w.initial[r]+w.production[r]-w.consumption[r])throw Error('资源账本不守恒');return true;}
 function apply(w,c){const next=copy(w);command(next,c);validate(next);return next;}
 function load(saved){const next=copy(saved);validate(next);return next;}
-const api={RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_DESIGN,FLOWER_PRICES,TUTORIAL,TUTORIAL_SPEC,DIRS,MILESTONES,
+const api={RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_DESIGN,FLOWER_PRICES,FLOWER_MIN,TUTORIAL,TUTORIAL_SPEC,DIRS,MILESTONES,
  copy,zero,add,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,command,tick,totals,validate,apply,load,demands,allocated,buffer,available,buildingCost,workerCost,techCost,techOwned,techAvailable,techMaxed,workerPower,clickPower,eraPower,goodValue,workersOf,craftCost,eraCost,edgeCost,segmentCost,residentCost,townRate,income,buys,recentSales,linkReason,terrainFactor,passable,rate,value,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

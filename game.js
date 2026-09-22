@@ -465,7 +465,7 @@ function townPanel(t) {
 function flowerPanel(f) {
  if (f.state === 'fog') {
   const cost=E.flowerCost(world), n=world.unlocked+1;
-  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块</p></div><div class="actions">${button(`解锁这块板块<small>${coins(cost)}</small>`,{type:'explore',flower:f.id},true,!afford(cost)||!!world.preview)}</div>`;
+  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块${n>E.TUTORIAL?` · 价格 = 每回合收入 × ${E.PAYBACK} 回合`:''}</p></div><div class="actions">${button(`解锁这块板块<small>${coins(cost)}</small>`,{type:'explore',flower:f.id},true,!afford(cost)||!!world.preview)}</div>`;
  }
  const town=f.design.buys;
  return `<h2>${icon('fog','quarry-c')}新板块</h2><div class="subtitle">${town?`城镇收 ${Object.entries(town).map(([g,p])=>`${names[g]} ${p}`).join('、')}`:'没有城镇'}</div><div class="state wait">预览中，时间已暂停</div>`;

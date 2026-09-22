@@ -51,7 +51,10 @@ test('any fog flower can be unlocked in any direction; the n-th unlock is always
  for(const slot of slots){let w=fresh();assert.equal(E.flowerCost(w),500);w=unlock(w,slot);const f=w.flowers[slot];assert.equal(f.order,1);assert.deepEqual(f.design.buys,{log:20});assert.ok(!f.design.ring.concat(f.design.center).includes('forest'),'F1 never has forest');}
  let w=rich(fresh());const expect=[[{log:20},500],[{stone:30},2000],[{board:50},5000],[{tool:120,board:30},15000],[{iron:150},40000]];
  for(const[buys,cost]of expect){assert.equal(E.flowerCost(w),cost);const before=w.money;const slot=fogs(w)[fogs(w).length-1];w=unlock(w,slot);assert.deepEqual(w.flowers[slot].design.buys,buys);assert.equal(before-w.money,cost);}
- assert.equal(E.flowerCost(w),60000);w=unlock(w);assert.equal(E.flowerCost(w),90000);
+ // Sandbox flowers cost 30 rounds of the current income, never below the floor: with no sales yet it is the floor.
+ assert.equal(E.flowerCost(w),E.FLOWER_MIN);
+ run(w,10);for(const s of w.stats)s.income=400;
+ assert.equal(E.flowerCost(w),400*E.PAYBACK);const money=w.money;w=unlock(w);assert.equal(money-w.money,400*E.PAYBACK);
 });
 test('the tutorial generator satisfies its constraints over a thousand seeds',()=>{
  const forbid=[['forest','lake','ore'],['rock','lake','ore'],['forest','lake','ore'],['forest','rock','ore'],['forest','lake','ore']];
