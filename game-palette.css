@@ -3,7 +3,7 @@
 .map-container{background:var(--surface-map)}
 button,.menu,.strip,.node{background:var(--surface-panel)}
 button{border-color:var(--border-control)}
-.topbar,.panel,.flower-controls{background:#fffdf4f2}
+.topbar,.panel,.flower-controls{background:#fffaf1f2}
 button:hover{background:var(--action-subtle);border-color:var(--action-primary)}
 button.primary{background:var(--action-primary);border-color:var(--action-primary);color:var(--surface-panel)}
 button.primary:hover{background:var(--action-hover);border-color:var(--action-hover)}
@@ -28,7 +28,7 @@ button.danger{color:var(--bottleneck-1)}
 .node.ready{box-shadow:0 0 0 2px var(--action-subtle)}
 .camp-c{color:var(--terrain-detail)}.sawmill-c{color:var(--action-primary)}.quarry-c,.stone-c{color:var(--goods-stone)}.town-c,.coin-c{color:var(--goods-board)}.log-c{color:var(--goods-log)}.board-c{color:var(--goods-board)}.mason-c,.tool-c{color:var(--goods-tool)}.mine-c,.ore-c{color:var(--goods-ore)}.smelter-c,.iron-c{color:var(--goods-iron)}
 .hex:focus-visible .ground,.hl.selected,.hl.legal,.preview,.preview-hex,.fog-flower.selected .fog-edge{stroke:var(--action-primary)}
-.hl.hover{stroke:#fffdf4cc}
+.hl.hover{stroke:#fffaf1cc}
 .tile-label,.terrain-label,.tile-status,.tile-stock,.price-label{fill:var(--text-primary)}
 .tile-status.alert,.tile-stock.alert{fill:var(--value-warning)}
 .terrain-label.faint{fill:var(--text-disabled)}
@@ -53,4 +53,4 @@ button.danger{color:var(--bottleneck-1)}
 .chain .glbl{fill:var(--text-primary)}.chain .gsub{fill:var(--text-secondary)}
 .chain .e{stroke:var(--text-secondary)}.chain .e.log{stroke:var(--road-base)}.chain .e.locked{stroke:var(--terrain-fog)}
 /* Keep the sandy dirt-road color without changing its original geometry. */
-.road:not(.water):not(.selected){stroke:#d9ba80}
+.road:not(.water):not(.selected){stroke:var(--road-dirt)}

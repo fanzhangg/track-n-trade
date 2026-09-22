@@ -7,7 +7,7 @@ const luminance = hex => {
 };
 const contrast = (a,b) => (Math.max(luminance(a),luminance(b))+.05)/(Math.min(luminance(a),luminance(b))+.05);
 const neutral = [
-  ['surface-canvas','画布','整体环境底色'],['surface-panel','面板','顶栏、详情、弹层'],['surface-inset','内嵌区域','分组、轨道、禁用底色'],['surface-map','地图衬底','浅绿托起鲜彩板块'],
+  ['surface-canvas','画布','整体环境底色'],['surface-panel','面板','顶栏、详情、弹层'],['surface-inset','内嵌区域','分组、轨道、禁用底色'],['surface-map','地图衬底','中性浅灰衬托鲜明地形'],
   ['text-primary','主要文字','余额、标题、关键结论'],['text-secondary','次级文字','说明、单位、时间窗口'],['text-disabled','禁用文字','仍然可读的锁定原因'],
   ['border-subtle','分隔边界','装饰性分组，不作控件边界'],['border-control','控件边界','按钮、输入与轮廓']
 ];
@@ -35,7 +35,7 @@ document.addEventListener('click',async event=>{
 const terrains=[['grass','草地','⌁'],['forest','森林','♧'],['rock','岩地','◇'],['ore','铁矿','◈'],['mountain','山地','△'],['lake','湖泊','≈'],['town','城镇','⌂'],['fog','迷雾','?']];
 document.getElementById('terrain-swatches').innerHTML=terrains.map(([token,name,icon])=>`<div class="terrain-item"><div class="terrain-chip" style="background:var(--terrain-${token})" aria-hidden="true">${icon}</div><b>${name}</b><code>${value('terrain-'+token).toUpperCase()}</code></div>`).join('');
 document.getElementById('goods-list').innerHTML=[['log','原木','◉'],['board','木板','▤'],['stone','石头','◆'],['tool','石头工具','⚒'],['ore','铁矿石','▲'],['iron','铁','▰']].map(([token,name,icon])=>`<div class="good"><i style="color:var(--goods-${token})" aria-hidden="true">${icon}</i><span>${name}<code>${value('goods-'+token).toUpperCase()}</code></span></div>`).join('');
-const pairs=[['主要文字 / 纸白面板','text-primary','surface-panel'],['次级文字 / 画布','text-secondary','surface-canvas'],['禁用文字 / 内嵌底色','text-disabled','surface-inset'],['按钮文字 / 主操作','surface-panel','action-primary'],['按钮文字 / 悬停','surface-panel','action-hover'],['按钮文字 / 按下','surface-panel','action-pressed'],['价值损失 / 浅琥珀底','value-warning','value-warning-bg'],['排名 #1 / 纸白面板','bottleneck-1','surface-panel'],['排名 #2 / 纸白面板','bottleneck-2','surface-panel'],['排名 #3 / 纸白面板','bottleneck-3','surface-panel'],['控件边界 / 面板','border-control','surface-panel',3],['焦点轮廓 / 画布','focus-ring','surface-canvas',3]];
+const pairs=[['主要文字 / 暖白面板','text-primary','surface-panel'],['次级文字 / 画布','text-secondary','surface-canvas'],['禁用文字 / 内嵌底色','text-disabled','surface-inset'],['按钮文字 / 主操作','surface-panel','action-primary'],['按钮文字 / 悬停','surface-panel','action-hover'],['按钮文字 / 按下','surface-panel','action-pressed'],['价值损失 / 浅琥珀底','value-warning','value-warning-bg'],['排名 #1 / 暖白面板','bottleneck-1','surface-panel'],['排名 #2 / 暖白面板','bottleneck-2','surface-panel'],['排名 #3 / 暖白面板','bottleneck-3','surface-panel'],['控件边界 / 面板','border-control','surface-panel',3],['焦点轮廓 / 画布','focus-ring','surface-canvas',3]];
 document.getElementById('contrast-rows').innerHTML=pairs.map(([label,fg,bg,target=4.5])=>{const ratio=contrast(value(fg),value(bg));return `<tr data-ratio="${ratio}" data-target="${target}"><td>${label}</td><td>${ratio.toFixed(2)} : 1</td><td>${ratio>=target?'✓ 达标':'需调整'} · ${target}:1</td></tr>`;}).join('');
 const scenes={
  normal:{title:'伐木营',sub:'森林 · 原木生产',status:'● 生产中 · 每回合 3 件',label:'原木堆场',metric:'12 / 20',width:'60%',diagnosis:'货物正在送往城镇，当前产线运转正常。',action:'查看运输路线',secondary:'手工生产 +1 原木'},
