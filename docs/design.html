@@ -80,7 +80,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="eyebrow">二</div><h2>三条循环，一种货币</h2><p>v0.11 只有一条循环：产货、运货、卖钱、买产能。现在是三条互相咬合的循环，并用前五块板块的探索顺序把玩法一步一步教给玩家。目标是把<strong>游戏前一小时</strong>打磨好；可重玩性和后期内容留到下一版。</p>
 <div class="grid3">
 <div class="card"><h3>经济</h3><p>点击、雇工人、修路、扩城，把货变成金币。</p></div>
-<div class="card"><h3>空间</h3><p>花金币揭开相邻板块；朝向由引擎按周边地形决定，山脉延续、山口有限。地形决定路网可行性，驿站让路可以先修到山口再定两头。参考桌游 Recall 的面朝下区域板块。</p></div>
+<div class="card"><h3>空间</h3><p>花金币揭开相邻板块；朝向由引擎按周边地形决定，山脉延续、山口有限。地形决定路网可行性，路可以先修到山口那一格，两头以后再接。参考桌游 Recall 的面朝下区域板块。</p></div>
 <div class="card"><h3>科技</h3><p>花金币买科技，科技解锁建筑和航道，建筑之间靠配方交织。参考桌游 Roads &amp; Boats 的生产链与运输工具阶梯。</p></div>
 </div>
 <div class="callout"><strong>金币是唯一的全局货币。</strong>货物只存在于生产地的堆场和路上，永远不进玩家的口袋；它们只是把物流转成金币的途径。科技、板块、建筑、工人、道路全部用金币买。</div>
@@ -149,7 +149,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <tr><td><i class="sw" style="background:var(--t-lake)"></i> 湖</td><td>买了「航道」后可以铺路</td><td>无</td><td>×3</td></tr>
 </table></div>
 <ul>
-<li>山是硬障碍，路只能绕。绕不过去就先建驿站，把路修到山口那一格，再从驿站往两头接。</li>
+<li>山是硬障碍，路只能绕。绕不过去就先把路修到山口那一格停住，再从那一格往两头接；绕路的弯还要额外付钱。</li>
 <li>铁矿是独立地形，一眼能读，以后金矿、银矿照此办理。生成器只把铁矿放在山旁边，所以玩家看到的永远是「山边上有矿」，但这只是生成规则，不是玩家需要知道的机制。</li>
 <li>湖是整格水，可以单格也可以几格连成一片。买了航道之后湖格就是普通的路网节点。桥、河流、密林、富岩地删掉，地形系数只剩 1 / 2 / 3 三档。</li>
 </ul>
@@ -222,9 +222,9 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="eyebrow">七</div><h2>物流与城镇</h2>
 <h3>道路</h3>
 <ul>
-<li><strong>只能在有货可运的两点之间修路</strong>：一方产某种货、另一方收这种货（城镇收购，或加工建筑把它当输入）；<strong>驿站</strong>是例外，它是任意可通行地上 300 金币的路网节点，任何建筑都能连到它。路沿着六边形邻接边走，占边不占格；起点和终点之间的中间格只要可通行即可。</li>
-<li><strong>驿站</strong>不产不收不雇人，只让路能转弯、汇流、提前修到山口；货经过它像经过任何路口一样。拆除全额退款。</li>
-<li><strong>每段造价 <code>250 × 地形系数</code></strong>，系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3）。复用已有路段不再收费。</li>
+<li><strong>修路自由</strong>：起点是任意建筑，或路网已经碰到的任意一格；终点是任意可通行格，不必有建筑，也不看有没有货可运。路沿着六边形邻接边走，占边不占格；断头路合法，只是暂时不赚钱，拆除全额退款。</li>
+<li><strong>拐弯要加钱</strong>：一段路的价钱是 250 × (地形系数 + 转角系数)。直行 0，120° 弯 +0.5，60° 急弯 +1。直的干道最便宜，绕山是一个有标价的决定；只有新画出来的弯收费。</li>
+<li><strong>每段造价 <code>250 × (地形系数 + 转角系数)</code></strong>，地形系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3）。复用已有路段不再收费，也不再补收转角费。</li>
 <li><strong>道路只负责连通，没有运力和等级。</strong>一件货每回合走一段，一段路同一回合能过任意多件。路的意义只有一个：谁和谁连着，连的代价是距离。产量和需求是仅有的两层上限，瓶颈不会出现在路上。</li>
 <li><strong>选路</strong>：段数最少的路，同长按路段编号取稳定的一条；已经上路的货不能掉头。玩家拆旧路可以改变拓扑。</li>
 <li>拆路立即禁止新货进入，已在路上的货走完再退款。</li>
@@ -273,14 +273,14 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="table"><h3>其余定价</h3><table>
 <tr><th>项目</th><th>价格</th></tr>
 <tr><td>第一名工人：伐木营 / 采石场 / 矿山 / 锯木厂 / 石匠铺 / 铁厂</td><td>400 / 600 / 600 / 1 000 / 1 000 / 1 000，每多一名 ×1.3，最多 3 名</td></tr>
-<tr><td>道路每段</td><td>250 × 地形系数（1 / 2 / 3）</td></tr>
-<tr><td>驿站</td><td>300，任意可通行地，无需科技；拆除全额退款</td></tr>
+<tr><td>道路每段</td><td>250 × (地形系数 1 / 2 / 3 + 转角 0 / 0.5 / 1)</td></tr>
+
 <tr><td>加居民</td><td>新增收入 × 30 回合 × 1.5ⁿ = 2 × 时代 × Σ收购价 × 30 × 1.5ⁿ：F1 城镇第 2 名 1 200、第 3 名 1 800。最多 3 名</td></tr>
 <tr><td>工艺 Lv n（按建筑类型）</td><td>新增产量 × 售价 × 30 回合 × 1.5ⁿ = 该类型当前工人数 × 产出价 × 30 × 1.5ⁿ，没有工人时按 1 名算。产出没有市场的货（铁矿石）按它加工成的货计价</td></tr>
 <tr><td>时代</td><td>全图新增收入 × 30 回合 × 1.5ᵉ = Σ(各城镇 居民数 × Σ收购价) × 2 × 30 × 1.5ᵉ，五级封顶</td></tr>
 <tr><td>金手指 Lv n（点击）</td><td>2 000 × 2ⁿ</td></tr>
 <tr><td>开局金币</td><td>2 000（= F1 解锁 500 + 最坏第一条路 1 500）</td></tr>
-<tr><td>板块 F5 之后</td><td>max(5 000, 当前每回合收入 × 30)。收入取近 30 回合均值；停产压价省下的正好等于停产亏掉的</td></tr>
+<tr><td>板块 F5 之后</td><td>max(2 500, 当前每回合收入 × 10)。其他购买按 30 回合定价，板块只按 10 回合，鼓励往外走。收入取近 30 回合均值</td></tr>
 <tr><td>拆除 / 辞退退款</td><td>全额，见第二节无死局规则</td></tr>
 </table></div>
 </section>
@@ -335,7 +335,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <li><strong>世界</strong>：<code>w.flowers[fid] = {center, state:'fog'|'preview'|'placed', design, rotation}</code>，<code>w.tiles</code> 只包含已放下的花的格子。只有 F0 有预设内容。每放下一朵花，它周围还没有的位置补成迷雾。</li>
 <li><strong>生成器</strong> <code>generateFlower(w, n, seed)</code>：输入解锁次序、整个世界状态和种子，输出七格内容。n ≤ 5 用教学规格（必有 / 不会出现 / 上限 / 填充池），之后用沙盒规则。规格表和规则都是数据，测试直接跑它。</li>
 <li><strong>探索命令</strong>：<code>explore(fid)</code> 扣钱、生成内容、进入预览并暂停模拟；<code>rotate(fid, dir)</code>；<code>place(fid)</code> 生成格子、恢复模拟。预览期间其他命令一律拒绝。放下后没有任何命令能改朝向。</li>
-<li><strong>无死局守卫</strong>：<code>place</code> 在全图收入为零且余额不足以修到新城镇的最短路时拒绝。<code>REFUND = 1</code>，起始伐木营 <code>paid: 1200</code>，<code>START_MONEY = 2000</code>。</li>
+<li><strong>无死局守卫</strong>：<code>place</code> 在全图收入为零且余额不足以修到新城镇的最短路时拒绝。<code>REFUND = 1</code>，起始伐木营 <code>paid: 1200</code>，<code>START_MONEY = 2500</code>（要装得下第一朵花加通往它的路，含弯）。</li>
 <li><strong>地形</strong> <code>grass / town / forest / rock / ore / mountain / lake</code>，<code>TERRAIN_FACTOR = {grass:1, town:1, forest:2, rock:2, ore:2, lake:3}</code>。山不可进；湖只有 <code>w.tech.waterway</code> 为真时可进。<code>path()</code> 与 <code>validate()</code> 同步。</li>
 <li><strong>配方表</strong>：<code>{camp:{in:{},out:'log',fits:['forest']}, quarry:{in:{},out:'stone',fits:['rock']}, sawmill:{in:{log:1},out:'board',fits:['grass']}, mason:{in:{log:1,stone:1},out:'tool',fits:['grass']}, mine:{in:{},out:'ore',fits:['ore']}, smelter:{in:{ore:1,log:1},out:'iron',fits:['grass']}}</code>。生产量取 <code>min(工人产量, 每种输入库存, 输出堆场余量)</code>；点击同理。建筑命令先检查对应科技。</li>
 <li><strong>派货</strong>：每个需求带「下游价值」（城镇收购价，或加工产出可卖到的最高价，递归）。每回合按价值从高到低满足，价值相同的需求逐件轮流（持久轮转，存读档不重置），每一件都从最近的有货货源出发。</li>

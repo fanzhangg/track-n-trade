@@ -20,8 +20,8 @@ function build(w,type){w=rich(w);if(type!=='camp')w=need(w,type);const t=tilesOf
 // A world with the tutorial flower F1 placed and the camp connected to its log-buying town.
 function started(seed=1){let w=fresh(seed);w=unlock(w);const town=townTiles(w)[0];w=E.apply(w,{type:'connect',from:CAMP,to:town});return{w,town};}
 
-test('start: one seven-hex flower, one camp on its forest, no town, six fog flowers, 2000 coins',()=>{
- const w=fresh();assert.equal(w.money,2000);assert.equal(Object.keys(w.tiles).length,7);
+test('start: one seven-hex flower, one camp on its forest, no town, six fog flowers, 2500 coins',()=>{
+ const w=fresh();assert.equal(w.money,2500);assert.equal(Object.keys(w.tiles).length,7);
  assert.equal(w.tiles[CAMP].building.type,'camp');assert.equal(w.tiles[CAMP].terrain,'forest');assert.equal(w.tiles[CAMP].building.paid,1200);
  assert.equal(townTiles(w).length,0);assert.equal(fogs(w).length,6);
  const terrains=Object.values(w.tiles).map(t=>t.terrain).sort();assert.deepEqual(terrains,['forest','grass','grass','mountain','ore','rock','rock']);
@@ -179,7 +179,7 @@ test('full refunds: demolishing, firing and removing roads return exactly what w
 test('money = start - spending + refunds + milestones + pieces x price; every stored number stays an integer',()=>{
  let {w,town}=started(2);w=click(w,CAMP,20);run(w,15);w=hire(w,CAMP,1);w=click(w,CAMP,6);run(w,80);
  const bonus=E.MILESTONES.filter(m=>w.milestones[m.id]).reduce((n,m)=>n+m.reward,0);
- assert.equal(w.money,2000-w.spent+bonus+w.sold[town].log*20);
+ assert.equal(w.money,E.START_MONEY-w.spent+bonus+w.sold[town].log*20);
  const walk=(v,p)=>{if(typeof v==='number')assert.ok(isInt(v),`non-integer at ${p}: ${v}`);else if(v&&typeof v==='object')for(const[k,x]of Object.entries(v))walk(x,p+'.'+k);};
  walk(w,'w');E.validate(w);
 });
@@ -261,18 +261,51 @@ test('demand-aware generation: raw the towns buy but the map lacks is drawn more
  assert.ok(withRock/total>=.75,`rock drawn in ${withRock}/${total} deficit flowers`);
 });
 
-// ---------- relays ----------
-test('relay: a road node on any passable tile, no tech; roads may end at it, freight passes through it, it neither produces nor hires, demolish refunds',()=>{
+// ---------- free-form roads ----------
+test('roads are free-form: they start at any building or any tile the network touches, end on any passable tile, and a bend costs extra',()=>{
  let w=unlock(fresh(1));const town=townTiles(w)[0];w=rich(w);
- const g=tilesOf(w,t=>!t.building&&t.terrain==='grass'&&t.flower!=='0,0')[0];
- w=E.apply(w,{type:'build',tile:g.id,buildType:'relay'});assert.equal(w.tiles[g.id].building.type,'relay');assert.equal(w.tiles[g.id].building.paid,E.PRICE.relay);
- assert.throws(()=>E.apply(w,{type:'click',tile:g.id}),/驿站/);assert.throws(()=>E.apply(w,{type:'worker',tile:g.id}),/工坊/);
- assert.throws(()=>E.apply(w,{type:'build',tile:tilesOf(w,t=>t.terrain==='mountain')[0].id,buildType:'relay'}),/不适合/);
- // Camp to relay, relay to town: the freight path runs through the relay.
- w=E.apply(w,{type:'connect',from:CAMP,to:g.id});w=E.apply(w,{type:'connect',from:g.id,to:town});
- assert.ok(E.path(w,CAMP,town),'camp reaches the town over the relay');
- w=hire(w,CAMP,1);run(w,60);assert.ok(w.sold[town].log>0,'logs sold through the relay');
- assert.ok(!E.demands(w).some(d=>d.tile===g.id),'a relay asks for nothing');
- const m=w.money;w=E.apply(w,{type:'demolish',tile:g.id});assert.equal(w.money,m+E.PRICE.relay);assert.equal(w.tiles[g.id].building,null);
+ // A stub into open country: legal, and its far end becomes an anchor for the next road.
+ const open=tilesOf(w,t=>!t.building&&t.terrain!=='mountain'&&E.route(w,CAMP,t.id)?.segments.length===2)[0];
+ assert.ok(!E.anchored(w,open.id),'open country is no anchor yet');
+ w=E.apply(w,{type:'connect',from:CAMP,to:open.id});
+ assert.ok(E.anchored(w,open.id),'the stub end is an anchor now');
+ assert.ok(E.path(w,CAMP,open.id),'the stub is on the network');
+ // From that stub on to the town: the road grows from the road, not from a building.
+ w=E.apply(w,{type:'connect',from:open.id,to:town});
+ assert.ok(E.path(w,CAMP,town),'camp reaches the town over the stub');
+ w=hire(w,CAMP,1);run(w,60);assert.ok(w.sold[town].log>0,'logs sold over a road built in two drags');
+ // No demand check any more: two towns may be joined, and open country may not anchor a road.
+ const other=townTiles(w)[1];if(other)assert.ok(E.connection(w,town,other));
+ const loose=tilesOf(w,t=>!t.building&&!E.anchored(w,t.id))[0];
+ assert.throws(()=>E.apply(w,{type:'connect',from:loose.id,to:town}),/建筑或已有的路/);
+ assert.throws(()=>E.apply(w,{type:'connect',from:CAMP,to:tilesOf(w,t=>t.terrain==='mountain')[0].id}),/山上修不了路/);
  E.validate(w);
+});
+test('a bend is priced like rougher ground: straight is terrain only, a 120-degree turn adds half a segment, a hairpin a whole one',()=>{
+ let w=rich(unlock(fresh(1)));const t=tilesOf(w,x=>x.terrain!=='mountain');
+ const straight=E.route(w,CAMP,t.find(x=>E.route(w,CAMP,x.id)?.turns===0&&E.route(w,CAMP,x.id).segments.length>1).id);
+ for(const s of straight.segments)assert.equal(s.cost,E.ROAD_BASE*s.factor);
+ const bent=t.map(x=>E.route(w,CAMP,x.id)).find(r=>r&&r.turns>0);
+ const bend=bent.segments.find(s=>s.turn>0);
+ assert.ok([.5,1,1.5].includes(bend.turn),`turn factor ${bend.turn}`);
+ assert.equal(bend.cost,E.ROAD_BASE*(bend.factor+bend.turn));
+ assert.equal(bent.cost,bent.segments.reduce((n,s)=>n+s.cost,0));
+});
+test('no relays: the building list is workshops only and the old relay type is unknown',()=>{
+ assert.ok(!E.BUILDINGS.includes('relay'));assert.equal(E.RECIPES.relay,undefined);assert.equal(E.PRICE.relay,undefined);
+ let w=rich(fresh(1));const g=tilesOf(w,t=>!t.building&&t.terrain==='grass')[0];
+ assert.throws(()=>E.apply(w,{type:'build',tile:g.id,buildType:'relay'}),/未知建筑/);
+});
+
+test('rarity follows price: over many sandbox flowers forest outnumbers rock, rock outnumbers ore; rock and ore never touch another raw tile; a town never has its raw next door',()=>{
+ const cnt={forest:0,rock:0,ore:0};let touching=0,nextDoor=0;
+ for(const seed of [1,2,3,4,5,6]){let w=rich(fresh(seed));w=tech(w,'quarry','sawmill','mason','mine');for(let i=0;i<14;i++)w=unlock(w,fogs(w).sort()[i%fogs(w).length]);
+  const tiles=Object.values(w.tiles).filter(t=>w.flowers[t.flower].order>E.TUTORIAL);
+  for(const t of tiles){if(cnt[t.terrain]!=null)cnt[t.terrain]++;
+   if(['rock','ore'].includes(t.terrain))for(const[dq,dr]of E.DIRS){const u=w.tiles[`${t.q+dq},${t.r+dr}`];if(u&&['forest','rock','ore'].includes(u.terrain)&&w.flowers[u.flower].order>E.TUTORIAL&&u.flower!==t.flower)touching++;}}
+  for(const f of sandbox(w)){if(!f.design.buys)continue;const raws=new Set(Object.keys(f.design.buys).flatMap(r=>E.RAW[r]));
+   for(const g of sandbox(w))if(gap(f,g)===1&&[g.design.center,...g.design.ring].some(t=>raws.has(t))&&g.order>f.order)nextDoor++;}}
+ assert.ok(cnt.forest>cnt.rock&&cnt.rock>cnt.ore,JSON.stringify(cnt));
+ assert.equal(nextDoor,0,'a flower placed after a town never carries the raw that town buys');
+ assert.ok(touching<=2,`rock/ore touching other raw across flowers: ${touching}`);
 });
