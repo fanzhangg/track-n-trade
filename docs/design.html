@@ -26,7 +26,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 @media print{body{background:white;font-size:11pt}h2,h3{break-after:avoid}.toolbar,.flowerctl{display:none}}
 </style><link rel="stylesheet" href="../site-nav.css">
 </head><body>
-<nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="../docs/design.html" aria-current="page">玩法设计</a><a href="ui-system.html">UI Design System</a></div></nav>
+<nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="rules.html">规则说明书</a><a href="design.html" aria-current="page">玩法设计</a><a href="ui-system.html">UI Design System</a></div></nav>
 <div class="page-sections" role="navigation" aria-label="本页章节"><a href="#philosophy">设计哲学</a><a href="#loops">三条循环</a><a href="#clock">时钟与整数</a><a href="#map">地图</a><a href="#tutorial">教学地图</a><a href="#production">生产</a><a href="#logistics">物流与城镇</a><a href="#tech">科技树</a><a href="#economy">经济模型</a><a href="#ui">界面</a><a href="#engine">实现契约</a><a href="#history">沿革与下一版</a></div>
 
 <div class="wrap">
@@ -50,7 +50,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="grid">
 <div class="card"><h3>金币是唯一货币</h3><p>货物只存在于生产地的堆场和路上，永远不进玩家的口袋，它们只是把物流转成金币的途径。科技、板块、建筑、工人、道路、扩建全部用金币买。没有材料造价，没有第二种货币。</p></div>
 <div class="card"><h3>玩家设计网络，系统跑网络</h3><p>玩家只决定：建筑放哪、路怎么连、板块往哪探怎么转、钱花在哪。要货的建筑和城镇自动提出需求，道路自动配送，玩家不买驴、不指挥任何一趟运货。</p></div>
-<div class="card"><h3>永远有瓶颈，永远三选一</h3><p>产量、道路运力、城镇需求是三层互相独立的上限。任何一层卡住，往另外两层花钱都是浪费。数值要保证玩家每一步都在「加产量、加运力、加需求」之间做真实选择，而不是只剩一种操作。</p></div>
+<div class="card"><h3>永远有瓶颈，永远二选一</h3><p>产量和城镇需求是两层互相独立的上限。任何一层卡住，往另一层花钱都是浪费。数值要保证玩家每一步都在「加产量、加需求」之间做真实选择，而不是只剩一种操作。道路只负责连通，不是第三层。</p></div>
 <div class="card"><h3>没有死局</h3><p>收入只来自这台经济引擎，没有绕过它的兜底。所以第一条路一定修得起，拆什么都全额退款，花钱不会伤到已有产线。玩家优化的是「等多久」，不是「能不能」。详见第二节。</p></div>
 <div class="card"><h3>狠，但可逆</h3><p>板块放下就不能再转，钱花掉就花掉了，加工厂饿着就是饿着。有后果的决定才有分量。但布局错了永远可以拆掉重来，钱一分不少，所以玩家敢试。</p></div>
 <div class="card"><h3>教学是软约束</h3><p>教学只保证「学这一课的机会一定出现」，不保证「课一定上到」：方向任选，湖和山可以被转到无害的位置，玩家可以从此不买航道。教学里的每个决定都留到沙盒里。</p></div>
@@ -69,7 +69,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <h3>验收的是乐趣，不是数字上涨</h3>
 <ul>
 <li>玩家能指出任何一件货现在在哪里、为什么还没卖掉。</li>
-<li>同一个瓶颈至少有两种解法（修第二条路 / 升级道路 / 就近加工 / 开新城镇），玩家会比较。</li>
+<li>同一个瓶颈至少有两种解法（加工人 / 再建一座 / 就近加工 / 扩建城镇 / 开新城镇），玩家会比较。</li>
 <li>玩家敢拆掉已有网络试另一种组合，不因退款或涨价后悔。</li>
 <li>每买一样东西之后，玩家能在地图上看到货流和收入的变化。</li>
 <li>走开一会儿回来，有积累，不需要频繁手动救运输。</li>
@@ -81,7 +81,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="grid3">
 <div class="card"><h3>经济</h3><p>点击、雇工人、修路、扩城，把货变成金币。</p></div>
 <div class="card"><h3>空间</h3><p>花金币揭开相邻板块，旋转决定地形朝向，地形改变路网可行性。参考桌游 Recall 的面朝下区域板块。</p></div>
-<div class="card"><h3>科技</h3><p>花金币买科技，科技解锁建筑和道路等级，建筑之间靠配方交织。参考桌游 Roads &amp; Boats 的生产链与运输工具阶梯。</p></div>
+<div class="card"><h3>科技</h3><p>花金币买科技，科技解锁建筑和航道，建筑之间靠配方交织。参考桌游 Roads &amp; Boats 的生产链与运输工具阶梯。</p></div>
 </div>
 <div class="callout"><strong>金币是唯一的全局货币。</strong>货物只存在于生产地的堆场和路上，永远不进玩家的口袋；它们只是把物流转成金币的途径。科技、板块、建筑、工人、道路全部用金币买。</div>
 <div class="callout"><strong>没有死局。</strong>收入只来自这台经济引擎，没有任何绕过它的兜底。三条规则保证引擎永远转得起来（第一节原则的展开）：<br><strong>1. 第一条路一定修得起。</strong>开局 2 000 金币，解锁 F1 花 500，剩下 1 500 覆盖从 F0 伐木营到 F1 城镇的最坏最短路，测试穷举验证。收入为零时，预览里余额修不起到新城镇的最短路就不允许放下，提示再转转；有收入之后只警告不阻止。<br><strong>2. 拆什么都全额退款。</strong>建筑、道路、工人拆除或辞退都退实付全款，玩家永远可以把整台引擎拆掉重组，布局错了不是死局，只是重来一次。<br><strong>3. 花钱不会伤到引擎。</strong>科技、板块、扩建都不改变已有产线；板块价格指数增长、收入至少线性增长，引擎再慢，等足够久总能攒够下一件事。玩家优化的是等多久，不是能不能。<br>设计上可以狠：板块放下就不能再转，钱花掉就花掉了，但绝不会让玩家走进一个什么都做不了的局面。</div>
@@ -91,7 +91,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="eyebrow">三</div><h2>时钟与整数</h2>
 <ul>
 <li><strong>1 tick = 1 回合，1× 速度下一回合 2 秒。</strong>让每一次 +1 都看得清。2× / 5× 只压缩真实时长，不改变任何数量。</li>
-<li><strong>所有数量都是整数件。</strong>产量按件、运力按件每回合、城镇需求按件每回合、价格按件。没有小数、没有四分之一单位。</li>
+<li><strong>所有数量都是整数件。</strong>产量按件、城镇需求按件每回合、价格按件。没有小数、没有四分之一单位。</li>
 <li><strong>货物过一段路 1 回合。</strong>路越长到得越晚，但稳定吞吐由最窄的一段决定，不除以距离。</li>
 <li><strong>统计窗口 30 回合。</strong>面板上所有「实际」「近期」都指近 30 回合，不足 30 回合按已有样本并标注。</li>
 <li><strong>确定性。</strong>固定步长、稳定 ID、持久的轮转指针、种子存进存档：同一存档加同一操作序列得到同一结果。渲染与模拟分离。</li>
@@ -171,7 +171,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <tr><td><b>F4</b> 湖与工具</td><td class="num">15 000</td><td><b>必有</b> 1 城镇（收石头工具 120、木板 30）、至少 2 格连片的湖<br><b>随机</b> 草地为主，湖可能 3 格，山最多 1<br><b>不会出现</b> 森林、岩地</td><td><strong>双输入配方</strong>与<strong>湖</strong>。石匠铺要原木和石头同时到；湖横在中间，绕路或买航道</td><td>最关键的一次：湖挡在城镇和路网之间，还是躺在旁边。预览写出买航道和绕路两种造价</td><td>采石场和伐木营的货第一次汇合到一座建筑</td></tr>
 <tr><td><b>F5</b> 山脉与铁</td><td class="num">40 000</td><td><b>必有</b> 1 城镇（只收铁 150）、至少 2 格相连的山<br><b>随机</b> 草地为主，山可能 3 格，岩地最多 1<br><b>不会出现</b> 森林、湖、铁矿。矿在 F0，铁要横穿整个路网</td><td><strong>矿山与铁厂</strong>（第二个双输入配方）、<strong>全局道路升级</strong>。矿山科技只要 5 000，买下后玩家终于知道 F0 那格铁矿是干什么的；铁矿石没有城镇收，只能炼成铁；到这一步驴道 4 件/回合明显不够</td><td>山连成的墙决定城镇在哪一侧、铁运过来要不要绕过整道墙</td><td>全部：铁厂放在 F0 的铁矿和伐木营旁边，铁走 F1 到 F4 修出的路网卖到 F5，是全图最长的一条线</td></tr>
 </table></div>
-<p>F5 之后目标条隐藏，里程碑列表换成「沙盒」：迷雾花按公式定价、从池子里抽；铁路、货运马车、更多工人培训成为长期目标。</p>
+<p>F5 之后目标条隐藏，里程碑列表换成「沙盒」：迷雾花按公式定价、从池子里抽；各建筑的工艺升级和金手指成为长期目标。</p>
 </section>
 
 <section id="production">
@@ -180,13 +180,13 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <h3>三件事决定产量</h3>
 <div class="table"><table>
 <tr><th>来源</th><th>每次 / 每回合产出</th></tr>
-<tr><td>一次点击</td><td><code>1 + 工具改良等级</code> 件</td></tr>
-<tr><td>一名工人</td><td><code>1 + 工人培训等级</code> 件/回合</td></tr>
+<tr><td>一次点击</td><td><code>1 + 金手指等级</code> 件</td></tr>
+<tr><td>一名工人</td><td><code>1 + 该类建筑的工艺等级</code> 件/回合</td></tr>
 <tr><td>建筑本身</td><td>0</td></tr>
 </table></div>
 <ul>
-<li>建筑类型、地形、设备都不影响产量。<strong>影响一座建筑产量的只有它的工人数</strong>，工人本身的效率是全局科技。地形只决定能建什么和道路造价。</li>
-<li><strong>每座建筑最多 3 名工人。</strong>上限把纵向堆叠封死，产量到顶之后只剩两条出路：开新建筑（逼玩家往地图外走）或买工人培训（唯一的无限轴）。3 还让工人能画成三个一眼数得清的手指。</li>
+<li>地形和具体哪一座都不影响产量。<strong>影响一座建筑产量的只有工人数和这一类建筑的工艺等级</strong>，工艺是按建筑类型的全局科技：升一级伐木营工艺，全图每座伐木营的每名工人都多 1 件。地形只决定能建什么和道路造价。</li>
+<li><strong>每座建筑最多 3 名工人。</strong>上限把纵向堆叠封死，产量到顶之后只剩两条出路：开新建筑（逼玩家往地图外走）或升该类建筑的工艺（唯一的无限轴）。3 还让工人能画成三个一眼数得清的手指。</li>
 <li>每座建筑每种货一个 <strong>20 件堆场</strong>：输出满 20 停工；加工建筑每种输入各一个 20 件堆场。点击和自动生产都受堆场约束：堆满拒绝，缺输入拒绝。错误提示每秒最多弹一次。</li>
 <li>点击产出记进当回合的统计，所以「近 30 回合实际」同时包含手点和工人的量。倍速不影响点击。</li>
 <li>第一名伐木工 400 金币 = 20 根原木卖进第一座城镇，正好是开局点 20 下的量，和 Cookie Clicker 开局点十几下买第一个 cursor 是同一个节奏。</li>
@@ -218,10 +218,9 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <h3>道路</h3>
 <ul>
 <li><strong>只能在有货可运的两点之间修路</strong>：一方产某种货、另一方收这种货（城镇收购，或加工建筑把它当输入）。路沿着六边形邻接边走，占边不占格；起点和终点之间的中间格只要可通行即可。</li>
-<li><strong>每段造价 <code>250 × 地形系数</code></strong>，系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3），与道路等级无关。复用已有路段不再收费。</li>
-<li><strong>道路等级是全局的</strong>：驴道 4 件/回合、石头路 12、铁路 36，货运马车再 ×2。买下道路科技那一刻全图一起升级。升级的成本全部在科技价格里，所以路越长的时候玩家不会觉得升级道路是在惩罚扩张。</li>
-<li><strong>一段路的运力由所有货、两个方向共享</strong>，多个需求争同一段时轮流放行（持久轮转，存读档不重置），有限运力不会永久饿死某一个需求。运力由路段决定，与连了几座建筑无关。</li>
-<li><strong>选路</strong>：最短路优先，同长选当前排队量较小的；已经上路的货不能掉头。玩家拆旧路可以改变拓扑。修第二条路会分担流量，但严格更长的绕路不会自动取代短路。</li>
+<li><strong>每段造价 <code>250 × 地形系数</code></strong>，系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3）。复用已有路段不再收费。</li>
+<li><strong>道路只负责连通，没有运力和等级。</strong>一件货每回合走一段，一段路同一回合能过任意多件。路的意义只有一个：谁和谁连着，连的代价是距离。产量和需求是仅有的两层上限，瓶颈不会出现在路上。</li>
+<li><strong>选路</strong>：段数最少的路，同长按路段编号取稳定的一条；已经上路的货不能掉头。玩家拆旧路可以改变拓扑。</li>
 <li>拆路立即禁止新货进入，已在路上的货走完再退款。</li>
 </ul>
 <h3>派货：需求拉货，按下游价值排序</h3>
@@ -239,21 +238,21 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <li>连上路就自动卖，没有接单操作。</li>
 </ul>
 <h3>为什么总有瓶颈</h3>
-<p>一名工人（1 件/回合）喂不满一座一级城镇的一种货（2 件/回合），所以前期一直有「再雇一个还是先修路」的选择；一座满编建筑（3 件/回合）刚好压过一级城镇、还填不满一条驴道（4 件/回合）；同一条路上挂到第二座满编建筑，路就成了瓶颈。加产量、加运力、加需求三种花钱方式价格相近，所以每一步都是真实的三选一，而扩建城镇是最先出现的那一个。</p>
-<h3>瓶颈的计算</h3>
-<p>每回合派货结束后，引擎检查每个还有缺口、且有货源可达的需求：沿最优路线走一遍，把这一回合跑满的路段记一笔 <code>blocked += 需求价值 × min(缺口, 需求速度)</code>。界面按近 30 回合的 <code>blocked</code> 总和排序，只取前三名，在地图上标红、橙、黄。道路面板上直接给出三个应对动作：修第二条路分流、买下一级道路、买货运马车。</p>
+<p>一名工人（1 件/回合）喂不满一座一级城镇的一种货（2 件/回合），所以前期一直有「再雇一个还是先扩建」的选择；一座满编建筑（3 件/回合）刚好压过一级城镇。加产量和加需求两种花钱方式价格相近，所以每一步都是真实的二选一，而扩建城镇是最先出现的那一个。</p>
+<h3>瓶颈不由系统判定</h3>
+<p>引擎不计算瓶颈，也不给结论。地图只画状态：加工建筑缺哪种输入就写「缺原木」，堆场满 20 的数字变琥珀色并且工人光标停下，城镇某种货的收购量用满时在价格旁写「收不下了」。上游堆满、下游空转，玩家自己读出瓶颈在哪一环。</p>
 </section>
 
 <section id="tech">
 <div class="eyebrow">八</div><h2>全局科技树</h2>
-<p>一棵树，全部金币，前置全部是科技（不要求地图上建成对应建筑）。三类节点：建筑（解锁后才能建）、道路（全局升级）、经济（可重复）。</p>
-<figure class="figure"><svg id="tech-svg" viewBox="0 0 900 520" role="img" aria-label="科技树"></svg><figcaption>绿色是建筑科技，棕色是道路，蓝色是航道，灰色是可重复的经济科技。虚线框的铁路在教学之后。</figcaption></figure>
-<div class="callout"><strong>道路是全局升级。</strong>全图只有一个道路等级：驴道 4 件/回合、石头路 12、铁路 36。买下道路科技那一刻所有已有路段一起升级，之后新修的路段直接是当前等级。<strong>每段造价永远按驴道算</strong>：<code>250 × 地形系数</code>，与等级无关，升级的成本全部在科技价格里，这样越往后路越长的时候玩家不会觉得升级是在惩罚扩张。顶三段瓶颈标红，道路面板上直接给三个动作：修第二条路分流、买下一级道路、买货运马车。</div>
+<p>一棵树，全部金币，前置全部是科技（不要求地图上建成对应建筑）。三类节点：建筑（解锁后才能建）、航道（开湖）、经济（可重复）。每种建筑解锁后，同一层多出一个可重复的「X 工艺」节点：每级让该类型每座建筑的每名工人每回合多 1 件。板块用完之后，玩家靠它给供应链里最短的那一环定向加产能，而不是等比放大整张图。</p>
+<figure class="figure"><svg id="tech-svg" viewBox="0 0 900 460" role="img" aria-label="科技树"></svg><figcaption>绿色是建筑科技，蓝色是航道，灰色是可重复的经济科技。</figcaption></figure>
+<div class="callout"><strong>没有道路科技。</strong>v0.12 的石头路、铁路、货运马车都已删除：玩家控制不了路的形状和速度，围绕运力能做的决策太少。道路的全部规则只剩「按距离和地形付钱，修好即无限运力」。</div>
 </section>
 
 <section id="economy">
 <div class="eyebrow">九</div><h2>经济模型：前一小时的收益预测</h2>
-<p>下面的模型按一位<strong>一直做最优选择、从不闲置金币</strong>的玩家，逐回合模拟整个教学流程。每回合收入 = 每种货 <code>min(产量, 城镇需求, 道路运力) × 价格</code>，加工链取上游供给的最小值，原木优先喂加工厂。它是下界：真实玩家会转错板块、看地图、让钱闲一会儿，并且会切 2× / 5×，按经验放大 1.5 到 2 倍。</p>
+<p>下面的模型按一位<strong>一直做最优选择、从不闲置金币</strong>的玩家，逐回合模拟整个教学流程。每回合收入 = 每种货 <code>min(产量, 城镇需求) × 价格</code>，加工链取上游供给的最小值，原木优先喂加工厂。它是下界：真实玩家会转错板块、看地图、让钱闲一会儿，并且会切 2× / 5×，按经验放大 1.5 到 2 倍。</p>
 <p>所有数字都可以改，改完自动重算。「购买顺序」是这位玩家的行动脚本，价格那一列就是设计定价。</p>
 <h3>参数</h3>
 <div class="model-controls" id="params"></div>
@@ -267,10 +266,10 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="table"><h3>其余定价</h3><table>
 <tr><th>项目</th><th>价格</th></tr>
 <tr><td>第一名工人：伐木营 / 采石场 / 矿山 / 锯木厂 / 石匠铺 / 铁厂</td><td>400 / 600 / 600 / 1 000 / 1 000 / 1 000，每多一名 ×1.3，最多 3 名</td></tr>
-<tr><td>道路每段</td><td>250 × 地形系数（1 / 2 / 3），与道路等级无关</td></tr>
+<tr><td>道路每段</td><td>250 × 地形系数（1 / 2 / 3）</td></tr>
 <tr><td>城镇扩建</td><td>该城镇每级新增收入 × 30 回合 × 1.5^L = 2 × Σ收购价 × 30 × 1.5^L：F1 城镇 1 200、F2 1 800、F3 3 000、F4 9 000、F5 9 000。所有扩建回本期一致，高价城镇不再是碾压一切的选项</td></tr>
-<tr><td>工人培训 Lv n / 工具改良 Lv n</td><td>5 000 × 2ⁿ / 2 000 × 2ⁿ</td></tr>
-<tr><td>货运马车 / 铁路</td><td>16 000 / 100 000（教学之后）</td></tr>
+<tr><td>工艺 Lv n（按建筑类型）</td><td>起价 × 2ⁿ：伐木营 2 000、采石场 2 500、锯木厂 4 000、矿山 4 000、石匠铺 8 000、铁厂 12 000。一座满编建筑升一级约 30 回合回本，与城镇扩建同量级</td></tr>
+<tr><td>金手指 Lv n（点击）</td><td>2 000 × 2ⁿ</td></tr>
 <tr><td>开局金币</td><td>2 000（= F1 解锁 500 + 最坏第一条路 1 500）</td></tr>
 <tr><td>板块 F5 之后第 n 朵</td><td>40 000 × 1.5^(n−5)</td></tr>
 <tr><td>拆除 / 辞退退款</td><td>全额，见第二节无死局规则</td></tr>
@@ -282,22 +281,21 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <h3>颜色只有三种含义</h3>
 <div class="table"><table>
 <tr><th>颜色</th><th>含义</th><th>出现位置</th></tr>
-<tr><td>红 / 橙 / 黄</td><td>瓶颈排名第 1 / 2 / 3 位</td><td>地图道路、道路面板</td></tr>
-<tr><td>琥珀</td><td>正在损失价值</td><td>堆场已满、缺输入、城镇需求已满、修不起的造价</td></tr>
+<tr><td>琥珀</td><td>需要动手的地方</td><td>堆场已满、缺输入、城镇收不下了、修不起的造价</td></tr>
 <tr><td>默认黑灰</td><td>其余一切</td><td>价格、库存、产能、说明</td></tr>
 </table></div>
 <h3>地图只画会改变决策的东西</h3>
 <ul>
-<li>建筑：每回合产能，堆场非空时显示数量，满 20 用琥珀色；加工建筑缺哪种输入就写「缺原木」「缺石头」；每回合生产时冒一个 +N。</li>
-<li>城镇：等级、每回合收入、收的每种货和单价、待收需求条，需求已满的条用琥珀色。</li>
-<li>道路：正在运输的货是小点，颜色是货物种类，按回合内进度平滑移动；顶三段瓶颈标红橙黄。</li>
+<li>建筑：图标和工人光标，堆场非空时显示数量，满 20 用琥珀色；加工建筑缺哪种输入就写「缺原木」「缺石头」；每回合生产时冒一个 +N。不写产能，光标的敲击与停顿已经表达了。</li>
+<li>城镇：等级、每回合收入、收的每种货和单价；某种货的收购量用满时在价格旁写「收不下了」。</li>
+<li>道路：正在运输的货是小点，颜色是货物种类，按回合内进度平滑移动；没有数字。</li>
 <li>迷雾花：半透明深色，外观一致，中间写价格，买得起时边缘亮。</li>
 <li>图例、页脚、面板里的教学句都去掉；教学句只在第一次出现时用提示。</li>
 </ul>
 <h3>工人的画法：Cookie Clicker 的 cursor</h3>
 <ul>
 <li>格子上不写「工人 n」，画一排手指（Kenney Cursor Pack 的 <code>hand_point_n</code>，32×32，CC0），一名工人一只。<strong>不画空槽位，侧栏不写 n / 3，满员时「雇工人」按钮直接消失。</strong>上限是结构约束，不是玩家需要盯的数字。</li>
-<li><strong>每只手指按自己的节拍朝建筑点一下</strong>，一回合里 n 名工人的节拍均匀错开：工人越多，动作越密，这就是把速率画出来的办法。工人培训不加手指，它缩短节拍（下限 0.25 秒）并在格子上补一个「×n」。</li>
+<li><strong>每只手指按自己的节拍朝建筑点一下</strong>，一回合里 n 名工人的节拍均匀错开：工人越多，动作越密，这就是把速率画出来的办法。工艺升级不加手指，它缩短节拍（下限 0.25 秒）。</li>
 <li>这是抽象的节拍，引擎里所有工人在回合边界同一瞬间出货。允许这个抽象的前提是它在一件事上绝不撒谎：<strong>建筑停工的时候动画必须停。</strong>堆场满、缺输入、玩家暂停，手指就整个去掉动画（不是暂停，所以一定回到静止位置）并转灰。不动了就是出问题了，不用读字。</li>
 <li>实现上动画是纯 CSS，跑在合成层；工人放在独立的 <code>&lt;g class="tile-crew"&gt;</code> 里，只在工人数、堵塞状态或节拍变化时重建；侧栏里同一批手指靠负的 <code>animation-delay</code> 对齐相位。</li>
 </ul>
@@ -309,9 +307,9 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 </ul>
 <h3>面板只说结论</h3>
 <ul>
-<li><strong>科技树</strong>：工具栏一个「科技」按钮打开从上到下的树。可买的亮，买过的打勾，前置没满足的灰并写出缺什么。</li>
-<li><strong>建筑面板</strong>：产能、近 30 回合实际、每种货一行堆场 <code>n / 20</code>（缺的那行琥珀色）、一句诊断。第一个动作是「雇第 n 名工人」并标价，满员时消失；「手工生产」是次级按钮；还没有工人时写「还没有工人，先手工生产攒钱」。拆除按钮写明退款。</li>
-<li><strong>道路面板</strong>：每回合几件（全图当前等级）· 近 30 回合实际 · 瓶颈排名 · 堵住约多少金币/回合，下面三个动作：修第二条路分流、买下一级道路、买货运马车。</li>
+<li><strong>科技树</strong>：从上到下分层，一张卡一座建筑，外加「金手指」（手工点击）和「航道」。没解锁的卡是一个「解锁」按钮，前置没满足时灰并写出缺什么；解锁之后同一张卡变成「升级到 Lv.n」，升的是这一类建筑的工艺。金手指默认解锁，升级的是每次点击的件数。</li>
+<li><strong>建筑面板</strong>：近 30 回合每回合的收支表：产出 / 产能，每种输出货的产出 / 运出，每种输入货的到货 / 消耗，各堆场 <code>n / 20</code>（缺的那行琥珀色）、一句诊断。第一个动作是「雇第 n 名工人」并标价，满员时消失；「手工生产」是次级按钮；还没有工人时写「还没有工人，先手工生产攒钱」。拆除按钮写明退款。</li>
+<li><strong>道路面板</strong>：近 30 回合运量，下面一个动作：拆除并退款。</li>
 <li><strong>城镇面板</strong>：每件价格、待收 n / 池、实收、扩建按钮与价格。</li>
 <li><strong>顶栏</strong>：金币、每回合收入、暂停、速度、更多菜单（导入 / 导出 / 重新开始 / 本文档）。</li>
 </ul>
@@ -329,12 +327,12 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <li><strong>无死局守卫</strong>：<code>place</code> 在全图收入为零且余额不足以修到新城镇的最短路时拒绝。<code>REFUND = 1</code>，起始伐木营 <code>paid: 1200</code>，<code>START_MONEY = 2000</code>。</li>
 <li><strong>地形</strong> <code>grass / town / forest / rock / ore / mountain / lake</code>，<code>TERRAIN_FACTOR = {grass:1, town:1, forest:2, rock:2, ore:2, lake:3}</code>。山不可进；湖只有 <code>w.tech.waterway</code> 为真时可进。<code>path()</code> 与 <code>validate()</code> 同步。</li>
 <li><strong>配方表</strong>：<code>{camp:{in:{},out:'log',fits:['forest']}, quarry:{in:{},out:'stone',fits:['rock']}, sawmill:{in:{log:1},out:'board',fits:['grass']}, mason:{in:{log:1,stone:1},out:'tool',fits:['grass']}, mine:{in:{},out:'ore',fits:['ore']}, smelter:{in:{ore:1,log:1},out:'iron',fits:['grass']}}</code>。生产量取 <code>min(工人产量, 每种输入库存, 输出堆场余量)</code>；点击同理。建筑命令先检查对应科技。</li>
-<li><strong>派货</strong>：每个需求带「下游价值」（城镇收购价，或加工产出可卖到的最高价，递归）。每回合按价值从高到低满足，价值相同按距离。共用路段持久轮转。</li>
-<li><strong>科技表</strong> <code>TECH</code>，每项 <code>{name, cost | (base, growth), requires:[...], kind:'building'|'road'|'economy'|'waterway'}</code>。</li>
-<li><strong>道路</strong>：全局 <code>w.roadLevel ∈ {0,1,2}</code>，<code>capacity()</code> 读它并乘货运马车；<code>edgeCost</code> 不看等级。没有按段升级的命令。</li>
+<li><strong>派货</strong>：每个需求带「下游价值」（城镇收购价，或加工产出可卖到的最高价，递归）。每回合按价值从高到低满足，价值相同的需求逐件轮流（持久轮转，存读档不重置），每一件都从最近的有货货源出发。</li>
+<li><strong>科技表</strong> <code>TECH</code>，每项 <code>{name, cost | (base, growth), requires:[...], kind:'building'|'economy'|'waterway'}</code>。</li>
+<li><strong>道路</strong>：路段只有存在与否，没有等级和运力字段；一件货每回合走一段。</li>
 <li><strong>城镇</strong>：定义随花走，<code>townLevelCost(town) = 2 × Σ收购价 × 30 × 1.5^level</code>。<code>linkReason</code> 对多输入泛化：两点之间只要有任一种货是「一方产、另一方收」就合法。</li>
-<li><strong>存档</strong>键 <code>tnt-mvp-v12</code>，种子和解锁次序都在存档里；旧键的存档保留不读。加载时校验非负、引用、唯一 ID 与金币账本。</li>
-<li><strong>测试</strong>（<code>node --test tests/economy.test.cjs</code>）覆盖：花的铺满与相邻、迷雾随放下无限延伸、任意相邻迷雾花都可解锁且第 n 次解锁得到 Fn 规格、教学生成器和沙盒生成器各在一千个种子下满足全部约束、生成结果只依赖状态和种子、迷雾里不能修路、预览期间命令被拒且时间不走、放下后无法旋转、旋转后地形对应、山不可通行、湖需航道、矿山只能在铁矿、多输入生产取最小值、派货按下游价值、共用道路轮流放行、开局金币穷举 F1 六个方向 × 六个朝向 × 一百个种子都存在修得起的朝向且守卫拦住其余朝向、拆除与辞退全额退款、科技前置、全局道路等级与造价不随等级变、扩建价按价值、金币账本与整数不变量、存读档一致、收益预测里的关键节点在引擎里可复现。</li>
+<li><strong>存档</strong>键 <code>tnt-mvp-v13</code>，种子和解锁次序都在存档里；旧键的存档保留不读。加载时校验非负、引用、唯一 ID 与金币账本。</li>
+<li><strong>测试</strong>（<code>node --test tests/economy.test.cjs</code>）覆盖：花的铺满与相邻、迷雾随放下无限延伸、任意相邻迷雾花都可解锁且第 n 次解锁得到 Fn 规格、教学生成器和沙盒生成器各在一千个种子下满足全部约束、生成结果只依赖状态和种子、迷雾里不能修路、预览期间命令被拒且时间不走、放下后无法旋转、旋转后地形对应、山不可通行、湖需航道、矿山只能在铁矿、多输入生产取最小值、派货按下游价值、共用道路不限运力、开局金币穷举 F1 六个方向 × 六个朝向 × 一百个种子都存在修得起的朝向且守卫拦住其余朝向、拆除与辞退全额退款、科技前置、全局道路等级与造价不随等级变、扩建价按价值、金币账本与整数不变量、存读档一致、收益预测里的关键节点在引擎里可复现。</li>
 </ol>
 </section>
 
@@ -349,6 +347,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <tr><td>v0.10</td><td>每回合一件的整数模型；价格不随数量涨；瓶颈按损失金币排名只取前三；颜色三义</td><td>玩家要的是结论不是数据：七层信息各说各的、全图变红后颜色就失去信号</td></tr>
 <tr><td>v0.11</td><td>点击生产、工人上限 3、工人培训与工具改良、Cookie Clicker 手指动画</td><td>自动生产让前十分钟没有手上的事做；把节奏交回玩家的手</td></tr>
 <tr><td>v0.12</td><td>迷雾探索与旋转、按局势生成、六种货六座建筑的配方树、全局科技树与道路等级、全额退款、无死局规则</td><td>一条循环不够；三条互相咬合的循环加上前五朵花的教学，把前一小时做完整</td></tr>
+<tr><td>v0.13</td><td>删掉道路运力、等级和瓶颈排名，路只负责连通；工人培训换成按建筑类型的工艺升级；地图只画状态（缺输入、堆满、收不下了），供需明细进面板</td><td>玩家控制不了路的形状和速度，运力这一层没有决策；瓶颈让玩家自己从状态里读出来，比系统给结论更可信</td></tr>
 </table></div>
 <div class="grid">
 <div class="card"><h3>删掉的（不要再加回来）</h3><ul>
@@ -495,27 +494,26 @@ drawTutorial();
 (function(){
  const svg=document.getElementById('tech-svg');
  const N={
-  camp:{x:450,y:40,l:'伐木营 · 驴道',s:'开局已有',k:'start'},
+  camp:{x:450,y:40,l:'伐木营 · 道路',s:'开局已有',k:'start'},
   sawmill:{x:250,y:130,l:'锯木厂',s:'3 000',k:'b'},quarry:{x:520,y:130,l:'采石场',s:'1 200',k:'b'},
-  training:{x:760,y:130,l:'工人培训 Lv n',s:'5 000 × 2ⁿ',k:'e'},tools:{x:760,y:200,l:'工具改良 Lv n',s:'2 000 × 2ⁿ',k:'e'},
-  cart:{x:80,y:230,l:'货运马车',s:'16 000',k:'r'},waterway:{x:250,y:230,l:'航道',s:'8 000',k:'w'},mason:{x:400,y:230,l:'石匠铺',s:'8 000',k:'b'},stoneroad:{x:560,y:230,l:'石头路',s:'20 000 · 全图 12/回合',k:'r'},
-  mine:{x:480,y:330,l:'矿山',s:'5 000 · 铁矿上',k:'b'},
-  smelter:{x:400,y:420,l:'铁厂',s:'40 000',k:'b'},
-  rail:{x:640,y:470,l:'铁路',s:'100 000 · 全图 36/回合',k:'r',later:true},
+  craft:{x:760,y:130,l:'X 工艺 Lv n',s:'每种建筑一项，起价 × 2ⁿ',k:'e'},tools:{x:760,y:200,l:'金手指 Lv n',s:'2 000 × 2ⁿ',k:'e'},
+  waterway:{x:250,y:230,l:'航道',s:'8 000',k:'w'},mason:{x:450,y:230,l:'石匠铺',s:'8 000',k:'b'},
+  mine:{x:450,y:330,l:'矿山',s:'5 000 · 铁矿上',k:'b'},
+  smelter:{x:450,y:420,l:'铁厂',s:'40 000',k:'b'},
  };
- const E=[['camp','sawmill'],['camp','quarry'],['sawmill','cart'],['sawmill','waterway'],['sawmill','mason'],['quarry','mason'],['quarry','stoneroad'],['mason','mine'],['stoneroad','mine'],['mine','smelter'],['smelter','rail'],['stoneroad','rail']];
+ const E=[['camp','sawmill'],['camp','quarry'],['sawmill','waterway'],['sawmill','mason'],['quarry','mason'],['mason','mine'],['mine','smelter']];
  const COL={start:'#17212b',b:'#486b3a',r:'#8b5a2b',w:'#3f7fa6',e:'#6b7075'};
  for(const [a,b] of E){const A=N[a],B=N[b];svg.appendChild(svgEl('path',{d:`M${A.x},${A.y+22} C${A.x},${A.y+60} ${B.x},${B.y-60} ${B.x},${B.y-22}`,fill:'none',stroke:'#9a938a',"stroke-width":1.6}));}
  for(const k in N){const n=N[k];svg.appendChild(svgEl('rect',{x:n.x-75,y:n.y-22,width:150,height:44,rx:9,fill:n.later?'#fff':COL[n.k],stroke:COL[n.k],"stroke-width":1.5,"stroke-dasharray":n.later?'5 4':'none'}));
   svg.appendChild(svgEl('text',{x:n.x,y:n.y-2,"text-anchor":'middle',"font-size":13,"font-weight":700,fill:n.later?COL[n.k]:'#fff'},n.l));
   svg.appendChild(svgEl('text',{x:n.x,y:n.y+14,"text-anchor":'middle',"font-size":11,fill:n.later?'#57656a':'#fffc'},n.s));}
- const layers=[[40,'第 0 层'],[130,'第 1 层'],[230,'第 2 层'],[330,'第 3 层'],[420,'第 4 层'],[470,'教学之后']];
+ const layers=[[40,'第 0 层'],[130,'第 1 层'],[230,'第 2 层'],[330,'第 3 层'],[420,'第 4 层']];
  for(const [y,t] of layers)svg.appendChild(svgEl('text',{x:8,y:y+4,"font-size":11,fill:'#57656a'},t));
 })();
 
 /* ---------- 经济模型 ---------- */
 const P0={log:20,stone:30,board:50,tool:120,iron:150};
-const PARAMS0={startMoney:2000,roundSec:2,clickPerSec:3,townRate:2,cap0:4,cap1:12,workerGrowth:1.3};
+const PARAMS0={startMoney:2000,roundSec:2,clickPerSec:3,townRate:2,workerGrowth:1.3};
 const PLAN0=[
  ['解锁 F1（城镇收原木 20）',500,'town.log=rate'],
  ['修路 伐木营→F1 城镇 2 段',500,'road=1'],
@@ -546,7 +544,6 @@ const PLAN0=[
  ['采石工 #3','worker:600:3','w.quarry=3'],
  ['石匠 #2','worker:1000:2','w.mason=2'],
  ['扩建 F1 城镇 Lv1（2 × 20 × 30）',1200,'town.log=rate*2'],
- ['科技 石头路（全图 12 件/回合）',20000,'cap=cap1'],
  ['解锁 F5（山脉，城镇收铁 150）',40000,'town.iron=rate'],
  ['科技 矿山',5000,''],
  ['建 矿山',2000,''],
@@ -561,12 +558,12 @@ const PLAN0=[
  ['教学结束：进入沙盒',0,''],
 ];
 let P={...P0},PARAMS={...PARAMS0},PLAN=PLAN0.map(r=>[...r]);
-const PLABEL={startMoney:'开局金币',roundSec:'一回合秒数（1×）',clickPerSec:'手点速度 件/秒',townRate:'城镇每级每回合收 件',cap0:'驴道运力 件/回合',cap1:'石头路运力 件/回合',workerGrowth:'同建筑每多一名工人 ×'};
+const PLABEL={startMoney:'开局金币',roundSec:'一回合秒数（1×）',clickPerSec:'手点速度 件/秒',townRate:'城镇每级每回合收 件',workerGrowth:'同建筑每多一名工人 ×'};
 const GLABEL={log:'原木价',stone:'石头价',board:'木板价',tool:'石头工具价',iron:'铁价'};
 function costOf(c){if(typeof c==='number')return c;const m=/^worker:(\d+):(\d+)$/.exec(c);if(m)return Math.round(+m[1]*Math.pow(PARAMS.workerGrowth,+m[2]-1));return +c||0;}
-function applyFx(s,fx){if(!fx)return;const rate=PARAMS.townRate,cap1=PARAMS.cap1;for(const stmt of fx.split(';')){const [lhs,rhs]=stmt.split('=');const val=Function('rate','cap1','return ('+rhs+')')(rate,cap1);const path=lhs.trim().split('.');let o=s;for(let i=0;i<path.length-1;i++)o=o[path[i]];o[path[path.length-1]]=val;}}
+function applyFx(s,fx){if(!fx)return;const rate=PARAMS.townRate;for(const stmt of fx.split(';')){const [lhs,rhs]=stmt.split('=');const val=Function('rate','return ('+rhs+')')(rate);const path=lhs.trim().split('.');let o=s;for(let i=0;i<path.length-1;i++)o=o[path[i]];o[path[path.length-1]]=val;}}
 function income(s){
- if(!s.road)return 0;const cap=s.cap;
+ if(!s.road)return 0;const cap=Infinity;
  let logs=s.w.camp+s.w.camp2,st=s.w.quarry,or=s.w.mine;
  const boards=Math.min(s.w.sawmill,logs,s.town.board||0,cap);logs-=boards;
  const tools=Math.min(s.w.mason,logs,st,s.town.tool||0,cap);logs-=tools;st-=tools;
@@ -575,7 +572,7 @@ function income(s){
  return boards*P.board+tools*P.tool+iron*P.iron+sl*P.log+ss*P.stone;
 }
 function simulate(){
- const s={money:PARAMS.startMoney,road:0,cap:PARAMS.cap0,town:{},w:{camp:0,camp2:0,quarry:0,sawmill:0,mason:0,mine:0,smelter:0}};
+ const s={money:PARAMS.startMoney,road:0,town:{},w:{camp:0,camp2:0,quarry:0,sawmill:0,mason:0,mine:0,smelter:0}};
  let t=20/PARAMS.clickPerSec,yard=20;const rows=[],series=[[t,0]];let stuck=null;
  for(const [name,c,fx] of PLAN){const cost=costOf(c);let guard=0;
   while(s.money<cost){let inc=income(s);if(inc===0&&s.road&&yard>0){inc=Math.min(PARAMS.townRate,yard)*P.log;yard-=Math.min(PARAMS.townRate,yard);}

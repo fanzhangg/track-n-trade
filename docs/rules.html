@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tracks &amp; Trade — 规则说明书</title>
+<style>
+:root{--paper:#f4efe3;--ink:#17212b;--muted:#57656a;--green:#486b3a;--line:#d7cfbe;--panel:#fffaf0;--amber:#bd8726;
+--t-grass:#b9cf8a;--t-forest:#5f8b4a;--t-rock:#a89f8f;--t-ore:#c0714f;--t-mountain:#6b5e52;--t-lake:#7fb0d6;--t-town:#e8c46a;--t-fog:#3a3f47}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:80px}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.8 system-ui,"Microsoft YaHei",sans-serif}a{color:var(--green)}
+.wrap{max-width:1100px;margin:auto;padding:0 24px}header{padding:48px 0 28px}h1{font-size:clamp(30px,5vw,50px);line-height:1.2;margin:12px 0 20px;letter-spacing:-.03em}h2{font-size:28px;line-height:1.4;margin:0 0 18px}h3{font-size:19px;margin:28px 0 10px}h4{margin:18px 0 6px;font-size:16px}section{border-top:1px solid var(--line);padding:40px 0}.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--green);font-weight:800}.lede{font-size:20px;max-width:850px}
+.callout{background:var(--panel);border-left:4px solid var(--amber);padding:16px 20px;margin:20px 0;border-radius:6px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:var(--panel);padding:20px;border:1px solid var(--line);border-radius:12px}.card h3{margin-top:0}
+.table{overflow-x:auto;margin:18px 0}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid var(--line);text-align:left;vertical-align:top;padding:8px 10px}th{background:#e9e3d4}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+code{background:#eae4d6;padding:2px 5px;border-radius:4px;font-size:.9em}pre{background:#17212b;color:#f4efe3;padding:20px;overflow:auto;border-radius:10px;font-size:13px;line-height:1.7}pre code{background:transparent;padding:0}li{margin:6px 0}
+footer{border-top:1px solid var(--line);padding:24px 0 48px;font-size:13px;color:var(--muted)}
+.status{display:inline-block;background:var(--amber);color:#fff;font-size:12px;font-weight:800;letter-spacing:.08em;padding:3px 10px;border-radius:999px;vertical-align:middle}
+svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:18px 0}.figure figcaption{font-size:13px;color:var(--muted);margin-top:10px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;margin:10px 0}.legend span{display:inline-flex;align-items:center;gap:6px}.legend i{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid #0002}
+i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid #0002;vertical-align:-1px;margin-right:6px}
+.steps{counter-reset:step;list-style:none;padding:0;margin:18px 0}.steps li{position:relative;padding-left:48px;margin:14px 0}.steps li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:2px;width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px}
+.kbd{display:inline-block;border:1px solid var(--line);border-bottom-width:2px;background:#fff;border-radius:6px;padding:0 8px;font-size:13px;line-height:1.7}
+.amber{color:var(--amber);font-weight:700}
+.toc{columns:2;column-gap:32px;font-size:15px}.toc li{break-inside:avoid;margin:4px 0}
+@media(max-width:800px){.grid,.grid3{grid-template-columns:1fr}.wrap{padding:0 18px}.toc{columns:1}}
+@media print{body{background:white;font-size:11pt}h2,h3{break-after:avoid}}
+</style><link rel="stylesheet" href="../site-nav.css">
+</head><body>
+<nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="rules.html" aria-current="page">规则说明书</a><a href="design.html">玩法设计</a><a href="ui-system.html">UI Design System</a></div></nav>
+<div class="page-sections" role="navigation" aria-label="本页章节"><a href="#goal">目标</a><a href="#start">开局</a><a href="#clock">时钟</a><a href="#map">地图与板块</a><a href="#terrain">地形</a><a href="#buildings">建筑与货物</a><a href="#production">生产</a><a href="#roads">道路</a><a href="#freight">派货</a><a href="#towns">城镇</a><a href="#tech">科技树</a><a href="#coins">金币</a><a href="#ui">界面与操作</a><a href="#save">存档</a><a href="#faq">常见问题</a><a href="#sheet">速查表</a></div>
+
+<div class="wrap">
+<header>
+<div class="eyebrow">Tracks &amp; Trade · 规则说明书 · 对应版本 v0.13 · 2026-09-22 · <span class="status">玩家手册</span></div>
+<h1>规则说明书</h1>
+<p class="lede">这是给玩家看的完整规则。Tracks &amp; Trade 是一个单人物流建设游戏：你点击、雇人、铺路、揭开地图、买科技；系统自动把货送到需要它的地方、卖成金币。<strong>你设计网络，系统跑网络。</strong>本页列出每一条规则和每一个数字，需要什么翻到哪一节即可。</p>
+<ul class="toc">
+<li><a href="#goal">一 · 你在玩什么</a></li><li><a href="#start">二 · 开局与前十分钟</a></li><li><a href="#clock">三 · 时钟与整数</a></li><li><a href="#map">四 · 地图、迷雾与板块</a></li><li><a href="#terrain">五 · 地形</a></li><li><a href="#buildings">六 · 建筑与货物</a></li><li><a href="#production">七 · 生产：点击与工人</a></li><li><a href="#roads">八 · 道路</a></li><li><a href="#freight">九 · 派货</a></li><li><a href="#towns">十 · 城镇</a></li><li><a href="#tech">十一 · 科技树</a></li><li><a href="#coins">十二 · 金币、退款与里程碑</a></li><li><a href="#ui">十三 · 界面与操作</a></li><li><a href="#save">十四 · 存档</a></li><li><a href="#faq">十五 · 常见问题</a></li><li><a href="#sheet">附录 · 数字速查表</a></li>
+</ul>
+</header>
+
+<section id="goal">
+<div class="eyebrow">一</div><h2>你在玩什么</h2>
+<p>地图上有森林、岩地、铁矿这样的资源地形，和收购货物的城镇。资源在原地才能开采，城镇只收送到门口的货。你要做的事只有四种：</p>
+<div class="grid">
+<div class="card"><h3>建</h3><p>在合适的地形上放建筑：伐木营出原木，采石场出石头，锯木厂把原木变木板……每座建筑要先在科技树里解锁（伐木营除外）。</p></div>
+<div class="card"><h3>连</h3><p>在「产这种货」和「收这种货」的两点之间修路。路修好以后货自己走，你不用指挥任何一趟运输。</p></div>
+<div class="card"><h3>探</h3><p>花金币揭开相邻的迷雾板块。揭开后可以旋转六个朝向，放下就不能再转。新板块里可能有新城镇、新资源，也可能有挡路的山和湖。</p></div>
+<div class="card"><h3>买</h3><p>金币是唯一的货币。工人、建筑、道路、板块、科技、城镇扩建全部用金币买，货物永远不进你的口袋。</p></div>
+</div>
+<div class="callout"><strong>没有输，没有倒计时。</strong>游戏不会结束。你在优化的是「等多久才能攒够下一件事」，而不是「能不能」。任何东西拆掉都全额退款，布局错了随时重来。</div>
+</section>
+
+<section id="start">
+<div class="eyebrow">二</div><h2>开局与前十分钟</h2>
+<div class="grid">
+<div>
+<p>新档开始时你有 <strong>2 000 金币</strong> 和一朵起始板块：中间一格草地，周围一格森林（上面已经有一座伐木营）、两格岩地、一格草地、一格贴着山的铁矿、一座山。<strong>没有城镇，没有路。</strong>周围六个方向全是迷雾。</p>
+<ol class="steps">
+<li><strong>点伐木营。</strong>每点一下出一根原木，堆在伐木营的堆场里。堆场最多 20 件，满了就点不动。</li>
+<li><strong>揭开第一块板块。</strong>六朵相邻的迷雾板块都标着 500 金币，任选一朵。第一块板块里一定有一座只收原木的城镇。</li>
+<li><strong>旋转再放下。</strong>预览里地图会画出从伐木营到新城镇最短的路和造价。转到一个修得起、路又短的朝向，点「放下板块」。</li>
+<li><strong>修第一条路。</strong>按住伐木营拖到城镇，松手付钱。下一回合起原木自己上路，到城镇门口就卖掉，金币进账。</li>
+<li><strong>雇第一名工人。</strong>选中伐木营，点「雇工人」（400 金币）。从此伐木营每回合自动出 1 根原木，你不用再点。</li>
+<li><strong>接着往下走。</strong>顶栏的目标条会一句话告诉你下一步：攒钱探索、买科技、建采石场、开第二条产业链……前五块板块每块教一件新事，之后就是自由沙盒。</li>
+</ol>
+</div>
+<div>
+<figure class="figure"><svg id="startmap" viewBox="0 0 360 300" role="img" aria-label="起始板块"></svg>
+<div class="legend"><span><i style="background:var(--t-grass)"></i>草地</span><span><i style="background:var(--t-forest)"></i>森林</span><span><i style="background:var(--t-rock)"></i>岩地</span><span><i style="background:var(--t-ore)"></i>铁矿</span><span><i style="background:var(--t-mountain)"></i>山</span><span><i style="background:var(--t-fog)"></i>迷雾</span></div>
+<figcaption>起始板块 F0 和它周围的六朵迷雾。伐木营在森林格上，两格岩地是将来采石场的位置，铁矿要到第五块板块之后才用得上。</figcaption></figure>
+</div>
+</div>
+</section>
+
+<section id="clock">
+<div class="eyebrow">三</div><h2>时钟与整数</h2>
+<ul>
+<li><strong>游戏按回合走。</strong>1× 速度下一回合 2 秒。顶栏可切换 1× / 2× / 5×，倍速只压缩真实时间，不改变任何数量。</li>
+<li><strong>暂停</strong>按钮停下模拟；把页面切到后台也会暂停，回来时<strong>不会</strong>补算你离开的时间。没有离线收益。</li>
+<li><strong>预览新板块时模拟自动暂停</strong>，放下板块后继续。</li>
+<li><strong>所有数量都是整数件。</strong>产量按件、城镇按件收、价格按件算。</li>
+<li>面板上的「近期」「实际」都指<strong>最近 30 回合</strong>的平均值，不足 30 回合按已有样本算。</li>
+<li>同一个存档、同样的操作顺序，结果完全一样。板块里出现什么由存档种子决定，不是纯随机。</li>
+</ul>
+</section>
+
+<section id="map">
+<div class="eyebrow">四</div><h2>地图、迷雾与板块</h2>
+<h3>板块是七格花</h3>
+<p>地图由六边形格子组成，七个格子（中心加六个邻居）组成一朵「花」，这就是一块板块。花和花无缝拼在一起，每朵花恰好有六个邻居。地图<strong>没有边界</strong>：每放下一朵花，它周围所有空位都变成新的迷雾，地图的形状由你的探索路线决定。</p>
+<h3>解锁</h3>
+<ul>
+<li>与已揭开区域<strong>相邻的任何迷雾板块</strong>都可以点开查看价格并解锁，方向任选。</li>
+<li>价格按<strong>第几次解锁</strong>算，和方向无关：</li>
+</ul>
+<div class="table"><table>
+<tr><th>第 n 次解锁</th><th class="num">1</th><th class="num">2</th><th class="num">3</th><th class="num">4</th><th class="num">5</th><th>6 及以后</th></tr>
+<tr><td>价格（金币）</td><td class="num">500</td><td class="num">2 000</td><td class="num">5 000</td><td class="num">15 000</td><td class="num">40 000</td><td><code>40 000 × 1.5^(n−5)</code>，即 60 000、90 000、135 000……</td></tr>
+</table></div>
+<h3>预览、旋转、放下</h3>
+<ul>
+<li>付钱后板块以随机朝向出现在地图上，进入<strong>预览</strong>：模拟暂停，右侧面板给出「左转」「右转」「放下板块」三个按钮，可以转六个朝向。</li>
+<li>预览里地图会叠画从你已有建筑到新城镇的<strong>最短路和造价</strong>。有湖挡路时会写出绕路和买航道两种造价。修不起时造价变<span class="amber">琥珀色</span>。</li>
+<li><strong>放下即固定，之后永远不能再转。</strong>旋转是这个游戏里分量最重的一次决定。</li>
+<li>预览期间地图上的其他操作（点击、修路、建造）都会被拒绝，先放下板块。</li>
+</ul>
+<div class="callout"><strong>你不会被困在预览里。</strong>如果你现在还没有任何收入（还没有一条能卖货的路），而当前朝向修不到新城镇或修不起最短的路，游戏会拒绝放下并提示你换个朝向，但只在<strong>确实存在更好的朝向</strong>时才拒绝。有收入之后只警告不阻止：你可以先放下，慢慢攒钱修路。</div>
+<h3>板块里有什么</h3>
+<ul>
+<li><strong>前五块是教学板块。</strong>不论你往哪个方向探，第 n 次解锁得到的一定是第 n 块教学板块的内容。每块只锁定要教的东西，其余格子随机：</li>
+</ul>
+<div class="table"><table>
+<tr><th>板块</th><th class="num">价格</th><th>一定有</th><th>不会有</th><th>它教你的</th></tr>
+<tr><td>第 1 块</td><td class="num">500</td><td>1 座只收原木（20）的城镇、至少 1 座山</td><td>森林、湖</td><td>旋转、第一条路、第一笔收入、第一名工人</td></tr>
+<tr><td>第 2 块</td><td class="num">2 000</td><td>1 座只收石头（30）的城镇、1 格森林</td><td>岩地、湖</td><td>科技树：解锁采石场，建在起始板块的岩地上</td></tr>
+<tr><td>第 3 块</td><td class="num">5 000</td><td>1 座只收木板（50）的城镇</td><td>森林、湖</td><td>加工链：伐木营 → 锯木厂 → 城镇，第一次看到「缺原木」</td></tr>
+<tr><td>第 4 块</td><td class="num">15 000</td><td>1 座收石头工具（120）和木板（30）的城镇、至少 2 格连片的湖</td><td>森林、岩地</td><td>双输入配方（石匠铺）与湖：绕路或买航道</td></tr>
+<tr><td>第 5 块</td><td class="num">40 000</td><td>1 座只收铁（150）的城镇、至少 2 格相连的山</td><td>森林、湖、铁矿</td><td>矿山与铁厂：起始板块那格铁矿终于有用了</td></tr>
+</table></div>
+<ul>
+<li><strong>第六块起是沙盒板块</strong>，内容回应你当前的局势：每三块至少有一座城镇；城镇优先收你已经能生产、但买家还不到两个的货，其次收下一级科技能解锁的货；收购价随离起点的距离上涨（每远一朵花加 10%，第二种货按六折）；你缺森林就更容易出森林，缺岩地就更容易出岩地；铁矿只出现在山旁边，且只在你已经解锁石匠铺或矿山之后。</li>
+<li><strong>没有捷径：</strong>城镇收的货所需的原料地形，永远不会出现在同一块板块里。每一条卖货路线至少跨一块板块。</li>
+<li>每块板块里，山和湖各自连成一片，非山非湖的格子互相连通，山最多 3 格、湖最多 3 格，所以不会出现废板块，也不会把你围死。</li>
+</ul>
+</section>
+
+<section id="terrain">
+<div class="eyebrow">五</div><h2>地形</h2>
+<div class="table"><table>
+<tr><th>地形</th><th>能不能走路</th><th>能建什么</th><th>道路造价系数</th></tr>
+<tr><td><i class="sw" style="background:var(--t-grass)"></i>草地</td><td>可</td><td>锯木厂、石匠铺、铁厂</td><td class="num">×1</td></tr>
+<tr><td><i class="sw" style="background:var(--t-town)"></i>城镇</td><td>可</td><td>无（城镇随板块出现）</td><td class="num">×1</td></tr>
+<tr><td><i class="sw" style="background:var(--t-forest)"></i>森林</td><td>可</td><td>伐木营</td><td class="num">×2</td></tr>
+<tr><td><i class="sw" style="background:var(--t-rock)"></i>岩地</td><td>可</td><td>采石场</td><td class="num">×2</td></tr>
+<tr><td><i class="sw" style="background:var(--t-ore)"></i>铁矿</td><td>可</td><td>矿山</td><td class="num">×2</td></tr>
+<tr><td><i class="sw" style="background:var(--t-mountain)"></i>山</td><td><strong>不可通行、不可建</strong></td><td>无</td><td>不能修路</td></tr>
+<tr><td><i class="sw" style="background:var(--t-lake)"></i>湖</td><td>买了「航道」科技后可以铺路</td><td>无</td><td class="num">×3</td></tr>
+</table></div>
+<ul>
+<li>地形<strong>不影响产量</strong>，只决定能建什么和修路多贵。</li>
+<li>山是硬障碍，路只能绕。旋转板块时先看山在哪。</li>
+<li>没有航道时湖也是墙。买了航道之后湖格就是普通的路网节点，只是每段贵一些。</li>
+</ul>
+</section>
+
+<section id="buildings">
+<div class="eyebrow">六</div><h2>建筑与货物</h2>
+<p>六种建筑、六种货。每座建筑只有一种产出；加工建筑的配方统一是<strong>每种输入各一件，出一件</strong>。</p>
+<div class="table"><table>
+<tr><th>建筑</th><th>建在</th><th>输入</th><th>产出</th><th class="num">建造价</th><th class="num">第一名工人</th><th>怎么解锁</th></tr>
+<tr><td>伐木营</td><td>森林</td><td>无</td><td>原木</td><td class="num">1 200</td><td class="num">400</td><td>开局即有</td></tr>
+<tr><td>采石场</td><td>岩地</td><td>无</td><td>石头</td><td class="num">1 600</td><td class="num">600</td><td>科技 1 200</td></tr>
+<tr><td>锯木厂</td><td>草地</td><td>原木</td><td>木板</td><td class="num">2 400</td><td class="num">1 000</td><td>科技 3 000</td></tr>
+<tr><td>石匠铺</td><td>草地</td><td>原木 + 石头</td><td>石头工具</td><td class="num">2 000</td><td class="num">1 000</td><td>科技 8 000，需先有锯木厂与采石场科技</td></tr>
+<tr><td>矿山</td><td>铁矿</td><td>无</td><td>铁矿石</td><td class="num">2 000</td><td class="num">600</td><td>科技 5 000，需先有石匠铺科技</td></tr>
+<tr><td>铁厂</td><td>草地</td><td>铁矿石 + 原木</td><td>铁</td><td class="num">3 000</td><td class="num">1 000</td><td>科技 40 000，需先有矿山科技</td></tr>
+</table></div>
+<div class="table"><table>
+<tr><th>货物</th><th>谁产</th><th class="num">基础价</th><th>谁要</th></tr>
+<tr><td>原木</td><td>伐木营</td><td class="num">20</td><td>城镇、锯木厂、石匠铺、铁厂。<strong>三条链的公共原料</strong></td></tr>
+<tr><td>石头</td><td>采石场</td><td class="num">30</td><td>城镇、石匠铺</td></tr>
+<tr><td>木板</td><td>锯木厂</td><td class="num">50</td><td>城镇</td></tr>
+<tr><td>石头工具</td><td>石匠铺</td><td class="num">120</td><td>城镇</td></tr>
+<tr><td>铁矿石</td><td>矿山</td><td class="num">—</td><td>只有铁厂要。<strong>没有城镇收铁矿石</strong></td></tr>
+<tr><td>铁</td><td>铁厂</td><td class="num">150</td><td>城镇</td></tr>
+</table></div>
+<ul>
+<li>基础价是教学城镇的收购价。沙盒城镇按距离加价（第四节）。</li>
+<li><strong>堆场：</strong>每座建筑每种货各有一个 <strong>20 件</strong>的堆场。产出堆满 20 就停工；加工建筑每种输入也各一个 20 件堆场。</li>
+<li><strong>拆除</strong>任何建筑都退回建造价和它所有工人的全部工资。城镇不能拆。</li>
+</ul>
+</section>
+
+<section id="production">
+<div class="eyebrow">七</div><h2>生产：点击与工人</h2>
+<p><strong>建筑不会自己生产。</strong>产量只来自两处：</p>
+<div class="table"><table>
+<tr><th>来源</th><th>产出</th><th>限制</th></tr>
+<tr><td>你点一下建筑</td><td><code>1 + 金手指等级</code> 件</td><td>随时可点，倍速不影响；堆场满或缺输入时拒绝</td></tr>
+<tr><td>一名工人</td><td>每回合 <code>1 + 该类建筑的工艺等级</code> 件</td><td>每座建筑<strong>最多 3 名</strong></td></tr>
+</table></div>
+<h3>工人</h3>
+<ul>
+<li>选中建筑后点「雇工人」。同一座建筑里每多一名工人，下一名贵 30%：<code>起价 × 1.3^(已有工人数)</code>，向整数四舍五入。伐木营三名工人分别是 400、520、676。</li>
+<li>满 3 名后按钮消失。产量要再往上只有两条路：<strong>再建一座</strong>，或在科技树里升这一类建筑的<strong>工艺</strong>。</li>
+<li>「辞退」退回这名工人的实付全款。辞退的是最后雇的那一名。</li>
+<li>地图上一名工人画成一只朝建筑点击的手指。<strong>手指停下变灰，就是这座建筑停工了</strong>：堆场满、缺输入，或者你按了暂停。</li>
+</ul>
+<h3>什么时候会停工</h3>
+<ul>
+<li>产出堆场到 20 件：地图上数量变<span class="amber">琥珀色</span>。把货运出去就恢复。</li>
+<li>加工建筑缺任何一种输入：地图上写「缺原木」或「缺石头」。给它连一条来货的路，或者让上游多产一点。</li>
+<li>一回合能做多少件，取工人产能、产出堆场剩余空间、每种输入的现有件数三者的最小值。</li>
+</ul>
+<h3>工艺</h3>
+<p>每种建筑在科技树里有一项可重复购买的「X 工艺」。每买一级，<strong>全图这一类建筑的每名工人</strong>每回合多产 1 件。它不影响点击产量，也不加手指，只是手指点得更快。价格见第十一节。</p>
+</section>
+
+<section id="roads">
+<div class="eyebrow">八</div><h2>道路</h2>
+<ul>
+<li><strong>怎么修：</strong>按住地图上一座建筑，拖到另一座建筑或城镇，松手。途中会显示这条路的造价，钱不够时拒绝。选中建筑后面板里也有「选择要连接的建筑」按钮，适合触屏。</li>
+<li><strong>只能在有货可运的两点之间修路：</strong>一方产某种货，另一方收这种货（城镇收购，或加工建筑把它当输入）。城镇和城镇之间不能修，锯木厂和采石场之间也不能修（锯木厂不要石头）。</li>
+<li><strong>路线自动选：</strong>系统在可通行地形上找造价最低的路线，<strong>复用已有路段不收费</strong>，所以路网会自然长成一棵树。</li>
+<li><strong>造价：</strong>每一段 <code>250 × 地形系数</code>，系数取两端地形中较高的那个（草地和城镇 1，森林、岩地、铁矿 2，湖 3）。例如伐木营（森林）到相邻草地这一段 500 金币，草地到城镇 250 金币。</li>
+<li><strong>道路只负责连通。</strong>没有运力上限、没有等级。一件货每回合走一段，一段路同一回合可以过任意多件货。路越长货到得越晚，但吞吐不会卡在路上。</li>
+<li>新修的路段<strong>下一回合</strong>开始通货。</li>
+<li>每件货走段数最少的路线；已经上路的货不会掉头。</li>
+<li><strong>拆路：</strong>点一段路，面板里「拆除这段路」。拆除后立即不再有新货进入，等这段上的货走完就退回全部造价，中途可以「撤销拆除」。</li>
+</ul>
+</section>
+
+<section id="freight">
+<div class="eyebrow">九</div><h2>派货：需求拉货，按价值排序</h2>
+<p>你不操作任何运输。每回合系统按下面的规则决定哪件货去哪里：</p>
+<ul>
+<li><strong>需求方提出需求。</strong>城镇要它收的货，加工建筑要它的输入。每个需求带一个<strong>价值</strong>：城镇需求的价值是收购价；加工建筑某种输入的价值是它的产出<strong>沿着已有道路</strong>最终能卖到的最高价。</li>
+<li><strong>价值高的先拿到货。</strong>原木同时被收 20 的城镇、锯木厂（木板 50）、石匠铺（工具 120）、铁厂（铁 150）要，系统先喂铁厂，再喂石匠铺，最后才卖给城镇。价值相同的需求轮流拿，每次一件。</li>
+<li><strong>就近取货。</strong>每件货从离需求方最近、还有余货的产地发出。</li>
+<li><strong>加工建筑不无限囤货。</strong>它每种输入只要到 <code>min(20, 5 × 工人数)</code> 件作缓冲（没有工人按 1 名算），够用就不再要。</li>
+<li><strong>城镇只按需求池要货</strong>（第十节）。池满了就不再拉货，货留在产地。</li>
+<li>只有货真正上路时才从产地堆场扣掉。目的地不再需要或路断了的货，会在当前所在的节点落地，变成那里的库存，不销毁、不瞬移。</li>
+</ul>
+<div class="callout"><strong>所以，加工建筑还没有连到能卖出产品的城镇时，它的输入需求价值为 0。</strong>先把下游的路修通，上游才会优先给它送货。</div>
+</section>
+
+<section id="towns">
+<div class="eyebrow">十</div><h2>城镇</h2>
+<ul>
+<li>城镇随板块出现，<strong>没有名字</strong>，用它收的货区分。每座最多收<strong>两种</strong>货，收购价固定按件，不随供货量浮动。</li>
+<li><strong>收购速度：</strong>每种货每回合收 <code>2 × (1 + 等级)</code> 件。新城镇是 0 级，每种货每回合收 2 件。</li>
+<li><strong>需求池：</strong>没收到货的份额会攒起来，最多攒 20 回合的量（0 级 40 件）。池里有多少就能一次收多少，之后按每回合的速度继续收。池用完时地图上价格旁写<span class="amber">「收不下了」</span>。</li>
+<li>货到城镇门口<strong>自动卖出</strong>，金币立即入账，没有接单操作。</li>
+<li><strong>扩建：</strong>选中城镇，点「扩建」。每升一级，每种货每回合多收 2 件。价格 = <code>2 × Σ收购价 × 30 × 1.5^当前等级</code>。例如只收原木 20 的城镇，第一次扩建 1 200 金币，第二次 1 800，第三次 2 700。收工具 120 和木板 30 的城镇第一次扩建 9 000。任何一次扩建，如果新增的收购量都用满，30 回合回本。</li>
+<li>城镇不能拆、不能移动、不会自己升级。</li>
+</ul>
+<h3>为什么总要二选一</h3>
+<p>一名工人每回合 1 件，喂不满一座 0 级城镇的 2 件；一座满编建筑 3 件又刚好超过。所以你会一直面对「再雇一名工人、再建一座，还是扩建城镇」的选择。产量和需求是<strong>仅有的两层上限</strong>：任何一层卡住，往另一层花钱都是浪费。系统不会替你判定瓶颈，地图只画状态：上游堆满是琥珀色，下游收不下也是琥珀色，看哪一头亮就知道该往哪头花钱。</p>
+</section>
+
+<section id="tech">
+<div class="eyebrow">十一</div><h2>科技树</h2>
+<p>一棵全局科技树，全部用金币买。前置条件全部是科技，不要求地图上建成对应建筑。工具栏里的「科技树」面板：能买的亮着，买过的打勾，前置没满足的灰并写出还缺什么。</p>
+<h3>一次性科技</h3>
+<div class="table"><table>
+<tr><th>科技</th><th class="num">价格</th><th>前置</th><th>效果</th></tr>
+<tr><td>采石场</td><td class="num">1 200</td><td>无</td><td>可以在岩地建采石场</td></tr>
+<tr><td>锯木厂</td><td class="num">3 000</td><td>无</td><td>可以在草地建锯木厂，原木 → 木板</td></tr>
+<tr><td>石匠铺</td><td class="num">8 000</td><td>锯木厂、采石场</td><td>可以在草地建石匠铺，原木 + 石头 → 石头工具</td></tr>
+<tr><td>航道</td><td class="num">8 000</td><td>锯木厂</td><td>湖上可以铺路（每段 750）</td></tr>
+<tr><td>矿山</td><td class="num">5 000</td><td>石匠铺</td><td>可以在铁矿建矿山</td></tr>
+<tr><td>铁厂</td><td class="num">40 000</td><td>矿山</td><td>可以在草地建铁厂，铁矿石 + 原木 → 铁</td></tr>
+</table></div>
+<h3>可重复科技（每级翻倍）</h3>
+<div class="table"><table>
+<tr><th>科技</th><th class="num">第 1 级</th><th class="num">第 2 级</th><th class="num">第 3 级</th><th>前置</th><th>效果</th></tr>
+<tr><td>金手指</td><td class="num">2 000</td><td class="num">4 000</td><td class="num">8 000</td><td>无</td><td>每次点击多 1 件</td></tr>
+<tr><td>伐木营工艺</td><td class="num">2 000</td><td class="num">4 000</td><td class="num">8 000</td><td>无</td><td>每座伐木营的每名工人每回合多 1 件</td></tr>
+<tr><td>采石场工艺</td><td class="num">2 500</td><td class="num">5 000</td><td class="num">10 000</td><td>采石场</td><td>同上，对采石场</td></tr>
+<tr><td>锯木厂工艺</td><td class="num">4 000</td><td class="num">8 000</td><td class="num">16 000</td><td>锯木厂</td><td>同上，对锯木厂</td></tr>
+<tr><td>矿山工艺</td><td class="num">4 000</td><td class="num">8 000</td><td class="num">16 000</td><td>矿山</td><td>同上，对矿山</td></tr>
+<tr><td>石匠铺工艺</td><td class="num">8 000</td><td class="num">16 000</td><td class="num">32 000</td><td>石匠铺</td><td>同上，对石匠铺</td></tr>
+<tr><td>铁厂工艺</td><td class="num">12 000</td><td class="num">24 000</td><td class="num">48 000</td><td>铁厂</td><td>同上，对铁厂</td></tr>
+</table></div>
+<ul>
+<li>科技<strong>不能退款</strong>，这是唯一花出去就收不回的钱（板块也是）。</li>
+<li>没有道路科技。路修好就是无限运力。</li>
+</ul>
+</section>
+
+<section id="coins">
+<div class="eyebrow">十二</div><h2>金币、退款与里程碑</h2>
+<h3>钱从哪来</h3>
+<ul>
+<li><strong>卖货：</strong>货到城镇门口按收购价入账。这是唯一持续的收入。</li>
+<li><strong>里程碑奖励：</strong>第一次做到下面这些事时一次性入账。</li>
+<li><strong>退款：</strong>拆建筑、辞退工人、拆路都退回实付全款。</li>
+</ul>
+<div class="table"><table>
+<tr><th>里程碑</th><th class="num">奖励</th><th>里程碑</th><th class="num">奖励</th></tr>
+<tr><td>点击伐木营，做出第一根原木</td><td class="num">100</td><td>解锁第三块板块</td><td class="num">1 000</td></tr>
+<tr><td>把伐木营的堆场堆满</td><td class="num">200</td><td>卖出第一块木板</td><td class="num">1 000</td></tr>
+<tr><td>解锁第一块板块</td><td class="num">300</td><td>建成第二座伐木营</td><td class="num">1 000</td></tr>
+<tr><td>把货卖进第一座城镇</td><td class="num">400</td><td>解锁第四块板块</td><td class="num">2 000</td></tr>
+<tr><td>雇第一名工人</td><td class="num">400</td><td>卖出第一件石头工具</td><td class="num">2 000</td></tr>
+<tr><td>买下第一项科技</td><td class="num">500</td><td>开通航道</td><td class="num">2 000</td></tr>
+<tr><td>建成采石场</td><td class="num">800</td><td>解锁第五块板块</td><td class="num">4 000</td></tr>
+<tr><td>建成矿山</td><td class="num">3 000</td><td>卖出第一块铁</td><td class="num">6 000</td></tr>
+</table></div>
+<h3>钱往哪去</h3>
+<div class="table"><table>
+<tr><th>支出</th><th>能不能退</th></tr>
+<tr><td>建筑、工人、道路</td><td><strong>全额退款</strong>（拆除 / 辞退 / 拆路）</td></tr>
+<tr><td>城镇扩建</td><td>不退（城镇不能拆）</td></tr>
+<tr><td>科技、板块</td><td>不退</td></tr>
+</table></div>
+<div class="callout"><strong>没有死局的三条保证。</strong>1）第一条路一定修得起：开局 2 000，解锁第一块 500，剩下的钱覆盖最坏情况下到第一座城镇的最短路，修不起的朝向不允许放下。2）拆什么都全额退款，整台引擎随时可以拆掉重组。3）花钱不会伤到已有产线：科技、板块、扩建都不改变已经在跑的东西，等足够久总能攒够下一件事。</div>
+</section>
+
+<section id="ui">
+<div class="eyebrow">十三</div><h2>界面与操作</h2>
+<h3>地图上的操作</h3>
+<div class="table"><table>
+<tr><th>你做的</th><th>发生的</th></tr>
+<tr><td>点建筑</td><td>生产一件并选中它，格子弹一下飘出「+n」</td></tr>
+<tr><td>点城镇 / 道路 / 迷雾板块</td><td>选中，右侧面板显示详情和动作</td></tr>
+<tr><td>按住建筑拖到另一座建筑或城镇</td><td>修路，沿途显示造价，松手付钱</td></tr>
+<tr><td>从「建造」工具栏拖建筑到地图</td><td>放建筑，合法地形高亮；工具栏只有已解锁的建筑</td></tr>
+<tr><td>拖动空白处 / 滚轮</td><td>平移 / 缩放地图</td></tr>
+<tr><td>迷雾板块面板里点「解锁」</td><td>付钱进入预览，然后左转 / 右转 / 放下</td></tr>
+</table></div>
+<h3>地图上画的东西</h3>
+<ul>
+<li><strong>建筑：</strong>图标、工人手指、堆场数量。满 20 数量变琥珀色；加工建筑缺输入时写「缺原木」；每回合生产时冒「+n」。</li>
+<li><strong>城镇：</strong>等级、每回合收入、每种货的单价。收购量用满时价格旁写「收不下了」。</li>
+<li><strong>道路：</strong>路上的小点是真实在走的货，颜色是货物种类。道路不标数字。</li>
+<li><strong>迷雾板块：</strong>半透明深色，中间写价格，买得起时边缘亮。</li>
+</ul>
+<h3>颜色的含义</h3>
+<p>整张地图只有一种提示色。<span class="amber">琥珀色</span>代表「这里需要你动手」：堆场满、缺输入、城镇收不下、修不起的造价。其他一切都是默认的黑灰色。</p>
+<h3>右侧面板</h3>
+<ul>
+<li><strong>建造：</strong>已解锁的建筑按钮，拖到地图上放置。</li>
+<li><strong>详情：</strong>当前选中对象。建筑显示近 30 回合的产出 / 产能、每种货的到货 / 消耗 / 运出、各堆场 <code>n / 20</code>，第一个动作是「雇第 n 名工人」并标价，下面还有手工生产、连接、辞退、拆除。城镇显示每件价格、待收 / 池、实收、扩建按钮。道路显示是否在拆除中和退款额。</li>
+<li><strong>科技树：</strong>整棵树，一张卡一项科技。</li>
+<li><strong>生产链：</strong>六种货怎么互相转化的总览。</li>
+</ul>
+<h3>顶栏</h3>
+<ul>
+<li>金币余额和每回合收入。</li>
+<li><strong>目标条：</strong>下一个里程碑和它的奖励。</li>
+<li><span class="kbd">暂停</span> / <span class="kbd">继续</span>，速度 <span class="kbd">1×</span> → <span class="kbd">2×</span> → <span class="kbd">5×</span> 循环。</li>
+<li><span class="kbd">更多</span>：导出存档、导入存档、重新开始，以及本说明书、玩法设计、UI Design System 的链接。</li>
+</ul>
+</section>
+
+<section id="save">
+<div class="eyebrow">十四</div><h2>存档</h2>
+<ul>
+<li>游戏<strong>自动保存</strong>在浏览器本地，顶栏「更多」里能看到保存状态。清除浏览器数据会丢档。</li>
+<li>「导出存档」下载一个 JSON 文件，「导入存档」读回来。存档里包含种子和解锁次序，所以换设备后板块内容也一样。</li>
+<li>「重新开始」清空当前档，重新给你一朵起始板块和 2 000 金币。</li>
+<li>旧版本（v0.11 及更早）的存档格式不兼容，不会被读取。</li>
+</ul>
+</section>
+
+<section id="faq">
+<div class="eyebrow">十五</div><h2>常见问题</h2>
+<h4>伐木营点不动了。</h4><p>堆场满 20 了。要么揭开板块找城镇修路卖掉，要么先别管它。</p>
+<h4>路修好了，货怎么不走？</h4><p>新路段下一回合才通。如果过了几回合还不走，看看目的地：城镇是不是写着「收不下了」，加工建筑的输入堆场是不是已经够用。也可能你在预览新板块，模拟暂停中。</p>
+<h4>拖建筑修路，提示「这条路没有货可运」。</h4><p>只能在产某种货和收这种货的两点之间修路。锯木厂不要石头，城镇之间也无货可运。先看这座城镇收什么、这座加工建筑吃什么。</p>
+<h4>锯木厂写着「缺原木」，但伐木营的原木明明堆着。</h4><p>三种可能：伐木营和锯木厂之间没有路；锯木厂还没连到收木板的城镇，所以它的原木需求价值为 0，排在最后；或者原木被价值更高的石匠铺、铁厂先拿走了。先把锯木厂到城镇的路修通，再给伐木营加工人或建第二座伐木营。</p>
+<h4>城镇写着「收不下了」。</h4><p>你的产量已经超过这座城镇的收购速度。扩建它，或者去找另一座收同样货的城镇；把多出来的货送去加工也行。</p>
+<h4>板块放下后发现朝向不对。</h4><p>不能再转，这是规则。但路、建筑都可以拆掉全额退款重新规划。</p>
+<h4>钱不够，什么都做不了。</h4><p>只要有一条能卖货的路，钱就会一直进来，等就行。可以按 5× 加速。如果连第一条路都还没有，点伐木营攒原木，第一块板块只要 500。</p>
+<h4>工人雇满 3 名了，怎么再提高产量？</h4><p>再建一座同类建筑，或者在科技树里买这一类建筑的「工艺」，每级让每名工人每回合多 1 件。</p>
+<h4>铁矿石卖不掉。</h4><p>没有城镇收铁矿石，它只能和原木一起在铁厂炼成铁。铁厂科技 40 000，是全树最贵的一项。</p>
+<h4>切走标签页再回来，什么都没变。</h4><p>页面在后台时游戏暂停，没有离线收益。</p>
+</section>
+
+<section id="sheet">
+<div class="eyebrow">附录</div><h2>数字速查表</h2>
+<div class="grid">
+<div class="card"><h3>时间与容量</h3>
+<ul><li>1 回合 = 2 秒（1×）；速度 1× / 2× / 5×</li><li>堆场 20 件 / 每种货 / 每座建筑</li><li>货物每回合走 1 段路</li><li>统计窗口 30 回合</li><li>每座建筑最多 3 名工人</li></ul></div>
+<div class="card"><h3>产量</h3>
+<ul><li>点击：<code>1 + 金手指等级</code> 件</li><li>工人：<code>1 + 工艺等级</code> 件 / 回合</li><li>加工缓冲：每种输入 <code>min(20, 5 × 工人数)</code></li></ul></div>
+<div class="card"><h3>价格</h3>
+<ul><li>开局 2 000 金币</li><li>建筑：伐木营 1 200 · 采石场 1 600 · 锯木厂 2 400 · 石匠铺 2 000 · 矿山 2 000 · 铁厂 3 000</li><li>工人起价：伐木营 400 · 采石场 600 · 矿山 600 · 锯木厂 / 石匠铺 / 铁厂 1 000；同座每多一名 ×1.3</li><li>道路每段 250 × 系数（1 / 2 / 3）</li><li>板块：500 · 2 000 · 5 000 · 15 000 · 40 000 · 之后 ×1.5</li></ul></div>
+<div class="card"><h3>城镇</h3>
+<ul><li>每种货每回合收 <code>2 × (1 + 等级)</code> 件</li><li>需求池 20 回合的量</li><li>扩建 <code>2 × Σ收购价 × 30 × 1.5^等级</code></li><li>基础价：原木 20 · 石头 30 · 木板 50 · 石头工具 120 · 铁 150</li><li>沙盒加价：每远一朵花 +10%，第二种货 ×0.6</li></ul></div>
+<div class="card"><h3>科技</h3>
+<ul><li>采石场 1 200 · 锯木厂 3 000 · 石匠铺 8 000 · 航道 8 000 · 矿山 5 000 · 铁厂 40 000</li><li>金手指 2 000 起，每级 ×2</li><li>工艺起价：伐木营 2 000 · 采石场 2 500 · 锯木厂 4 000 · 矿山 4 000 · 石匠铺 8 000 · 铁厂 12 000，每级 ×2</li></ul></div>
+<div class="card"><h3>退款</h3>
+<ul><li>建筑、工人、道路：100%</li><li>科技、板块、城镇扩建：不退</li></ul></div>
+</div>
+</section>
+
+<footer>Tracks &amp; Trade 规则说明书 · 与 v0.13 原型同步 · 设计取舍与数值推导见<a href="design.html">玩法设计</a>。</footer>
+</div>
+
+<script>
+(function(){
+ const SQ3=Math.sqrt(3),DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+ const COL={grass:'var(--t-grass)',forest:'var(--t-forest)',rock:'var(--t-rock)',ore:'var(--t-ore)',mountain:'var(--t-mountain)',lake:'var(--t-lake)',town:'var(--t-town)',fog:'var(--t-fog)'};
+ const NAME={grass:'草',forest:'林',rock:'岩',ore:'矿',mountain:'山'};
+ const svg=document.getElementById('startmap'),s=22,ox=180,oy=150;
+ const el=(t,a,x)=>{const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in a)e.setAttribute(k,a[k]);if(x!=null)e.textContent=x;return e;};
+ const pts=(cx,cy,r)=>Array.from({length:6},(_,i)=>{const a=Math.PI/180*(60*i-30);return (cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1);}).join(' ');
+ const px=(q,r)=>[ox+s*SQ3*(q+r/2),oy+s*1.5*r];
+ const hex=(q,r,fill,label,op)=>{const[x,y]=px(q,r);svg.appendChild(el('polygon',{points:pts(x,y,s-1),fill,stroke:'#17212b','stroke-width':.8,opacity:op??1}));if(label)svg.appendChild(el('text',{x,y:y+4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#17212b'},label));};
+ // Neighbouring flowers as fog.
+ for(const[a,b]of[[3,-1],[2,-3],[-1,-2],[-3,1],[-2,3],[1,2]]){hex(a,b,COL.fog,'',.55);for(const[dq,dr]of DIRS)hex(a+dq,b+dr,COL.fog,'',.55);}
+ const price=[[3,-1],[2,-3],[-1,-2],[-3,1],[-2,3],[1,2]];for(const[a,b]of price){const[x,y]=px(a,b);svg.appendChild(el('text',{x,y:y+4,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#f4efe3'},'500'));}
+ // Start flower: centre grass, ring forest(camp), rock, grass, rock, ore, mountain.
+ const ring=['forest','rock','grass','rock','ore','mountain'];
+ hex(0,0,COL.grass,NAME.grass);
+ ring.forEach((t,i)=>hex(DIRS[i][0],DIRS[i][1],COL[t],i===0?'伐木营':NAME[t]));
+})();
+</script>
+</body></html>

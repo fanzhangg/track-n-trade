@@ -1,0 +1,56 @@
+/* Color-only overrides. Layout, assets, animation and behavior stay in game.css. */
+:root{color:var(--text-primary);background:var(--surface-map);--muted:var(--text-secondary);--blue:var(--action-primary);--border:var(--border-subtle);--rank1:var(--bottleneck-1);--rank2:var(--bottleneck-2);--rank3:var(--bottleneck-3);--warn:var(--value-warning);--road:var(--road-base);--road-flow:var(--road-base)}
+.map-container{background:var(--surface-map)}
+button,.menu,.strip,.node{background:var(--surface-panel)}
+button{border-color:var(--border-control)}
+.topbar,.panel,.flower-controls{background:#fffaf1f2}
+button:hover{background:var(--action-subtle);border-color:var(--action-primary)}
+button.primary{background:var(--action-primary);border-color:var(--action-primary);color:var(--surface-panel)}
+button.primary:hover{background:var(--action-hover);border-color:var(--action-hover)}
+button.primary:active{background:var(--action-pressed);border-color:var(--action-pressed)}
+button.primary small{color:var(--surface-panel)}
+button:focus-visible,summary:focus-visible,[role=button]:focus-visible{outline-color:var(--focus-ring)}
+button.danger{color:var(--bottleneck-1)}
+.money-hud strong,.resource.coins strong,.coins b,.reward,.strip .reward,.goal-hud small,.head-extra,.milestones small,.milestone-strip small,.brand,.panel-title,.goal-hud b,aside h3{color:var(--text-primary)}
+.money-hud small,.resource small,.coins small,.contract .line small,.strip>span,.node p,.milestones li,.state,.owned,.owned-mark{color:var(--text-secondary)}
+.fold{border-top-color:var(--text-secondary)}
+.milestones li.done,.milestones li.done small{color:var(--text-disabled)}
+.progress,.strip .progress{background:var(--surface-inset)}
+.progress span,.strip .progress span,.contract .progress span{background:var(--road-base)}
+.milestone-strip{background:var(--surface-panel);border-color:var(--border-subtle)}
+.milestone-strip>span{color:var(--text-secondary)}
+.toolbar button.active{background:var(--action-subtle)}
+.toolbar button.unaffordable small,.state.wait{color:var(--value-warning)}
+.toolbar button.research .icon,.tech-button .icon{color:var(--action-primary)}
+.toolbar button.research.owned,.node.owned{background:var(--surface-panel);color:var(--text-secondary);border-color:var(--border-subtle)}
+.tech-button.ready{background:var(--action-subtle);border-color:var(--action-primary)}
+.tech-button.ready small{color:var(--action-primary)}
+.node.ready{box-shadow:0 0 0 2px var(--action-subtle)}
+.camp-c{color:var(--terrain-detail)}.sawmill-c{color:var(--action-primary)}.quarry-c,.stone-c{color:var(--goods-stone)}.town-c,.coin-c{color:var(--goods-board)}.log-c{color:var(--goods-log)}.board-c{color:var(--goods-board)}.mason-c,.tool-c{color:var(--goods-tool)}.mine-c,.ore-c{color:var(--goods-ore)}.smelter-c,.iron-c{color:var(--goods-iron)}
+.hex:focus-visible .ground,.hl.selected,.hl.legal,.preview,.preview-hex,.fog-flower.selected .fog-edge{stroke:var(--action-primary)}
+.hl.hover{stroke:#fffaf1cc}
+.tile-label,.terrain-label,.tile-status,.tile-stock,.price-label{fill:var(--text-primary)}
+.tile-status.alert,.tile-stock.alert{fill:var(--value-warning)}
+.terrain-label.faint{fill:var(--text-disabled)}
+.tile-mult,.status-label{fill:var(--text-secondary)}
+.demand-track{fill:var(--surface-inset)}.demand-fill{fill:var(--text-secondary)}.demand-fill.alert{fill:var(--value-warning)}
+.pop-text{stroke:var(--surface-panel)}
+.road.selected{stroke:var(--action-primary)}.preview.invalid{stroke:var(--bottleneck-1)}
+.map-footer #hint{color:var(--action-primary)}
+.diag{background:var(--action-subtle);color:var(--text-primary)}.diag.warn{background:var(--value-warning-bg);color:var(--value-warning)}
+#drag-label{background:var(--surface-panel);border-color:var(--action-primary);color:var(--action-primary)}
+#drag-label.bad{border-color:var(--bottleneck-1);color:var(--bottleneck-1)}
+#toast{background:var(--text-primary);color:var(--surface-panel)}
+.fog-hex,.fog-flower.affordable .fog-hex{fill:var(--terrain-fog);stroke:var(--terrain-fog)}
+.fog-edge{stroke:var(--surface-map)}
+.fog-flower:hover .fog-hex,.fog-flower:focus-visible .fog-hex{fill:var(--action-subtle);stroke:var(--action-subtle)}
+.fog-label{fill:var(--text-primary)}.fog-price{fill:var(--action-primary)}.fog-flower:not(.affordable) .fog-price{fill:var(--text-disabled)}
+.flower-controls{border-color:var(--action-primary)}
+.node.kind-building{border-left-color:var(--terrain-detail)}.node.kind-road{border-left-color:var(--road-base)}.node.kind-waterway{border-left-color:var(--terrain-lake)}.node.kind-economy{border-left-color:var(--text-secondary)}
+.chain .b{fill:var(--terrain-detail)}.chain .b.locked{fill:var(--terrain-fog)}
+.chain .g{fill:var(--surface-panel);stroke:var(--text-primary)}.chain .g.locked{stroke:var(--text-disabled)}
+.chain .lbl,.chain .sub{fill:var(--surface-panel)}.chain .locked .lbl,.chain .locked .sub{fill:var(--text-disabled)}
+.chain .glbl{fill:var(--text-primary)}.chain .gsub{fill:var(--text-secondary)}
+.chain .e{stroke:var(--text-secondary)}.chain .e.log{stroke:var(--road-base)}.chain .e.locked{stroke:var(--terrain-fog)}
+/* Keep the sandy dirt-road color without changing its original geometry. */
+.road:not(.water):not(.selected){stroke:var(--road-dirt)}

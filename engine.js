@@ -22,24 +22,26 @@ const RECIPES={
 const BUILDINGS=Object.keys(RECIPES);
 // The raw terrain a good ultimately comes from: a town never shares a flower with the terrain that feeds it.
 const RAW={log:['forest'],stone:['rock'],board:['forest'],tool:['forest','rock'],iron:['ore','forest']};
-// One global tech tree, all coins. `kind` building unlocks a building type, `road` raises the global road level,
-// `waterway` opens lakes, `economy` is a global multiplier; `repeat` techs are levelled and double each level.
+// One global tech tree, all coins. `kind` building unlocks a building type, `waterway` opens lakes,
+// `economy` is a global multiplier; `repeat` techs are levelled and double each level.
+// Every building type has a repeatable `craft` tech: each level gives every worker of that type one more
+// piece per round, so the player raises the link of the chain that is short instead of the whole map.
+const CRAFT_BASE={camp:2000,quarry:2500,sawmill:4000,mason:8000,mine:4000,smelter:12000};
 const TECH={
  quarry:{name:'采石场',cost:1200,requires:[],kind:'building',tier:1,desc:'可以在岩地建采石场'},
  sawmill:{name:'锯木厂',cost:3000,requires:[],kind:'building',tier:1,desc:'可以在草地建锯木厂，原木 → 木板'},
- training:{name:'工人培训',base:5000,growth:2,requires:[],kind:'economy',tier:1,repeat:true,desc:'每名工人每回合多 1 件'},
- tools:{name:'工具改良',base:2000,growth:2,requires:[],kind:'economy',tier:1,repeat:true,desc:'每次点击多 1 件'},
+ tools:{name:'金手指',base:2000,growth:2,requires:[],kind:'economy',tier:1,repeat:true,desc:'每次点击多 1 件'},
  mason:{name:'石匠铺',cost:8000,requires:['sawmill','quarry'],kind:'building',tier:2,desc:'原木 + 石头 → 石头工具'},
- stoneroad:{name:'石头路',cost:20000,requires:['quarry'],kind:'road',level:1,tier:2,desc:'全图道路升到 12 件/回合'},
  waterway:{name:'航道',cost:8000,requires:['sawmill'],kind:'waterway',tier:2,desc:'湖上可以铺路'},
- cart:{name:'货运马车',cost:16000,requires:['sawmill'],kind:'economy',tier:2,desc:'所有道路运力 ×2'},
- mine:{name:'矿山',cost:5000,requires:['mason','stoneroad'],kind:'building',tier:3,desc:'可以在铁矿建矿山'},
- smelter:{name:'铁厂',cost:40000,requires:['mine'],kind:'building',tier:4,desc:'铁矿石 + 原木 → 铁'},
- rail:{name:'铁路',cost:100000,requires:['smelter','stoneroad'],kind:'road',level:2,tier:5,desc:'全图道路升到 36 件/回合'}};
+ mine:{name:'矿山',cost:5000,requires:['mason'],kind:'building',tier:3,desc:'可以在铁矿建矿山'},
+ smelter:{name:'铁厂',cost:40000,requires:['mine'],kind:'building',tier:4,desc:'铁矿石 + 原木 → 铁'}};
+for(const b of Object.keys(CRAFT_BASE))TECH[b+'Craft']={name:RECIPES[b].name+'工艺',base:CRAFT_BASE[b],growth:2,requires:b==='camp'?[]:[b],kind:'economy',tier:b==='camp'?1:TECH[b].tier,repeat:true,building:b,desc:`每座${RECIPES[b].name}的每名工人每回合多 1 件`};
+const craftOf=b=>b+'Craft';
 const TERRAINS=['grass','town','forest','rock','ore','mountain','lake'];
 const TERRAIN_NAME={grass:'草地',town:'城镇',forest:'森林',rock:'岩地',ore:'铁矿',mountain:'山',lake:'湖'};
 const TERRAIN_FACTOR={grass:1,town:1,forest:2,rock:2,ore:2,lake:3};
-const ROAD_BASE=250,ROAD_CAP=[4,12,36],ROAD_NAME=['驴道','石头路','铁路'];
+// Roads only connect: a piece moves one segment per round and a segment carries any number of pieces.
+const ROAD_BASE=250;
 const TOWN_RATE=2,TOWN_PAYBACK=30,TOWN_GROWTH=1.5,REFUND=1,START_MONEY=2000,START_CAMP_PAID=1200;
 const FLOWER_PRICES=[500,2000,5000,15000,40000],FLOWER_BASE=40000,FLOWER_GROWTH=1.5,TUTORIAL=5;
 const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
@@ -136,7 +138,7 @@ function generateFlower(w,n,f){const rand=rng(mix(w.seed,n));return n<=TUTORIAL?
 
 /* ---------- world ---------- */
 const START_DESIGN={center:'grass',ring:['forest','rock','grass','rock','ore','mountain'],buys:null},START_TILE='1,0';
-function newWorld(seed=1){const w={schemaVersion:12,seed:seed>>>0,tick:0,serial:0,flowers:{},tiles:{},edges:{},shipments:[],scheduler:{},stats:[],money:START_MONEY,earned:0,spent:0,production:zero(),consumption:zero(),sold:{},tech:{},roadLevel:0,unlocked:0,lastTownUnlock:0,preview:null,clicks:0,manual:{out:zero(),tiles:{}},milestones:{},flags:{},paused:false};
+function newWorld(seed=1){const w={schemaVersion:14,seed:seed>>>0,tick:0,serial:0,flowers:{},tiles:{},edges:{},shipments:[],scheduler:{},stats:[],money:START_MONEY,earned:0,spent:0,production:zero(),consumption:zero(),sold:{},tech:{},unlocked:0,lastTownUnlock:0,preview:null,clicks:0,manual:{out:zero(),tiles:{}},milestones:{},flags:{},paused:false};
  for(const k of Object.keys(TECH))w.tech[k]=0;
  const f={id:fidOf(0,0),a:0,b:0,center:flowerCenter(0,0),state:'placed',design:copy(START_DESIGN),rotation:0,order:0};
  w.flowers[f.id]=f;materialize(w,f);spawnFog(w,f);
@@ -150,7 +152,7 @@ function workerCost(w,t){const b=t.building;return Math.round(WORKER[b.type]*WOR
 function techCost(w,k){const u=TECH[k];return u.repeat?Math.round(u.base*u.growth**w.tech[k]):u.cost;}
 const techOwned=(w,k)=>!TECH[k].repeat&&w.tech[k]>0;
 const techAvailable=(w,k)=>TECH[k].requires.every(r=>w.tech[r]>0);
-const workerPower=w=>1+w.tech.training,clickPower=w=>1+w.tech.tools;
+const workerPower=(w,type)=>1+(w.tech[craftOf(type)]||0),clickPower=w=>1+w.tech.tools;
 const passable=(w,t)=>t.terrain!=='mountain'&&(t.terrain!=='lake'||w.tech.waterway>0);
 const terrainFactor=(a,b)=>Math.max(TERRAIN_FACTOR[a.terrain],TERRAIN_FACTOR[b.terrain]);
 function segmentCost(factor){return ROAD_BASE*factor;}
@@ -170,14 +172,13 @@ function linkReason(w,from,to){const a=w.tiles[from]?.building,b=w.tiles[to]?.bu
 function windowStats(w,seconds=WINDOW){const S=w.stats.filter(s=>s.tick>w.tick-seconds);return{S,span:S.length?w.tick-S[0].tick+1:0};}
 function recentSales(w,tile,r){const{S,span}=windowStats(w);if(!span)return 0;return S.reduce((n,s)=>n+(s.sales[tile]?.[r]||0),0)/span;}
 function income(w){const{S,span}=windowStats(w);if(!span)return 0;return S.reduce((n,s)=>n+s.income,0)/span;}
-const capacity=w=>ROAD_CAP[w.roadLevel]*(w.tech.cart?2:1);
-const rate=(w,t)=>t.building.workers.length*workerPower(w);
+const rate=(w,t)=>t.building.workers.length*workerPower(w,t.building.type);
 
 /* ---------- routing ---------- */
-function queueCost(w,e){return w.shipments.filter(s=>!s.edge&&s.next===e.id).length/capacity(w);}
-function path(w,from,to){if(from===to)return [];const dist={[from]:[0,0,'']},prev={},open=[from];const cmp=(a,b)=>a[0]-b[0]||a[1]-b[1]||a[2].localeCompare(b[2]);
+// Fewest segments over built roads, ties broken by edge ids so the choice is stable.
+function path(w,from,to){if(from===to)return [];const dist={[from]:[0,'']},prev={},open=[from];const cmp=(a,b)=>a[0]-b[0]||a[1].localeCompare(b[1]);
  const edgesOf={};for(const e of Object.values(w.edges)){if(e.removing||e.readyAt>w.tick)continue;(edgesOf[e.a]||(edgesOf[e.a]=[])).push(e);(edgesOf[e.b]||(edgesOf[e.b]=[])).push(e);}
- while(open.length){open.sort((a,b)=>cmp(dist[a],dist[b])||a.localeCompare(b));const k=open.shift();if(k===to)break;for(const e of (edgesOf[k]||[]).sort((a,b)=>a.id.localeCompare(b.id))){const n=e.a===k?e.b:e.a,d=[dist[k][0]+1,dist[k][1]+queueCost(w,e),dist[k][2]+e.id];if(!dist[n]||cmp(d,dist[n])<0){dist[n]=d;prev[n]=[k,e.id];if(!open.includes(n))open.push(n);}}}
+ while(open.length){open.sort((a,b)=>cmp(dist[a],dist[b])||a.localeCompare(b));const k=open.shift();if(k===to)break;for(const e of (edgesOf[k]||[]).sort((a,b)=>a.id.localeCompare(b.id))){const n=e.a===k?e.b:e.a,d=[dist[k][0]+1,dist[k][1]+e.id];if(!dist[n]||cmp(d,dist[n])<0){dist[n]=d;prev[n]=[k,e.id];if(!open.includes(n))open.push(n);}}}
  if(!dist[to])return null;const out=[];for(let k=to;k!==from;k=prev[k][0])out.unshift(prev[k][1]);return out;}
 // Cheapest new road between two tiles over passable terrain, reusing existing segments for free.
 function route(w,from,to){const dist={[from]:[0,0,'']},prev={},open=[from];const compare=(a,b)=>a[0]-b[0]||a[1]-b[1]||a[2].localeCompare(b[2]);
@@ -215,7 +216,7 @@ function command(w,c){const t=w.tiles[c.tile],b=t?.building;const fail=m=>{throw
  }else if(c.type==='click'){if(!b||b.type==='town')fail('点击工坊才能生产');const rc=RECIPES[b.type];let n=Math.min(clickPower(w),YARD-t.loose[rc.out]);if(n<=0)fail('堆场已满，先把货运出去');for(const r in rc.in)n=Math.min(n,t.loose[r]);if(n<=0){const missing=Object.keys(rc.in).filter(r=>t.loose[r]<1).map(r=>GOODS[r]).join('和');fail(`没有${missing}可加工`);}for(const r in rc.in){t.loose[r]-=n;w.consumption[r]+=n;}t.loose[rc.out]+=n;w.production[rc.out]+=n;w.manual.out[rc.out]+=n;w.manual.tiles[t.id]=(w.manual.tiles[t.id]||0)+n;w.clicks++;
  }else if(c.type==='worker'){if(!b||b.type==='town')fail('先选择一座已建工坊');if(b.workers.length>=MAX_WORKERS)fail(`每座建筑最多 ${MAX_WORKERS} 名工人，产能要靠新建筑和工人培训`);const cost=workerCost(w,t);pay(w,cost);b.workers.push({id:id(w),paid:cost});
  }else if(c.type==='fireWorker'){if(!b||b.type==='town')fail('请选择工坊');if(!b.workers.length)fail('这里没有工人');refund(w,b.workers.pop().paid);
- }else if(c.type==='tech'){const u=TECH[c.key];if(!u)fail('未知科技');if(techOwned(w,c.key))fail('已经买过这项科技');if(!techAvailable(w,c.key))fail(`先解锁${u.requires.filter(r=>!w.tech[r]).map(r=>TECH[r].name).join('和')}`);pay(w,techCost(w,c.key));w.tech[c.key]++;if(u.kind==='road')w.roadLevel=Math.max(w.roadLevel,u.level);
+ }else if(c.type==='tech'){const u=TECH[c.key];if(!u)fail('未知科技');if(techOwned(w,c.key))fail('已经买过这项科技');if(!techAvailable(w,c.key))fail(`先解锁${u.requires.filter(r=>!w.tech[r]).map(r=>TECH[r].name).join('和')}`);pay(w,techCost(w,c.key));w.tech[c.key]++;
  }else if(c.type==='connect'){const r=connection(w,c.from,c.to);pay(w,r.cost);for(const s of r.segments){const k=edgeId(s.a,s.b);w.edges[k]={id:k,a:s.a,b:s.b,removing:false,readyAt:w.tick,paid:s.cost};}
  }else if(c.type==='demolish'){if(!b||b.type==='town')fail('请选择工坊');refund(w,b.paid+b.workers.reduce((n,m)=>n+m.paid,0));t.building=null;
  }else if(c.type==='removeRoad'){const e=w.edges[c.edge];if(!e)fail('请选择道路');e.removing=true;
@@ -263,7 +264,6 @@ const MILESTONES=[
  {id:'explore4',name:'解锁第四块板块',reward:2000,test:w=>w.unlocked>=4},
  {id:'tool',name:'卖出第一件石头工具',reward:2000,test:w=>Object.values(w.sold).some(s=>s.tool>0)},
  {id:'waterway',name:'开通航道',reward:2000,test:w=>w.tech.waterway>0},
- {id:'stoneroad',name:'全图升级为石头路',reward:3000,test:w=>w.roadLevel>=1},
  {id:'explore5',name:'解锁第五块板块',reward:4000,test:w=>w.unlocked>=5},
  {id:'mine',name:'建成矿山',reward:3000,test:w=>Object.values(w.tiles).some(t=>t.building?.type==='mine')},
  {id:'iron',name:'卖出第一块铁',reward:6000,test:w=>Object.values(w.sold).some(s=>s.iron>0)}];
@@ -278,26 +278,23 @@ function tick(w){if(w.preview)return;w.tick++;const sample={tick:w.tick,out:zero
  // Towns: demand grows into a bounded pool; pieces at the gate sell while the pool wants them.
  for(const t of Object.values(w.tiles)){const b=t.building;if(b?.type!=='town')continue;sample.sales[t.id]=zero();
   for(const[r,d]of Object.entries(buys(w,t.id))){b.demand[r]=Math.min(d.pool,b.demand[r]+d.rate);const n=Math.min(t.loose[r],b.demand[r]);if(!n)continue;t.loose[r]-=n;b.demand[r]-=n;w.consumption[r]+=n;w.sold[t.id][r]+=n;w.money+=n*d.price;w.earned+=n*d.price;sample.income+=n*d.price;sample.sales[t.id][r]+=n;}}
- let ds=demands(w);reconcile(w,ds);
- const left={};for(const e of Object.values(w.edges))if(oldEdges.has(e.id)&&!e.removing&&e.readyAt<=w.tick){left[e.id]=capacity(w);sample.edges[e.id]={capacity:left[e.id],flows:{},blocked:0};}
- let moved=true;while(moved){moved=false;ds=demands(w);const candidates=[];
- for(const s of w.shipments)if(!s.edge&&s.key){const d=ds.find(d=>d.key===s.key);if(d&&s.next)candidates.push({d,s,edge:s.next,from:s.node});}
- for(const d of ds)if(d.target-d.local-allocated(w,d.key)>0){const sources=Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:path(w,t.id,d.tile)})).filter(x=>x.p!==null&&x.p.length).sort((a,b)=>a.p.length-b.p.length||a.p.reduce((n,k)=>n+queueCost(w,w.edges[k]),0)-b.p.reduce((n,k)=>n+queueCost(w,w.edges[k]),0)||a.t.id.localeCompare(b.t.id));if(sources.length){const x=sources[0];candidates.push({d,edge:x.p[0],from:x.t.id});}}
- const valid=c=>{const e=w.edges[c.edge];if(!e||e.removing||!(left[c.edge]>0))return false;if(c.s)return w.shipments.includes(c.s)&&!c.s.edge;return available(w,w.tiles[c.from],c.d.r)>0&&c.d.target-w.tiles[c.d.tile].loose[c.d.r]-allocated(w,c.d.key)>0;};
- // Each source hands its next piece to the most valuable demand asking for it.
- const sourceGroups=new Map();for(const c of candidates)if(!c.s&&valid(c)){const scope='source:'+c.from+':'+c.d.r;if(!sourceGroups.has(scope))sourceGroups.set(scope,[]);sourceGroups.get(scope).push(c);}
- const winners=new Set();for(const[scope,cs]of sourceGroups){const old=w.scheduler[scope];const d=choose(w,scope,cs.map(c=>c.d),()=>true);if(old===undefined)delete w.scheduler[scope];else w.scheduler[scope]=old;winners.add(cs.find(c=>c.d.key===d.key));}
- const spend=c=>{const scope='source:'+c.from+':'+c.d.r;choose(w,scope,sourceGroups.get(scope).map(x=>x.d),d=>d.key===c.d.key);w.tiles[c.from].loose[c.d.r]--;};
- for(const e of Object.values(w.edges).sort((a,b)=>a.id.localeCompare(b.id))){if(!(left[e.id]>0))continue;const cs=candidates.filter(c=>c.edge===e.id),keys=[...new Map(cs.map(c=>[c.d.key,c.d])).values()];const eligible=c=>valid(c)&&(c.s||winners.has(c));const d=choose(w,'edge:'+e.id,keys,d=>cs.some(c=>c.d.key===d.key&&eligible(c)));if(!d)continue;const c=cs.filter(c=>c.d.key===d.key&&eligible(c)).sort((a,b)=>(a.s?.id||'~').localeCompare(b.s?.id||'~'))[0];let s=c.s;if(!s){spend(c);s={id:id(w),key:d.key,r:d.r,node:c.from,destination:d.tile};w.shipments.push(s);}s.edge=e.id;s.from=c.from;s.to=e.a===c.from?e.b:e.a;s.remaining=1;s.next=null;left[e.id]--;const fk=c.from+'>'+s.to+':'+d.r;sample.edges[e.id].flows[fk]=(sample.edges[e.id].flows[fk]||0)+1;moved=true;}
- }
- // Pressure: unmet demand with a willing source is blamed on the saturated roads along its best route.
- ds=demands(w);for(const d of ds){const short=d.target-d.local-allocated(w,d.key);if(short<=0)continue;const v=value(w,d);if(!v)continue;const sources=Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:path(w,t.id,d.tile)})).filter(x=>x.p!==null&&x.p.length).sort((a,b)=>a.p.length-b.p.length||a.t.id.localeCompare(b.t.id));if(!sources.length)continue;for(const k of sources[0].p)if(sample.edges[k]&&left[k]===0)sample.edges[k].blocked+=v*Math.min(short,d.rate);}
+ const ds=demands(w);reconcile(w,ds);
+ // Roads that existed at the start of the round carry freight this round; a new segment opens next round.
+ for(const e of Object.values(w.edges))if(oldEdges.has(e.id)&&!e.removing&&e.readyAt<=w.tick)sample.edges[e.id]={flows:{}};
+ const send=(s,eid)=>{const e=w.edges[eid];s.edge=eid;s.from=s.node;s.to=e.a===s.node?e.b:e.a;s.remaining=1;s.next=null;const fk=s.from+'>'+s.to+':'+s.r;sample.edges[eid].flows[fk]=(sample.edges[eid].flows[fk]||0)+1;};
+ // Freight already under way takes its next segment.
+ for(const s of w.shipments)if(!s.edge&&s.key&&s.next&&sample.edges[s.next])send(s,s.next);
+ // New freight: the most valuable demands are served first, equally valuable ones take turns piece by piece,
+ // and every piece comes from the nearest source that still has one to spare.
+ const groups=new Map();for(const d of ds){const g=d.r+'@'+d.value;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(d);}
+ const source=d=>Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:path(w,t.id,d.tile)})).filter(x=>x.p&&x.p.length&&sample.edges[x.p[0]]).sort((a,b)=>a.p.length-b.p.length||a.t.id.localeCompare(b.t.id))[0];
+ for(const[scope,group]of groups)for(;;){const d=choose(w,scope,group,d=>d.target-d.local-allocated(w,d.key)>0&&source(d));if(!d)break;const x=source(d);x.t.loose[d.r]--;const s={id:id(w),key:d.key,r:d.r,node:x.t.id,destination:d.tile};w.shipments.push(s);send(s,x.p[0]);}
  w.stats.push(sample);while(w.stats.length&&w.stats[0].tick<=w.tick-WINDOW)w.stats.shift();
  for(const m of MILESTONES)if(!w.milestones[m.id]&&m.test(w)){w.milestones[m.id]=w.tick;w.money+=m.reward;w.earned+=m.reward;}
 }
 function totals(w){const sum=zero();for(const t of Object.values(w.tiles))add(sum,t.loose);for(const s of w.shipments)sum[s.r]++;return sum;}
 function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
- if(w?.schemaVersion!==12||!w.tiles||!w.flowers||!Array.isArray(w.shipments)||!Array.isArray(w.stats)||!w.scheduler||!w.milestones||!w.tech||!w.manual||!w.sold||!w.flags||!int(w.tick)||!int(w.serial)||!int(w.money)||!int(w.earned)||!int(w.spent)||!int(w.clicks)||!int(w.seed)||!int(w.unlocked)||!int(w.lastTownUnlock)||![0,1,2].includes(w.roadLevel))throw Error('存档格式不兼容');
+ if(w?.schemaVersion!==14||!w.tiles||!w.flowers||!Array.isArray(w.shipments)||!Array.isArray(w.stats)||!w.scheduler||!w.milestones||!w.tech||!w.manual||!w.sold||!w.flags||!int(w.tick)||!int(w.serial)||!int(w.money)||!int(w.earned)||!int(w.spent)||!int(w.clicks)||!int(w.seed)||!int(w.unlocked)||!int(w.lastTownUnlock))throw Error('存档格式不兼容');
  for(const k of Object.keys(TECH))if(!int(w.tech[k])||(!TECH[k].repeat&&w.tech[k]>1))throw Error('科技无效');
  for(const k of Object.keys(w.tech))if(!TECH[k])throw Error('科技无效');
  const qty=a=>{if(!a||!RES.every(r=>int(a[r])))throw Error('材料数量无效');},ids=new Set();const unique=n=>{if(typeof n!=='string'||!/^\d+$/.test(n)||+n>w.serial||ids.has(n))throw Error('对象 ID 无效');ids.add(n);};
@@ -323,7 +320,7 @@ function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
  qty(w.initial);qty(w.production);qty(w.consumption);const total=totals(w);for(const r of RES)if(total[r]!==w.initial[r]+w.production[r]-w.consumption[r])throw Error('资源账本不守恒');return true;}
 function apply(w,c){const next=copy(w);command(next,c);validate(next);return next;}
 function load(saved){const next=copy(saved);validate(next);return next;}
-const api={RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,ROAD_CAP,ROAD_NAME,TOWN_RATE,TOWN_PAYBACK,START_MONEY,START_TILE,START_DESIGN,FLOWER_PRICES,TUTORIAL,TUTORIAL_SPEC,DIRS,MILESTONES,
- copy,zero,add,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,queueCost,connection,command,tick,totals,validate,apply,load,demands,allocated,buffer,available,buildingCost,workerCost,techCost,techOwned,techAvailable,workerPower,clickPower,edgeCost,segmentCost,townLevelCost,income,buys,recentSales,linkReason,terrainFactor,passable,capacity,rate,value,saleValue,earning,previewRoute,producible,nextGoods};
+const api={RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,CRAFT_BASE,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,TOWN_RATE,TOWN_PAYBACK,START_MONEY,START_TILE,START_DESIGN,FLOWER_PRICES,TUTORIAL,TUTORIAL_SPEC,DIRS,MILESTONES,
+ copy,zero,add,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,command,tick,totals,validate,apply,load,demands,allocated,buffer,available,buildingCost,workerCost,techCost,techOwned,techAvailable,workerPower,clickPower,edgeCost,segmentCost,townLevelCost,income,buys,recentSales,linkReason,terrainFactor,passable,rate,value,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

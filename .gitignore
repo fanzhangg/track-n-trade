@@ -1,0 +1,6 @@
+# Local Kenney source library; commit only the curated assets used by the game.
+/assets/Kenney Game Assets All-in-1 3.7.0/
+/assets/Kenney Game Assets All-in-1 3.7.0.zip
+
+# Local previews, exploratory scripts and test saves (existing tracked files are unaffected).
+/tmp/

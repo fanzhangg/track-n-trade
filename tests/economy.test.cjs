@@ -95,9 +95,7 @@ test('roads: no segment through a mountain, none onto a lake before the waterway
  const lake=tilesOf(w,t=>t.terrain==='lake')[0];assert.ok(!E.passable(w,lake));w=tech(w,'sawmill','waterway');assert.ok(E.passable(w,lake));
  const [w2,s]=build(w,'sawmill');w=w2;const camp=CAMP;
  const r=E.connection(w,camp,s);for(const seg of r.segments){assert.equal(seg.cost,250*seg.factor);assert.ok(w.tiles[seg.a]&&w.tiles[seg.b],'never into fog');}
- w=tech(w,'quarry','stoneroad');assert.equal(w.roadLevel,1);assert.equal(E.capacity(w),12);
- const r2=E.connection(w,camp,s);assert.deepEqual(r2.segments.map(x=>x.cost),r.segments.map(x=>x.cost),'road level does not change segment prices');
- w=tech(w,'mason','mine','smelter','rail');assert.equal(w.roadLevel,2);assert.equal(E.capacity(w),36);w=tech(w,'cart');assert.equal(E.capacity(w),72);
+ assert.ok(!('stoneroad' in E.TECH)&&!('rail' in E.TECH)&&!('cart' in E.TECH),'roads have no tiers or capacity techs');
 });
 test('recipes: a workshop makes min(rate, each input) and consumes one of every input per piece',()=>{
  let w,m;[w,m]=build(fresh(),'mason');w=hire(w,m,3);
@@ -115,12 +113,13 @@ test('tech tree: buildings need their tech, prerequisites gate purchases, one-of
  assert.throws(()=>E.apply(w,{type:'tech',key:'mine'}),/先解锁/);
  w=tech(w,'quarry');w=E.apply(w,{type:'build',tile:rock.id,buildType:'quarry'});
  assert.throws(()=>E.apply(w,{type:'tech',key:'quarry'}),/已经买过/);
- assert.equal(E.techCost(w,'training'),5000);w=tech(w,'training');assert.equal(E.techCost(w,'training'),10000);assert.equal(E.workerPower(w),2);
+ assert.equal(E.techCost(w,'campCraft'),2000);w=tech(w,'campCraft');assert.equal(E.techCost(w,'campCraft'),4000);assert.equal(E.workerPower(w,'camp'),2);assert.equal(E.workerPower(w,'quarry'),1,'craft is per building type');
+ assert.ok(!E.techAvailable(w,'sawmillCraft'),'a craft needs its building');w=tech(w,'sawmill');assert.ok(E.techAvailable(w,'sawmillCraft'));assert.equal(E.techCost(w,'sawmillCraft'),4000);
  assert.equal(E.techCost(w,'mine'),5000);assert.equal(E.techCost(w,'smelter'),40000);
- assert.ok(!E.techAvailable(w,'mine'));w=tech(w,'sawmill','mason','stoneroad');assert.ok(E.techAvailable(w,'mine'));
+ assert.ok(!E.techAvailable(w,'mine'));w=tech(w,'mason');assert.ok(E.techAvailable(w,'mine'));
 });
 test('a mine only stands on ore, a camp only on forest, a quarry only on rock, workshops on grass',()=>{
- let w=rich(fresh());w=tech(w,'quarry','sawmill','mason','stoneroad','mine','smelter');
+ let w=rich(fresh());w=tech(w,'quarry','sawmill','mason','mine','smelter');
  const at=terrain=>tilesOf(w,t=>t.terrain===terrain&&!t.building)[0].id;
  assert.throws(()=>E.apply(w,{type:'build',tile:at('rock'),buildType:'mine'}),/不适合/);
  assert.throws(()=>E.apply(w,{type:'build',tile:at('grass'),buildType:'camp'}),/不适合/);
@@ -137,7 +136,7 @@ test('freight goes to the most valuable door: a mason outbids the log-buying tow
  assert.equal(masonLog.value,120);assert.equal(townLog.value,20);assert.ok(ds.indexOf(masonLog)<ds.indexOf(townLog),'higher value first');
  run(w,12);assert.ok(w.tiles[m].loose.log>0||w.consumption.log>w.sold[town].log,'the mason gets logs before the town');
 });
-test('two goods sharing a road alternate instead of doubling throughput; capacity is the global road level',()=>{
+test('two goods sharing a road both get through; a segment has no capacity limit',()=>{
  let {w,town}=started(1);w=rich(w);w=hire(w,CAMP,3);
  w=tech(w,'quarry');let q;[w,q]=build(w,'quarry');w=hire(w,q,3);
  w=unlock(w);const stoneTown=townTiles(w).find(k=>w.tiles[k].building.buys.stone);
@@ -145,7 +144,6 @@ test('two goods sharing a road alternate instead of doubling throughput; capacit
  w.tiles[stoneTown].building.buys.log=25;
  w=E.apply(w,{type:'connect',from:q,to:stoneTown});w=E.apply(w,{type:'connect',from:CAMP,to:stoneTown});
  run(w,40);
- for(const s of w.stats)for(const[k,e]of Object.entries(s.edges))assert.ok(Object.values(e.flows).reduce((a,b)=>a+b,0)<=e.capacity,'never above capacity');
  assert.ok(w.sold[stoneTown].stone>0&&w.sold[stoneTown].log>0,'both goods got through');
 });
 test('town levels are priced by what they add: 2 x sum of prices x 30 rounds, x1.5 per level; demand pool bounded',()=>{
