@@ -54,7 +54,7 @@ test('any fog flower can be unlocked in any direction; the n-th unlock is always
  // Sandbox flowers cost 30 rounds of the current income, never below the floor: with no sales yet it is the floor.
  assert.equal(E.flowerCost(w),E.FLOWER_MIN);
  run(w,10);for(const s of w.stats)s.income=400;
- assert.equal(E.flowerCost(w),400*E.PAYBACK);const slot=fogs(w).find(k=>w.flowers[k].hint==='town');assert.equal(E.flowerCost(w,w.flowers[slot]),400*E.PAYBACK);const money=w.money;w=unlock(w,slot);assert.equal(money-w.money,400*E.PAYBACK);
+ assert.equal(E.flowerCost(w),400*E.GEN.flowerPayback);const slot=fogs(w).find(k=>w.flowers[k].hint==='town');assert.equal(E.flowerCost(w,w.flowers[slot]),400*E.GEN.flowerPayback);const money=w.money;w=unlock(w,slot);assert.equal(money-w.money,400*E.GEN.flowerPayback);
 });
 test('the tutorial generator satisfies its constraints over a thousand seeds',()=>{
  const forbid=[['forest','lake','ore'],['rock','lake','ore'],['forest','lake','ore'],['forest','rock','ore'],['forest','lake','ore']];
@@ -75,7 +75,7 @@ test('the sandbox generator obeys its rules over many seeds: valid layouts, town
    else if(f.hint==='unknown'){// An unknown back turns into a town after three townless unlocks, unless a sandbox town or a town-hinted fog is next door.
     const since=f.order-Math.max(0,...Object.values(w.flowers).filter(g=>g.state==='placed'&&g.design.buys&&g.order<f.order).map(g=>g.order));
     const crowded=Object.values(w.flowers).some(g=>g.id!==f.id&&((g.state==='placed'&&g.order>E.TUTORIAL&&g.design.buys)||(g.state==='fog'&&g.hint==='town'))&&Math.max(Math.abs(f.a-g.a),Math.abs(f.b-g.b),Math.abs(f.a+f.b-g.a-g.b))<=1);
-    assert.ok(since<3||crowded,`seed ${seed}: unknown flower ${f.order} with room stayed townless after ${since} unlocks`);}
+    assert.ok(since<E.GEN.townEvery||crowded,`seed ${seed}: unknown flower ${f.order} with room stayed townless after ${since} unlocks (townEvery ${E.GEN.townEvery})`);}
    assert.ok(fogs(w).some(k=>w.flowers[k].hint==='town'),'a town is always on offer');
    for(const o of tiles.map((t,i)=>t==='ore'?i:-1).filter(i=>i>=0))assert.ok(tiles.some((t,i)=>t==='mountain'&&i!==o),'ore only with a mountain');}
   E.validate(w);}
@@ -238,6 +238,7 @@ test('sparse maps: sandbox towns never touch, every sandbox flower has 2-3 walls
   for(const a of towns)for(const b of towns)if(a!==b)assert.ok(gap(a,b)>=2,`towns ${a.id} and ${b.id} touch (seed ${seed})`);
   for(const f of fs){const tiles=[f.design.center,...f.design.ring],walls=tiles.filter(t=>['mountain','lake'].includes(t)).length;
    assert.ok(walls>=2&&walls<=3,`${f.id} has ${walls} walls (seed ${seed})`);
+   assert.ok(tiles.filter(t=>t==='rock').length<=1&&tiles.filter(t=>t==='ore').length<=1,'rock and ore are single tiles');
    if(f.design.buys){assert.ok(!tiles.some(t=>['forest','rock','ore'].includes(t)),`town flower ${f.id} carries raw (seed ${seed})`);assert.ok(tiles.filter(t=>t==='grass').length<=3);}}}
 });
 test('sparse maps: a town back is honoured, and an unknown back next to a town-hinted fog stays townless',()=>{
@@ -303,9 +304,10 @@ test('rarity follows price: over many sandbox flowers forest outnumbers rock, ro
   const tiles=Object.values(w.tiles).filter(t=>w.flowers[t.flower].order>E.TUTORIAL);
   for(const t of tiles){if(cnt[t.terrain]!=null)cnt[t.terrain]++;
    if(['rock','ore'].includes(t.terrain))for(const[dq,dr]of E.DIRS){const u=w.tiles[`${t.q+dq},${t.r+dr}`];if(u&&['forest','rock','ore'].includes(u.terrain)&&w.flowers[u.flower].order>E.TUTORIAL&&u.flower!==t.flower)touching++;}}
-  for(const f of sandbox(w)){if(!f.design.buys)continue;const raws=new Set(Object.keys(f.design.buys).flatMap(r=>E.RAW[r]));
+  for(const f of sandbox(w)){// Only goods taken straight from the land (log, stone) bar their terrain next door; processed goods merely thin it.
+   if(!f.design.buys)continue;const direct=r=>E.BUILDINGS.some(b=>E.RECIPES[b].out===r&&!Object.keys(E.RECIPES[b].in).length);const raws=new Set(Object.keys(f.design.buys).filter(direct).flatMap(r=>E.RAW[r]));
    for(const g of sandbox(w))if(gap(f,g)===1&&[g.design.center,...g.design.ring].some(t=>raws.has(t))&&g.order>f.order)nextDoor++;}}
  assert.ok(cnt.forest>cnt.rock&&cnt.rock>cnt.ore,JSON.stringify(cnt));
- assert.equal(nextDoor,0,'a flower placed after a town never carries the raw that town buys');
+ assert.equal(nextDoor,0,'a flower placed after a town never carries the raw of a land good that town buys');
  assert.ok(touching<=2,`rock/ore touching other raw across flowers: ${touching}`);
 });

@@ -51,10 +51,10 @@ const TURN=[0,.5,1,1.5];
 // global era. Residents, crafts and eras are all priced by what they add: PAYBACK rounds of it, x GROWTH per step.
 const TOWN_RATE=2,MAX_RESIDENTS=3,PAYBACK=30,GROWTH=1.5,REFUND=1,START_MONEY=2500,START_CAMP_PAID=1200;
 // The start budget carries the first flower plus the road to its town, bends included: tight, never a dead end.
-// The five tutorial flowers have fixed prices. After that a flower costs PAYBACK rounds of the current income
-// (floored at FLOWER_MIN), like every other purchase: the wait for the next flower stays constant instead of
-// growing geometrically, and idling to lower the price costs exactly as much as it saves.
-const FLOWER_PRICES=[500,2000,5000,15000,40000],FLOWER_MIN=5000,TUTORIAL=5;
+// The five tutorial flowers have fixed prices. After that a flower costs GEN.flowerPayback rounds of the current
+// income (floored at FLOWER_MIN): a third of what other purchases cost, because a sparse map only pays off if the
+// player keeps opening it. The wait for the next flower stays constant instead of growing geometrically.
+const FLOWER_PRICES=[500,2000,5000,15000,40000],FLOWER_MIN=2500,TUTORIAL=5;
 // Every fog flower shows a hint on its back, fixed the moment the fog appears and honoured by the generator when it
 // is unlocked: `town` promises a town, `resource` promises none (and leans on raw terrain), `unknown` keeps the old
 // odds and sells at a discount. During the tutorial every fog reads `town`, because the next unlock always is one.
@@ -123,6 +123,10 @@ function validDesign(tiles,ringTown=false){const idx=t=>tiles.map((x,i)=>x===t?i
  if(lakes.length>1&&!connectedSlots(lakes))return false;
  if(mts.length>1&&!connectedSlots(mts))return false;
  if(ores.length&&!ores.every(o=>mts.some(m=>localAdj(o,m))))return false;
+ // Forest grows in one clump; a rock or ore tile stands alone, never touching another raw tile.
+ const forests=idx('forest'),lone=[...idx('rock'),...ores],raw=[...forests,...lone];
+ if(forests.length>1&&!connectedSlots(forests))return false;
+ if(lone.some(a=>raw.some(b=>b!==a&&localAdj(a,b))))return false;
  if(tiles.slice(1).filter(t=>!WALL.includes(t)).length<4)return false;
  return true;}
 // Up to `want` distinct valid layouts drawn from the same pool: the orientation step picks among them.
@@ -132,7 +136,7 @@ function drawDesigns(rand,must,pool,cap,ringTown=false,want=CANDIDATES){const ou
  if(tiles.length<7)continue;shuffle(rand,tiles);const k=tiles.join();if(!seen.has(k)&&validDesign(tiles,ringTown)){seen.add(k);out.push(tiles);}}
  return out;}
 const drawTiles=(rand,must,pool,cap,ringTown=false)=>drawDesigns(rand,must,pool,cap,ringTown,1)[0]||null;
-function tutorialDesign(spec,rand){const layouts=drawDesigns(rand,spec.must,spec.pool,spec.cap,true);if(!layouts.length)throw Error('教学板块生成失败');return{layouts,buys:copy(spec.buys)};}
+function tutorialDesign(spec,rand){const layouts=drawDesigns(rand,spec.must,spec.pool,spec.cap,true);if(!layouts.length)throw Error('教学板块生成失败');return{layouts,buys:copy(spec.buys),water:spec.must.lake?'lake':null};}
 // Sandbox flowers answer the current economy: a town every third flower at most two apart, buying what the player
 // makes but cannot sell twice over (or the next good the tree unlocks), priced up with distance; terrain the player
 // has run out of gets a heavier weight; ore only appears once the tree has reached mines.
@@ -151,7 +155,14 @@ function freeTiles(w,terrain){return Object.values(w.tiles).filter(t=>t.terrain=
 // tiles are walls, a town flower is town + 3 grass + 3 walls, and raw the towns lack is drawn more often.
 // {townGap:0,townEvery:2,townChance:.4,walls:[0,3],grass:3,townGrass:6} reproduces the v0.13 dense maps.
 // flowerPayback: rounds of income a sandbox flower costs (other purchases use PAYBACK). tutorialPrice scales the five fixed prices.
-const GEN={flowerPayback:PAYBACK,tutorialPrice:1,townGap:1,townEvery:3,townChance:.25,walls:[2,3],grass:1.5,townGrass:3,rawMax:2,demandAware:true,nextDoor:true};
+// river: a river starts with probability seed on a flower with no water around, as a line of two or three tiles;
+// a flower next to a river's end continues it with probability flow (one more line, laid to reach as far from the
+// upstream tile as it can) and with probability pool ends it in a lake instead; otherwise the river stops.
+// lake: water starts rarely (seed weight) but once a neighbouring flower has water this flower draws it at the grow
+// weight and, with probability spread, must carry two lake tiles, so lakes come as one big body, not puddles.
+// raw: draw weight per raw terrain, i.e. rarity follows price: forest is common and grows in clumps (up to
+// rawMax per flower, always connected), rock and ore are single tiles standing alone.
+const GEN={flowerPayback:10,tutorialPrice:1,townGap:1,townEvery:4,townChance:.15,walls:[2,3],grass:1.5,townGrass:3,rawMax:3,raw:{forest:2.2,rock:.55,ore:.15},lake:{seed:.5,grow:3.5,spread:.85},river:{seed:.12,flow:.9,pool:.25},demandAware:true,nextDoor:false};
 // Sandbox towns and town-hinted fog this flower would crowd. The five tutorial towns are a deliberate cluster
 // around the start and do not count, or the whole first frontier would be barred to towns.
 const townFlowers=w=>Object.values(w.flowers).filter(x=>(x.state!=='fog'&&x.order>TUTORIAL&&x.design?.buys)||(x.state==='fog'&&x.hint==='town'));
@@ -159,7 +170,11 @@ const flowerGap=(f,g)=>Math.max(Math.abs(f.a-g.a),Math.abs(f.b-g.b),Math.abs(f.a
 const townRoom=(w,f)=>townFlowers(w).every(g=>g.id===f.id||flowerGap(f,g)>GEN.townGap);
 // Placed flowers touching f, and what their towns buy / which raw terrain they carry.
 const neighbours=(w,f)=>Object.values(w.flowers).filter(g=>g.state==='placed'&&flowerGap(f,g)===1);
-const nextDoorBuys=(w,f)=>new Set(neighbours(w,f).flatMap(g=>g.design.buys?Object.keys(g.design.buys):[]));
+// Only sandbox towns push their raw away: the tutorial cluster buys wood in every form and would banish forest
+// from the whole first ring. A good made straight from the land (log, stone) bars its terrain next door; a
+// processed good only thins it, since the workshop, not the town, is what needs to sit near the raw.
+const nextDoorBuys=(w,f)=>new Set(neighbours(w,f).flatMap(g=>g.design.buys&&g.order>TUTORIAL?Object.keys(g.design.buys):[]));
+const directGood=r=>BUILDINGS.some(b=>RECIPES[b].out===r&&!Object.keys(RECIPES[b].in).length);
 const nextDoorRaw=(w,f)=>new Set(neighbours(w,f).flatMap(g=>[g.design.center,...g.design.ring]).filter(t=>['forest','rock','ore'].includes(t)));
 // Raw terrain the economy is short of: every good a town buys, followed down its recipe to the terrain it grows on,
 // counts once per town that buys it and has no free tile of that terrain anywhere on the map.
@@ -181,37 +196,56 @@ function sandboxDesign(w,f,rand){
   const second=SELLABLE.filter(r=>r!==first&&(producible(w).includes(r)||next.includes(r)));
   if(second.length&&rand()<.5){const r=pick(rand,second);buys[r]=Math.round(price(r)*.6);}}
  const forbid=new Set(buys?Object.keys(buys).flatMap(r=>RAW[r]):[]);
- if(!GEN.nextDoor)for(const r of nextDoorBuys(w,f))for(const t of RAW[r])forbid.add(t);
- const deficit=rawDeficit(w);
- const weight={grass:GEN.grass,forest:1+deficit.forest,rock:1+deficit.rock,mountain:1,lake:.6,ore:(w.tech.mine||w.tech.mason)?.6+deficit.ore:0};
- if(!freeTiles(w,'forest'))weight.forest+=2;if(!freeTiles(w,'rock'))weight.rock+=1;if(weight.ore&&!freeTiles(w,'ore'))weight.ore+=.9;
+ const thin=new Set();if(!GEN.nextDoor)for(const r of nextDoorBuys(w,f))for(const t of RAW[r])(directGood(r)?forbid:thin).add(t);
+ const deficit=rawDeficit(w),waterOf=g=>[g.design.center,...g.design.ring].filter(t=>t==='lake').length;
+ const nearLake=neighbours(w,f).filter(g=>g.design.water!=='river').reduce((n,g)=>n+waterOf(g),0),nearRiver=neighbours(w,f).filter(g=>g.design.water==='river').reduce((n,g)=>n+waterOf(g),0);
+ // What water this flower carries: a river flowing on, a river ending in a lake, a lake growing, or a river born.
+ let water=null;if(nearRiver&&!nearLake){const x=rand();water=x<GEN.river.flow?'river':x<GEN.river.flow+GEN.river.pool?'lake':null;}
+ else if(nearLake)water=rand()<GEN.lake.spread?'lake':null;
+ else if(rand()<GEN.river.seed)water='river';
+ const weight={grass:GEN.grass,forest:GEN.raw.forest+deficit.forest,rock:GEN.raw.rock+deficit.rock,mountain:1,lake:water==='lake'?GEN.lake.grow:water==='river'?0:GEN.lake.seed,ore:(w.tech.mine||w.tech.mason)?GEN.raw.ore+deficit.ore:0};
+ if(!freeTiles(w,'forest'))weight.forest+=2;if(!freeTiles(w,'rock'))weight.rock+=1;if(weight.ore&&!freeTiles(w,'ore'))weight.ore+=.25;
  if(hint==='resource'){weight.forest*=2;weight.rock*=2;weight.ore*=2;}
- for(const t of forbid)weight[t]=0;
+ for(const t of forbid)weight[t]=0;for(const t of thin)if(!forbid.has(t))weight[t]*=.3;
  // With townGrass below 6 a town flower is grass and walls only: its raw lives on other flowers and needs a road.
  if(buys&&GEN.townGrass<6){weight.forest=0;weight.rock=0;weight.ore=0;}
  const pool=[];for(const t in weight)for(let i=0;i<Math.round(weight[t]*5);i++)pool.push(t);
  const must=buys?{town:1}:{};if(weight.ore)must.mountain=1;
  const[wallMin,wallMax]=GEN.walls;if(wallMin>(must.mountain||0))must.mountain=wallMin;
- const cap={mountain:wallMax,lake:Math.min(3,wallMax),ore:1,forest:GEN.rawMax,rock:GEN.rawMax,town:1};
+ // Water counts towards the walls: a lake brings two or three tiles, a river a line of two or three.
+ if(water){must.lake=water==='lake'&&nearRiver?3:2;must.mountain=Math.max(weight.ore?1:0,(must.mountain||0)-must.lake);}
+ const cap={mountain:wallMax,lake:Math.min(3,wallMax),ore:1,forest:GEN.rawMax,rock:1,town:1};
  if(buys)cap.grass=GEN.townGrass;
- const layouts=drawDesigns(rand,must,pool,cap);
- if(!layouts.length)throw Error('板块生成失败');
- return{layouts,buys};}
+ let layouts=drawDesigns(rand,must,pool,cap);
+ // A river is a line: two tiles, or three in a row through the centre. Keep only such layouts when there are any.
+ if(water==='river'){const line=layouts.filter(t=>{const ws=t.map((x,i)=>x==='lake'?i:-1).filter(i=>i>=0);return ws.length===2||(ws.length===3&&ws.includes(0)&&ws.filter(i=>i>0).reduce((a,b)=>Math.abs(a-b),0)===3);});if(line.length)layouts=line;}
+ // Water plus the other musts can be impossible in seven tiles: then the water simply stops here.
+ if(!layouts.length&&must.lake){delete must.lake;water=null;layouts=drawDesigns(rand,must,pool,cap);}
+ if(!layouts.length){water=null;layouts=drawDesigns(rand,must,pool.filter(t=>t!=='lake'),cap);}
+ if(!layouts.length)throw Error('板块生成失败 '+JSON.stringify({must,cap,buys}));
+ return{layouts,buys,water:layouts.some(t=>t.includes('lake'))?water:null};}
 // There is no rotating: the engine lays the flower down in the orientation (and layout) that fits the land around
 // it. Mountains and lakes continue ranges on the neighbouring flowers, the passable border to the rest of the map
 // is kept to a couple of tiles so ridges have passes rather than gaps, and while nothing earns yet the first road
 // to the new town must be affordable. Terrain is fate; the road is the decision.
 const CANDIDATES=12;
 function orient(w,f,draft,rand){const at=(q,r)=>w.tiles[key(q,r)];let best=null;
- for(const tiles of draft.layouts)for(let rotation=0;rotation<6;rotation++){const g={...f,design:{center:tiles[0],ring:tiles.slice(1),buys:draft.buys},rotation};
-  let ridge=0,passes=0,join=0;
+ for(const tiles of draft.layouts)for(let rotation=0;rotation<6;rotation++){const g={...f,design:{center:tiles[0],ring:tiles.slice(1),buys:draft.buys,water:draft.water||null},rotation};
+  let ridge=0,passes=0,join=0,cluster=0,river=0;const RAWT=['forest','rock','ore'];
+  // A river continues from the upstream water tile it touches and runs as far from it as the flower allows.
+  if(draft.water){const mine=flowerTiles(g).filter(p=>slotTerrain(g.design,p.slot)==='lake');let up=null;
+   for(const p of mine)for(const[dq,dr]of DIRS){const t=at(p.q+dq,p.r+dr);if(t&&t.terrain==='lake'&&w.flowers[t.flower].design.water==='river')up=up||t;}
+   if(up){river+=6;if(draft.water==='river')river+=2*Math.max(...mine.map(p=>hexDist(p,up)));}
+   else if(draft.water==='river'&&Object.values(w.tiles).some(t=>t.terrain==='lake'&&w.flowers[t.flower].design.water==='river'&&neighbours(w,f).some(n=>n.id===t.flower)))river-=6;}
   for(const p of flowerTiles(g)){const terrain=slotTerrain(g.design,p.slot);
    for(const[dq,dr]of DIRS){const t=at(p.q+dq,p.r+dr);if(!t)continue;
-    if(WALL.includes(terrain)&&WALL.includes(t.terrain))ridge+=terrain===t.terrain?2:1;
-    if(!WALL.includes(terrain)&&!WALL.includes(t.terrain)){passes++;join=1;}}}
-  let score=ridge+(passes<=2?1:-(passes-2)*.7)+rand()*.5;
+    if(WALL.includes(terrain)&&WALL.includes(t.terrain))ridge+=terrain==='lake'&&t.terrain==='lake'?3:terrain===t.terrain?3:1;
+    if(!WALL.includes(terrain)&&!WALL.includes(t.terrain)){passes++;join=1;}
+    // Rock and ore keep their distance from every other raw tile across the border; forest may join a forest.
+    if(RAWT.includes(terrain)&&RAWT.includes(t.terrain))cluster+=terrain==='forest'&&t.terrain==='forest'?-1.5:1.5;}}
+  let score=ridge-cluster+river+(passes<=2?1:-(passes-2)*.7)+rand()*.5;
   if(!join)score-=50;
-  if(!earning(w)&&g.design.buys){const r=previewRoute(w,g);if(r?.unreachable)score-=100;else if(r&&r.cost>w.money)score-=30;else if(r)score+=20;}
+  if(!earning(w)&&g.design.buys){const r=previewRoute(w,g);if(r?.unreachable)score-=100;else if(r&&r.cost>w.money)score-=100;else if(r)score+=20;}
   if(!best||score>best.score)best={score,design:g.design,rotation};}
  return best;}
 function generateFlower(w,n,f){const rand=rng(mix(w.seed,n));const draft=n<=TUTORIAL?tutorialDesign(TUTORIAL_SPEC[n-1],rand):sandboxDesign(w,f,rand);return orient(w,f,draft,rand);}
