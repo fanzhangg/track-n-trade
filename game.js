@@ -1,7 +1,7 @@
 'use strict';
 const E = TradeEngine;
 const $ = id => document.getElementById(id);
-const SAVE = 'tnt-mvp-v14';
+const SAVE = 'tnt-mvp-v15';
 const names = Object.assign({town:'城镇'}, E.GOODS, E.TERRAIN_NAME, Object.fromEntries(Object.entries(E.RECIPES).map(([k, r]) => [k, r.name])));
 const colors = {forest:'var(--terrain-forest)',grass:'var(--terrain-grass)',rock:'var(--terrain-rock)',ore:'var(--terrain-ore)',mountain:'var(--terrain-mountain)',lake:'var(--terrain-lake)',town:'var(--terrain-town)',fog:'var(--terrain-fog)',
  log:'var(--goods-log)',stone:'var(--goods-stone)',board:'var(--goods-board)',tool:'var(--goods-tool)',ore_good:'var(--goods-ore)',iron:'var(--goods-iron)'};
@@ -31,7 +31,7 @@ let storageBlocked = false, welcome = '', popTick = -1, mapKey = '', hovered = n
 try {
  const raw = localStorage.getItem(SAVE);
  if (raw) { world = E.load(JSON.parse(raw)); welcome = '已恢复进度'; }
- else if (['tnt-mvp-v13','tnt-mvp-v12','tnt-mvp-v11','tnt-mvp-v10','tnt-mvp-v9','tnt-mvp-v8'].some(k => localStorage.getItem(k))) welcome = 'v0.13：道路只负责连通，工人培训改为按建筑类型的工艺升级。旧存档已保留但不再读取。';
+ else if (['tnt-mvp-v14','tnt-mvp-v13','tnt-mvp-v12','tnt-mvp-v11','tnt-mvp-v10','tnt-mvp-v9','tnt-mvp-v8'].some(k => localStorage.getItem(k))) welcome = 'v0.13：道路只负责连通，城镇改为居民制，新增时代和按建筑类型的工艺。旧存档已保留但不再读取。';
 } catch {
  storageBlocked = true;
  welcome = '原存档无法读取，已保留；当前进度可通过导出保存';
@@ -61,7 +61,7 @@ function act(command, message) {
   return true;
  } catch (error) { toast(error.message); return false; }
 }
-const messages = {build:'已建成',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',townLevel:`城镇已扩建，每种货每回合多收 ${E.TOWN_RATE} 件`,tech:'科技已解锁',removeRoad:'在途货物通过后拆除，全额退款',restoreRoad:'已撤销拆除',rotate:'',place:'板块已放下'};
+const messages = {build:'已建成',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',resident:'已加一名居民',tech:'科技已解锁',removeRoad:'在途货物通过后拆除，全额退款',restoreRoad:'已撤销拆除',rotate:'',place:'板块已放下'};
 function bindCommands(root) {
  for (const b of root.querySelectorAll('[data-command]')) b.onclick = () => {
   const c = JSON.parse(b.dataset.command);
@@ -288,8 +288,8 @@ function buildMap() {
  mapKey = key;
  svg.innerHTML = `<g id="fog"></g><g id="terrain">${Object.values(world.tiles).map(t => {
   const [x,y] = position(t);
-  return `<g class="hex" data-tile="${t.id}" tabindex="0" role="button"><polygon class="ground" points="${hexPoints(x,y,51)}" fill="${colors[t.terrain]}" stroke="${colors[t.terrain]}"/><g class="tile-content" transform="translate(${x},${y})"></g><g class="tile-crew" transform="translate(${x},${y})" pointer-events="none"></g></g>`;
- }).join('')}</g><g id="highlight" pointer-events="none"></g><g id="flower-preview"></g><g id="roads"></g><g id="freight" pointer-events="none"></g><g id="pops" pointer-events="none"></g><g id="preview" pointer-events="none"></g>`;
+  return `<g class="hex" data-tile="${t.id}" tabindex="0" role="button"><polygon class="ground" points="${hexPoints(x,y,51)}" fill="${colors[t.terrain]}" stroke="${colors[t.terrain]}"/></g>`;
+ }).join('')}</g><g id="highlight" pointer-events="none"></g><g id="flower-preview"></g><g id="roads"></g><g id="freight" pointer-events="none"></g><g id="tile-ui" pointer-events="none">${Object.values(world.tiles).map(t=>{const [x,y]=position(t);return `<g data-tile-ui="${t.id}" transform="translate(${x},${y})"><g class="tile-content"></g><g class="tile-crew"></g></g>`;}).join('')}</g><g id="pops" pointer-events="none"></g><g id="preview" pointer-events="none"></g>`;
  $('fog').innerHTML = Object.values(world.flowers).filter(f => f.state === 'fog').map(f => {
   const pts = flowerPoints(f), [cx, cy] = pts[0];
   return `<g class="fog-flower" data-flower="${f.id}" tabindex="0" role="button" aria-label="迷雾板块，解锁 ${coins(E.flowerCost(world))}">${pts.map(([x,y]) => `<polygon class="fog-hex" points="${hexPoints(x,y,51)}"/>`).join('')}<path class="fog-edge" d="${flowerOutline(f)}"/><text x="${cx}" y="${cy - 4}" text-anchor="middle" class="fog-label">解锁</text><text x="${cx}" y="${cy + 12}" text-anchor="middle" class="fog-price"></text></g>`;
@@ -379,19 +379,13 @@ function renderMap() {
   if (b?.type === 'town') {
    const earning=Object.entries(E.buys(world,t.id)).reduce((n,[r,d])=>n+st.sales(t.id,r)*d.price,0);
    const linked=connectedTowns().includes(t.id);
-   content=`${glyph('town',-16,-46,32,'')}<text y="-2" text-anchor="middle" class="tile-label">城镇 Lv.${b.level+1}<tspan class="tile-status ${linked?'':'alert'}"> ${linked?`+${fmt(earning)}/回合`:'未连路'}</tspan></text>`;
-   content+=Object.entries(E.buys(world,t.id)).map(([r,d],i)=>{
-    const y=11+i*11, full=saturated(t.id,r,st);
-    const x=full?-38:-24;
-    return glyph(r,x,y-10,12,'')+`<text x="${x+15}" y="${y}" class="price-label">${d.price}金${full?'<tspan class="tile-status alert"> 收不下了</tspan>':''}</text>`;
-   }).join('');
+   const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,full:saturated(t.id,id,st)}));
+   content=BuildingTiles.render({type:'town',name:'城镇',residents:b.residents,offers,status:linked?`+${fmt(earning)}金/回合`:'未连路',alert:!linked});
   } else if (b) {
-   content=glyph(b.type,-24,-46,48,'');
-   const rc=E.RECIPES[b.type], stall=stallOf(t);
-   if(stall)content+=`<text y="13" text-anchor="middle" class="tile-status alert">${stall}</text>`;
-   const shown=[...Object.keys(rc.in),rc.out].map(g=>[g,t.loose[g]]).filter(([,n])=>n>0);
-   const x0=-shown.length*17;
-   content+=shown.map(([g,n],i)=>glyph(g,x0+i*34,18,9,'')+`<text x="${x0+i*34+11}" y="25.5" class="tile-stock ${n>=E.YARD?'alert':''}">${n}</text>`).join('');
+   const rc=E.RECIPES[b.type],stall=stallOf(t),count=t.loose[rc.out];
+   const status=stall||(count>=E.YARD?'满仓 · 待运出':!b.workers.length?'点击生产':'生产中');
+   content=BuildingTiles.render({type:b.type,name:names[b.type],output:rc.out,count,capacity:E.YARD,status,alert:!!stall||count>=E.YARD});
+   g.setAttribute('aria-label',`${names[b.type]}，${names[rc.out]}库存 ${count}，${status} (${t.id})`);
   } else if (t.terrain==='mountain') {
    content=glyph('mountain',-16,-16,32,'#a3aeb8');
   } else if (t.terrain==='lake') {
@@ -401,24 +395,25 @@ function renderMap() {
   } else {
    content=`<text y="4" text-anchor="middle" class="terrain-label faint">${names[t.terrain]}</text>`;
   }
-  g.querySelector('.tile-content').innerHTML=content;
-  const holder=g.querySelector('.tile-crew');
-  const c=b&&b.type!=='town'?crew(t):null;
-  const key=c?`${c.n}|${c.blocked}|${c.beat}|${world.paused}`:'';
+  const ui=svg.querySelector(`[data-tile-ui="${t.id}"]`);
+  ui.querySelector('.tile-content').innerHTML=content;
+  const holder=ui.querySelector('.tile-crew');
+  const c=b?.type==='town'?{n:b.residents,blocked:!Object.values(world.stats.at(-1)?.sales[t.id]||{}).some(n=>n>0),beat:Math.max(.25,E.DT/speed)}:b?crew(t):null;
+  const key=c?`${b.type}|${c.n}|${c.blocked}|${c.beat}|${world.paused}`:'';
   if(holder.dataset.key!==key){
    holder.dataset.key=key;
    holder.classList.toggle('blocked',!!c&&c.blocked);
    holder.classList.toggle('halted',!!c&&world.paused);
-   const size=16,slot=14,dx=-slot*((c?.n||1)-1)/2-size/2;
-   holder.innerHTML=c?Array.from({length:c.n},(_,i)=>`<g class="wdot-beat" style="${beatStyle(c,i)}"><use class="cursor" href="#icon-cursor" x="${dx+i*slot}" y="30" width="${size}" height="${size}"/></g>`).join(''):'';
+   holder.innerHTML=c?BuildingTiles.people({kind:b.type==='town'?'resident':'cursor',count:c.n,active:!c.blocked,paused:world.paused,beat:c.beat,clock:performance.now()/1000}):'';
   }
  }
  $('roads').innerHTML=Object.values(world.edges).map(e => {
   const [x,y]=position(world.tiles[e.a]),[u,v]=position(world.tiles[e.b]);
   const length=Math.hypot(u-x,v-y),angle=Math.atan2(v-y,u-x)*180/Math.PI;
-  const start=world.tiles[e.a].building ? .28 : 0, end=world.tiles[e.b].building ? .28 : 0;
+  const inset=.22;
+  const start=world.tiles[e.a].building ? inset : 0, end=world.tiles[e.b].building ? inset : 0;
   const flowing=st.flow(e.id)>0, water=[world.tiles[e.a].terrain,world.tiles[e.b].terrain].includes('lake');
-  return `<line x1="${x+(u-x)*start}" y1="${y+(v-y)*start}" x2="${u-(u-x)*end}" y2="${v-(v-y)*end}" class="road ${water?'water':''} ${e.removing?'removing':''} ${e.id===selectedEdge?'selected':''} ${flowing?'flowing':''}"/><rect class="road-hit" x="${-length*.22}" y="-9" width="${length*.44}" height="18" transform="translate(${(x+u)/2},${(y+v)/2}) rotate(${angle})" data-edge="${e.id}" tabindex="0" role="button" aria-label="${water?'航线':'道路'} (${e.a}) 到 (${e.b})"/>`;
+  return `<g class="road-control"><line class="road-bed" x1="${x+(u-x)*start}" y1="${y+(v-y)*start}" x2="${u-(u-x)*end}" y2="${v-(v-y)*end}"/><line x1="${x+(u-x)*start}" y1="${y+(v-y)*start}" x2="${u-(u-x)*end}" y2="${v-(v-y)*end}" class="road ${water?'water':''} ${e.removing?'removing':''} ${e.id===selectedEdge?'selected':''} ${flowing?'flowing':''}"/><line class="road-sheen" x1="${x+(u-x)*start}" y1="${y+(v-y)*start-1}" x2="${u-(u-x)*end}" y2="${v-(v-y)*end-1}"/><rect class="road-hit" x="-10" y="-12" width="20" height="24" rx="4" transform="translate(${(x+u)/2},${(y+v)/2}) rotate(${angle})" data-edge="${e.id}" tabindex="0" role="button" aria-label="${water?'航线':'道路'} (${e.a}) 到 (${e.b})"/></g>`;
  }).join('');
  const f=Math.max(0,Math.min(1,accumulator/E.DT));
  $('freight').innerHTML=world.shipments.filter(s=>s.edge).map(s=>{
@@ -444,10 +439,11 @@ function milestonesPanel(open=false) {
 }
 function townPanel(t) {
  const st=windowStats(), key=t.id, buys=E.buys(world,key), linked=connectedTowns().includes(key), b=t.building;
- const earning=Object.entries(buys).reduce((n,[r,d])=>n+st.sales(key,r)*d.price,0), next=E.townLevelCost(world,key);
- let html=`<h2>${icon('town','town-c')}城镇</h2><div class="subtitle">Lv.${b.level+1} · 每种货每回合收 ${(b.level+1)*E.TOWN_RATE} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${fmt(earning)}</b><small>金币 / 回合</small></div>`;
- html+=`<h3>收购</h3><div class="contract">${Object.entries(buys).map(([r,d])=>{const s=st.sales(key,r),full=saturated(key,r,st);return `<div class="line"><span>${icon(r,r+'-c')}${names[r]}</span><b>${d.price} 金币/件</b><small class="${full?'warn':''}">${full?`已喂饱 · 每回合 ${d.rate} 件全部收下`:`收 ${per(s)} / ${d.rate} 件/回合 · 待收 ${b.demand[r]}`}</small></div>`;}).join('')}</div>`;
- html+=`<div class="actions">${button(`扩建城镇 Lv.${b.level+2}<small>${coins(next)} · 每种货每回合多收 ${E.TOWN_RATE} 件</small>`,{type:'townLevel',tile:t.id},true,!afford(next))}</div>`;
+ const earning=Object.entries(buys).reduce((n,[r,d])=>n+st.sales(key,r)*d.price,0), next=E.residentCost(world,key), rate=E.townRate(world,b), full=b.residents>=E.MAX_RESIDENTS, era=E.eraPower(world);
+ let html=`<h2>${icon('town','town-c')}城镇</h2><div class="subtitle">${E.ERAS[world.tech.era]} · 每种货每回合收 ${rate} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${fmt(earning)}</b><small>金币 / 回合</small></div>`;
+ html+=`<div class="crew"><div class="crew-top"><span>居民 ${b.residents}</span><b>${b.residents} × ${E.TOWN_RATE*era} = ${rate} 件/回合</b></div><div class="slots residents">${Array.from({length:b.residents},(_,i)=>`<span class="resident bt-person-beat ${world.paused||!Object.values(world.stats.at(-1)?.sales[key]||{}).some(n=>n>0)?'is-idle':''}" style="--beat:${Math.max(.25,E.DT/speed)}s;animation-delay:-${i*.15}s">${icon('resident')}</span>`).join('')}</div></div>`;
+ html+=`<h3>收购</h3><div class="contract">${Object.entries(buys).map(([r,d])=>{const s=st.sales(key,r),sat=saturated(key,r,st);return `<div class="line"><span>${icon(r,r+'-c')}${names[r]}</span><b>${d.price} 金币/件</b><small class="${sat?'warn':''}">${sat?`收不下了 · 每回合 ${d.rate} 件全部收下`:`收 ${per(s)} / ${d.rate} 件/回合 · 待收 ${b.demand[r]}`}</small></div>`;}).join('')}</div>`;
+ if(!full)html+=`<div class="actions">${button(`加第 ${b.residents+1} 名居民<small>${coins(next)} · 每种货每回合多收 ${E.TOWN_RATE*era} 件</small>`,{type:'resident',tile:t.id},true,!afford(next))}</div>`;
  return html;
 }
 function flowerPanel(f) {
@@ -502,7 +498,8 @@ function renderGoals() {
 // The tech tree is one card per building, plus the golden finger (manual clicks) and the waterway. A card
 // starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
 function techCards() {
- const cards = [{id:'finger', name:'金手指', icon:'cursor', tier:1, kind:'economy', desc:'手工生产：点击任何建筑就出 1 件货', craft:'tools', per:n=>`每次点击 ${n} 件`}];
+ const cards = [{id:'finger', name:'金手指', icon:'cursor', tier:1, kind:'economy', desc:'手工生产：点击任何建筑就出 1 件货', craft:'tools', per:n=>`每次点击 ${n} 件`},
+  {id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
  for (const b of E.BUILDINGS) {
   const t = E.TECH[b], rc = E.RECIPES[b];
   const ins = Object.keys(rc.in).map(r => names[r]).join(' + ');
@@ -513,7 +510,7 @@ function techCards() {
  return cards;
 }
 function renderTech() {
- const key=Object.keys(E.TECH).map(k=>`${world.tech[k]||0}${E.techAvailable(world,k)?'a':''}${afford(E.techCost(world,k))?'$':''}`).join('');
+ const key=Object.keys(E.TECH).map(k=>`${world.tech[k]||0}${E.techAvailable(world,k)?'a':''}${E.techCost(world,k)}${afford(E.techCost(world,k))?'$':''}`).join('');
  if ($('tech-body').dataset.key===key) return;
  $('tech-body').dataset.key=key;
  const cards=techCards(), tiers=[...new Set(cards.map(c=>c.tier))].sort();
@@ -527,13 +524,13 @@ function renderTech() {
    cls=!avail?'locked':afford(cost)?'ready':'costly';
    body=!avail?`<div class="locked-note">${icon('ui-locked')}需要先解锁${missing.join('、')}</div>`:button(`解锁<small>${coins(cost)}</small>`,{type:'tech',key:c.unlock},true,!afford(cost));
   } else if (c.craft) {
-   const cost=E.techCost(world,c.craft);
-   cls=afford(cost)?'owned ready':'owned';
-   body=`<div class="craft-now">${c.per(level+1)}</div>`+button(`升级到 Lv.${level+2}<small>${coins(cost)} · ${c.per(level+2)}</small>`,{type:'tech',key:c.craft},true,!afford(cost));
+   const cost=E.techCost(world,c.craft), maxed=E.techMaxed(world,c.craft);
+   cls=!maxed&&afford(cost)?'owned ready':'owned';
+   body=`<div class="craft-now">${c.per(level+1)}</div>`+(maxed?`<div class="owned-mark">${icon('check')}已是最高</div>`:button(`${c.next?c.next(level+1):`升级到 Lv.${level+2}`}<small>${coins(cost)} · ${c.per(level+2)}</small>`,{type:'tech',key:c.craft},true,!afford(cost)));
   } else {
    cls='owned'; body=`<div class="owned-mark">${icon('check')}已开通</div>`;
   }
-  return `<div class="node ${cls} kind-${c.kind}"><div class="node-head"><b>${iconIds.has(c.icon)?icon(c.icon):`<span class="building-icon">${icon(c.icon)}</span>`}${c.name}${owned&&c.craft?` Lv.${level+1}`:''}</b></div><p>${c.desc}</p>${body}</div>`;
+  return `<div class="node ${cls} kind-${c.kind}"><div class="node-head"><b>${iconIds.has(c.icon)?icon(c.icon):`<span class="building-icon">${icon(c.icon)}</span>`}${c.title?c.title(level):c.name}${owned&&c.craft&&!c.title?` Lv.${level+1}`:''}</b></div><p>${c.desc}</p>${body}</div>`;
  }).join('')}</div></div>`).join('');
  bindCommands($('tech-body'));
 }
@@ -581,7 +578,7 @@ function renderToolbar() {
   b.querySelector('small').textContent=coins(E.buildingCost(world,b.dataset.build));
   b.classList.toggle('unaffordable',!afford(E.buildingCost(world,b.dataset.build)));
  }
- const ready=Object.keys(E.TECH).filter(k=>!E.techOwned(world,k)&&E.techAvailable(world,k)&&afford(E.techCost(world,k))).length;
+ const ready=Object.keys(E.TECH).filter(k=>!E.techOwned(world,k)&&!E.techMaxed(world,k)&&E.techAvailable(world,k)&&afford(E.techCost(world,k))).length;
  $('tech-ready').textContent=ready?`${ready} 项可买`:'';
 }
 function render() {
@@ -626,6 +623,7 @@ document.addEventListener('pointerdown',()=>{interacting=true;suppressClick=fals
 document.addEventListener('pointerup',()=>{setTimeout(()=>{interacting=false;},0);},true);
 svg.addEventListener('pointerdown',event=>{
  if(event.button!==0||gesture)return;
+ if(event.target.closest('[data-edge]'))return;
  const tile=event.target.closest('[data-tile]')?.dataset.tile;
  if(world.tiles[tile]?.building&&!buildType&&!connectFrom&&!world.preview){
   gesture={kind:'connect',from:tile,x:event.clientX,y:event.clientY,moved:false,pointerId:event.pointerId};

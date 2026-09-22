@@ -113,8 +113,10 @@ test('tech tree: buildings need their tech, prerequisites gate purchases, one-of
  assert.throws(()=>E.apply(w,{type:'tech',key:'mine'}),/先解锁/);
  w=tech(w,'quarry');w=E.apply(w,{type:'build',tile:rock.id,buildType:'quarry'});
  assert.throws(()=>E.apply(w,{type:'tech',key:'quarry'}),/已经买过/);
- assert.equal(E.techCost(w,'campCraft'),2000);w=tech(w,'campCraft');assert.equal(E.techCost(w,'campCraft'),4000);assert.equal(E.workerPower(w,'camp'),2);assert.equal(E.workerPower(w,'quarry'),1,'craft is per building type');
- assert.ok(!E.techAvailable(w,'sawmillCraft'),'a craft needs its building');w=tech(w,'sawmill');assert.ok(E.techAvailable(w,'sawmillCraft'));assert.equal(E.techCost(w,'sawmillCraft'),4000);
+ const campWorkers=Math.max(1,E.workersOf(w,'camp'));
+ assert.equal(E.techCost(w,'campCraft'),campWorkers*20*30,'a craft costs 30 rounds of what it adds');w=tech(w,'campCraft');assert.equal(E.techCost(w,'campCraft'),Math.round(campWorkers*20*30*1.5));assert.equal(E.workerPower(w,'camp'),2);assert.equal(E.workerPower(w,'quarry'),1,'craft is per building type');
+ assert.ok(!E.techAvailable(w,'sawmillCraft'),'a craft needs its building');w=tech(w,'sawmill');assert.ok(E.techAvailable(w,'sawmillCraft'));assert.equal(E.techCost(w,'sawmillCraft'),50*30,'no workers yet: priced as one');
+ assert.equal(E.goodValue('ore'),150,'ore is worth what iron sells for');
  assert.equal(E.techCost(w,'mine'),5000);assert.equal(E.techCost(w,'smelter'),40000);
  assert.ok(!E.techAvailable(w,'mine'));w=tech(w,'mason');assert.ok(E.techAvailable(w,'mine'));
 });
@@ -146,13 +148,19 @@ test('two goods sharing a road both get through; a segment has no capacity limit
  run(w,40);
  assert.ok(w.sold[stoneTown].stone>0&&w.sold[stoneTown].log>0,'both goods got through');
 });
-test('town levels are priced by what they add: 2 x sum of prices x 30 rounds, x1.5 per level; demand pool bounded',()=>{
+test('residents are priced by what they add: 2 x sum of prices x 30 rounds, x1.5 per resident, at most 3; eras multiply every town',()=>{
  let {w,town}=started(1);w=rich(w);
- assert.equal(E.townLevelCost(w,town),2*20*30);w=E.apply(w,{type:'townLevel',tile:town});assert.equal(E.townLevelCost(w,town),Math.round(1200*1.5));
+ assert.equal(E.buys(w,town).log.rate,2,'a town starts with one resident taking 2 per round');
+ assert.equal(E.residentCost(w,town),2*20*30);w=E.apply(w,{type:'resident',tile:town});assert.equal(E.residentCost(w,town),Math.round(1200*1.5));
  assert.equal(E.buys(w,town).log.rate,4);
+ w=E.apply(w,{type:'resident',tile:town});assert.throws(()=>E.apply(w,{type:'resident',tile:town}),/最多 3 名居民/);
  for(let i=0;i<3;i++)w=unlock(w);const toolTown=townTiles(w).find(k=>w.tiles[k].building.buys.tool);
- assert.equal(E.townLevelCost(w,toolTown),2*(120+30)*30);
+ assert.equal(E.residentCost(w,toolTown),2*(120+30)*30);
+ const extra=townTiles(w).reduce((n,k)=>n+w.tiles[k].building.residents*Object.values(w.tiles[k].building.buys).reduce((a,p)=>a+p,0),0);
+ assert.equal(E.techCost(w,'era'),Math.round(extra*2*30),'an era costs 30 rounds of what it adds');
+ w=tech(w,'era');assert.equal(E.buys(w,town).log.rate,12,'3 residents x 2 x era 2');assert.equal(E.residentCost(w,toolTown),Math.round(2*2*(120+30)*30));
  const b=w.tiles[toolTown].building;run(w,60);assert.equal(b.demand.tool,E.buys(w,toolTown).tool.pool,'pool capped');E.validate(w);
+ for(let i=w.tech.era;i<E.ERAS.length-1;i++)w=tech(w,'era');assert.throws(()=>E.apply(w,{type:'tech',key:'era'}),/最高/);
 });
 test('full refunds: demolishing, firing and removing roads return exactly what was paid, so the engine can always be rebuilt',()=>{
  let {w}=started(1);w=rich(w,5000);E.tick(w);const m0=w.money;

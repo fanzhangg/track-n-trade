@@ -1,0 +1,26 @@
+/* Restrained tabletop accents; no cards, labels or decorative frames. */
+.bt-miniature{filter:none}
+.bt-quantity{font:650 11px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums;paint-order:stroke;stroke:var(--surface-panel);stroke-width:1.2px;stroke-opacity:.5}
+.bt-price{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums}
+.building-tile-ui{--bt-danger:#bc352d;--bt-danger-tint:#fff0e9}
+.bt-quantity.bt-alert{fill:var(--bt-danger);stroke:none}
+.bt-state-base{fill:var(--bt-danger,#bc352d);stroke:var(--surface-panel);stroke-width:.6}
+.bt-state-ink{fill:none;stroke:var(--surface-panel);stroke-width:1.5;stroke-linecap:round}
+.bt-floating.has-alert .bt-float-bg{fill:var(--bt-danger-tint);stroke:var(--border-control)}
+.bt-full-bg{fill:var(--bt-danger-tint);stroke:none}
+.bt-offer.is-full .bt-price{fill:var(--bt-danger)}
+.road-bed{stroke:#8b7052;stroke-width:7;stroke-linecap:round;pointer-events:none;filter:drop-shadow(0 1px .5px #51433135)}
+.road-sheen{stroke:#f1d5a2;stroke-width:1;stroke-linecap:round;opacity:.6;pointer-events:none}
+.road-control:hover .road,.road-control:focus-within .road{stroke:var(--action-primary)!important;stroke-width:5}
+.road-hit:focus-visible{outline:none;stroke:var(--action-primary);stroke-width:1;stroke-dasharray:3 2;fill:var(--action-subtle);fill-opacity:.15}
+.road-control:has(.water) .road-bed,.road-control:has(.water) .road-sheen{display:none}
+.road-control:has(.removing) .road-bed,.road-control:has(.removing) .road-sheen{opacity:.2}
+
+.bt-floating,.bt-people{filter:drop-shadow(0 1.2px 1px #303e4330)}
+.bt-float-bg{fill:var(--surface-panel);stroke:var(--border-control);stroke-width:.6;fill-opacity:.96}
+.bt-person-beat{animation:bt-person-beat var(--beat,1s) cubic-bezier(.3,0,.4,1) infinite;transform-box:fill-box;transform-origin:center}
+.bt-people.is-idle .bt-person-beat,.bt-person-beat.is-idle{animation:none;opacity:.65}
+@keyframes bt-person-beat{0%,24%,100%{transform:translateY(0)}10%{transform:translateY(-3px)}}
+.bt-tap{animation:bt-tap .22s ease-out}
+@keyframes bt-tap{50%{transform:translateY(2px)}}
+@media(prefers-reduced-motion:reduce){.bt-person-beat,.bt-tap{animation:none!important}}
