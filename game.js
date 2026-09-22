@@ -1,7 +1,7 @@
 'use strict';
 const E = TradeEngine;
 const $ = id => document.getElementById(id);
-const SAVE = 'tnt-mvp-v10';
+const SAVE = 'tnt-mvp-v11';
 const names = {camp:'伐木营',sawmill:'锯木厂',quarry:'采石场',town:'城镇',forest:'森林',dense:'密林',grass:'草地',rock:'岩地',rich:'富岩地',mountain:'山地',log:'原木',board:'木板',stone:'石头'};
 const colors = {forest:'#dcecdf',dense:'#c4dfcb',grass:'#f0f3ed',rock:'#e0e6eb',rich:'#d0dce5',mountain:'#d2d9df',town:'#f6e7d2',log:'#719d78',board:'#cdab71',stone:'#8d9cad'};
 const icon = (name, cls='') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#icon-${name}"/></svg>`;
@@ -12,7 +12,7 @@ const per = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
 const coins = n => `${Math.round(n).toLocaleString('zh-CN')} 金币`;
 const position = t => [Math.sqrt(3) * 51 * (t.q + t.r / 2), 76.5 * t.r];
 let world = E.newWorld();
-let selected = '0,0', selectedEdge = null, buildType = null, connectFrom = null;
+let selected = E.START_TILE, selectedEdge = null, buildType = null, connectFrom = null;
 let gesture = null, suppressClick = false, interacting = false, speed = 1;
 let last = performance.now(), accumulator = 0, lastSave = 0, lastPaint = 0;
 let storageBlocked = false, welcome = '', popTick = -1;
@@ -20,7 +20,7 @@ let storageBlocked = false, welcome = '', popTick = -1;
 try {
  const raw = localStorage.getItem(SAVE);
  if (raw) { world = E.load(JSON.parse(raw)); welcome = '已恢复进度'; }
- else if (['tnt-mvp-v9','tnt-mvp-v8','tnt-mvp-v7','tnt-mvp-v6','tnt-mvp-v5'].some(k => localStorage.getItem(k))) welcome = 'v0.10 改为每回合一件的整数模型，旧存档已保留但不再读取。从头开始：先把采石场连到西镇。';
+ else if (['tnt-mvp-v10','tnt-mvp-v9','tnt-mvp-v8','tnt-mvp-v7','tnt-mvp-v6','tnt-mvp-v5'].some(k => localStorage.getItem(k))) welcome = 'v0.11 改为点击生产：建筑不再自动产货，点击建筑做一件，雇工人才会自动生产。旧存档已保留但不再读取。';
 } catch {
  storageBlocked = true;
  welcome = '原存档无法读取，已保留；当前进度可通过导出保存';
@@ -49,7 +49,7 @@ function act(command, message) {
   return true;
  } catch (error) { toast(error.message); return false; }
 }
-const messages = {build:'已建成',module:'已扩产',equipment:'设备已安装',upgrade:'道路已扩容',downgrade:'已降级，退回一半',demolish:'已拆除，退回一半金币',removeModule:'已拆掉一个模块，退回一半',removeEquipment:'已拆下设备，退回一半',townLevel:'城镇已扩建，每种货每回合多收 1 件',research:'升级已生效',removeRoad:'在途货物通过后拆除，退回一半',restoreRoad:'已撤销拆除'};
+const messages = {build:'已建成，点击它开始生产',worker:'已雇一名工人，每回合自动生产',fireWorker:'已辞退一名工人，退回一半',upgrade:'道路已扩容',downgrade:'已降级，退回一半',demolish:'已拆除，退回一半金币',townLevel:`城镇已扩建，每种货每回合多收 ${E.TOWN_RATE} 件`,research:'升级已生效',tech:'科技已升级',removeRoad:'在途货物通过后拆除，退回一半',restoreRoad:'已撤销拆除'};
 function bindCommands(root) {
  for (const b of root.querySelectorAll('[data-command]')) b.onclick = () => {
   const c = JSON.parse(b.dataset.command);
@@ -83,7 +83,30 @@ function tileClick(key) {
  if (suppressClick) { suppressClick = false; return; }
  if (buildType) return place(buildType, key);
  if (connectFrom) return connect(connectFrom, key);
- selected = key; selectedEdge = null; render();
+ selected = key; selectedEdge = null;
+ if (world.tiles[key].building && world.tiles[key].building.type !== 'town') produce(key); else render();
+}
+// The Cookie Clicker beat: one click on a building makes one piece (times the tools tech).
+// Errors (full yard, no logs) show at most once a second so fast clicking never spams.
+function produce(key) {
+ const t = world.tiles[key], r = E.OUTPUT[t.building.type], before = t.loose[r];
+ try {
+  world = E.apply(world, {type:'click', tile:key});
+  pop(key, world.tiles[key].loose[r] - before, r);
+  const g = svg.querySelector(`[data-tile="${key}"]`);
+  g.classList.remove('bump'); void g.getBoundingClientRect(); g.classList.add('bump');
+  render();
+ } catch (error) {
+  const now = performance.now();
+  if (now - (produce.warned || 0) > 1000) { toast(error.message); produce.warned = now; }
+  render();
+ }
+}
+function pop(key, n, r) {
+ const [x, y] = position(world.tiles[key]), g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+ g.setAttribute('class', 'pop'); g.setAttribute('transform', `translate(${x + 14},${y - 28})`);
+ g.innerHTML = `<text text-anchor="middle" class="pop-text click" fill="${colors[r]}">+${n}</text>`;
+ $('pops').appendChild(g); setTimeout(() => g.remove(), 900);
 }
 
 // Rolling window over the engine's own samples. Roads are ranked by how much demand they
@@ -126,11 +149,28 @@ function tileRate(t) {
  const span = world.tick - S[0].tick + 1;
  return S.reduce((n, s) => n + (s.tiles[t.id] || 0), 0) / span;
 }
+// Workers are drawn as Cookie Clicker's cursors: one arrow per hired worker, each lunging at
+// the building on its own beat. One worker beats once per round; three beat three times per
+// round, evenly staggered, so a busy building visibly ticks faster. Training shortens the beat.
+// Nothing in the drawing hints at how many more workers a building could take: unhired slots
+// are simply not there. A building that cannot produce freezes its cursors and turns them
+// amber, which is the one thing the animation must never fake.
+function crew(t) {
+ const n = t.building.workers.length, producing = stateOf(t) === '生产中';
+ const beat = Math.max(.25, E.DT / speed / E.workerPower(world));
+ return {n, producing, blocked: n > 0 && !producing, beat};
+}
+// A negative delay resumes the beat at the phase it would have reached, so rebuilding the
+// markup a few times a second never restarts the motion.
+function beatStyle(c, i, clock = performance.now() / 1000) {
+ const phase = (clock + (i * c.beat) / c.n) % c.beat;
+ return `--beat:${c.beat.toFixed(3)}s;animation-delay:${(-phase).toFixed(3)}s`;
+}
 function stateOf(t) {
  const b = t.building;
- if (b.paused) return '已暂停';
  if (b.type === 'sawmill' && t.loose.log < 1) return '等待原木';
  if (t.loose[E.OUTPUT[b.type]] >= E.YARD) return '堆场已满，停工';
+ if (!b.workers.length) return '没有工人，点击才生产';
  return '生产中';
 }
 function buyersOf(r, from) {
@@ -144,7 +184,7 @@ function saturated(k, r, st = windowStats()) {
 // One sentence naming the layer that limits this building right now, or nothing.
 function diagnose(t, st) {
  const b = t.building;
- if (!b || b.paused || b.type === 'town') return null;
+ if (!b || b.type === 'town') return null;
  const edges = Object.values(world.edges).filter(e => !e.removing && (e.a === t.id || e.b === t.id));
  const ranked = edges.map(e => st.rank(e.id)).filter(Boolean).sort()[0];
  const roadNote = ranked ? `相连道路是扩容优先级第 ${ranked} 位。` : '';
@@ -152,13 +192,13 @@ function diagnose(t, st) {
   if (t.loose.log >= 1) return null;
   if (!edges.length) return {level:'warn', text:'没有道路，原木进不来。'};
   if (st.span < 5) return null;
-  const need = E.rate(world, t), got = st.inflow(t.id, 'log');
+  const need = Math.max(1, E.rate(world, t)), got = st.inflow(t.id, 'log');
   if (got >= need * .9) return null;
   const text = `原木到货 ${per(got)} 件/回合，加工需要 ${need} 件/回合。`;
   if (roadNote) return {level:'warn', text:text + roadNote};
   const camps = Object.values(world.tiles).filter(x => x.building?.type === 'camp' && E.path(world, x.id, t.id));
   if (!camps.length) return {level:'warn', text:'没有连接到任何伐木营。'};
-  return {level:'warn', text:text + '伐木营产量不够：扩产、装设备，或再建一座。'};
+  return {level:'warn', text:text + '伐木营产量不够：多点几下、雇工人，或再建一座。'};
  }
  const r = E.OUTPUT[b.type];
  if (t.loose[r] < E.YARD) return null;
@@ -179,7 +219,7 @@ function hexPoints(x, y) {
 function buildMap() {
  svg.innerHTML = `<g id="terrain">${Object.values(world.tiles).map(t => {
   const [x,y] = position(t);
-  return `<g class="hex" data-tile="${t.id}" tabindex="0" role="button"><polygon class="ground" points="${hexPoints(x,y)}" fill="${colors[t.terrain]}"/><g class="tile-content" transform="translate(${x},${y})"></g></g>`;
+  return `<g class="hex" data-tile="${t.id}" tabindex="0" role="button"><polygon class="ground" points="${hexPoints(x,y)}" fill="${colors[t.terrain]}"/><g class="tile-content" transform="translate(${x},${y})"></g><g class="tile-crew" transform="translate(${x},${y})" pointer-events="none"></g></g>`;
  }).join('')}</g><g id="river" pointer-events="none"></g><g id="roads"></g><g id="freight" pointer-events="none"></g><g id="pops" pointer-events="none"></g><g id="preview" pointer-events="none"></g>`;
  let river = '';
  for (const a of Object.values(world.tiles)) for (const b of Object.values(world.tiles)) {
@@ -235,16 +275,27 @@ function renderMap() {
    const d=diagnose(t, st), r=E.OUTPUT[b.type];
    content=glyph(b.type,-16,-24,32,'');
    const stocks=[[r,t.loose[r],t.loose[r]>=E.YARD]];
-   if (b.type==='sawmill'&&t.loose.log<1&&!b.paused) stocks.unshift(['log',0,true]);
+   if (b.type==='sawmill'&&t.loose.log<1) stocks.unshift(['log',0,true]);
    const shown=stocks.filter(([,n,alert])=>n>0||alert);
    const w=shown.length*30, x0=-w/2;
    content+=shown.map(([r,n,alert],i)=>glyph(r,x0+i*30,17,9,'')+`<text x="${x0+i*30+11}" y="24.5" class="tile-stock ${alert?'alert':''}">${n>0?n:'缺'}</text>`).join('');
-   content+=`<text y="36" text-anchor="middle" class="tile-status">${b.paused?'已暂停':`${E.rate(world,t)} 件/回合`}</text>`;
+   if(E.workerPower(world)>1&&b.workers.length)content+=`<text x="${14*(b.workers.length-1)/2+10}" y="38" class="tile-mult">×${E.workerPower(world)}</text>`;
    if (d?.level==='warn') content+='<circle cx="16" cy="-22" r="6" class="warn-dot"/><text x="16" y="-18.5" text-anchor="middle" fill="white" font-size="8" font-weight="700">!</text>';
   } else if (t.terrain==='mountain') {
    content=glyph('mountain',-16,-16,32,'#acb7c1');
-  } else if (['dense','rich'].includes(t.terrain)) content='<text y="4" text-anchor="middle" class="terrain-label">×2</text>';
+  }
   g.querySelector('.tile-content').innerHTML=content;
+  const holder=g.querySelector('.tile-crew');
+  const c=b&&b.type!=='town'?crew(t):null;
+  const key=c?`${c.n}|${c.blocked}|${c.beat}|${world.paused}`:'';
+  if(holder.dataset.key!==key){
+   holder.dataset.key=key;
+   holder.classList.toggle('blocked',!!c&&c.blocked);
+   holder.classList.toggle('halted',!!c&&world.paused);
+   const size=16,slot=14,dx=-slot*((c?.n||1)-1)/2-size/2;
+   holder.innerHTML=c?Array.from({length:c.n},(_,i)=>
+    `<g class="wdot-beat" style="${beatStyle(c,i)}"><use class="cursor" href="#icon-cursor" x="${dx+i*slot}" y="26" width="${size}" height="${size}"/></g>`).join(''):'';
+  }
  }
  $('roads').innerHTML=Object.values(world.edges).map(e => {
   const [x,y]=position(world.tiles[e.a]),[u,v]=position(world.tiles[e.b]);
@@ -263,7 +314,8 @@ function renderMap() {
  // Production pops: once per tick, each building that made something shows +n rising away.
  if (world.tick!==popTick) {
   popTick=world.tick;const last=world.stats[world.stats.length-1];
-  $('pops').innerHTML=last?Object.entries(last.tiles).map(([k,n])=>{const[x,y]=position(world.tiles[k]);return `<g class="pop" transform="translate(${x+14},${y-28})"><text text-anchor="middle" class="pop-text" fill="${colors[E.OUTPUT[world.tiles[k].building?.type]||'log']}">+${n}</text></g>`;}).join(''):'';
+  for(const old of $('pops').querySelectorAll('.pop.tick'))old.remove();
+  if(last)for(const[k,n]of Object.entries(last.tiles)){const tile=world.tiles[k],b=tile?.building;if(!b||b.type==='town'||!b.workers.length)continue;const shown=Math.min(n,E.rate(world,tile));if(shown<1)continue;const[x,y]=position(tile);$('pops').insertAdjacentHTML('beforeend',`<g class="pop tick" transform="translate(${x+14},${y-28})"><text text-anchor="middle" class="pop-text" fill="${colors[E.OUTPUT[b.type]]}">+${shown}</text></g>`);}
  }
  for (const hit of $('roads').querySelectorAll('[data-edge]')) {
   const select=()=>{if(suppressClick){suppressClick=false;return;} if(buildType||connectFrom)return;selectedEdge=hit.dataset.edge;selected=null;render();};
@@ -278,6 +330,10 @@ function researchButton(key) {
  const u=E.RESEARCH[key];
  return world.research[key]?`<button class="research owned" disabled>${icon('check')}<span>${u.name}<small>${u.desc}</small></span></button>`:`<button class="research ${afford(u.cost)?'':'unaffordable'}" data-command='${JSON.stringify({type:'research',key})}'><span>${u.name}<small>${u.desc} · ${coins(u.cost)}</small></span></button>`;
 }
+function techButton(key) {
+ const u=E.TECH[key],level=world.tech[key],cost=E.techCost(world,key);
+ return `<button class="research ${afford(cost)?'':'unaffordable'}" data-command='${JSON.stringify({type:'tech',key})}'><span>${u.name}${level?` Lv.${level}`:''}<small>${u.desc} · ${coins(cost)}</small></span></button>`;
+}
 function milestonesPanel(open=false) {
  const done=E.MILESTONES.filter(m=>world.milestones[m.id]).length;
  return `<details class="more" data-key="milestones" ${open?'open':''}><summary>里程碑 ${done} / ${E.MILESTONES.length}</summary><ul class="milestones">${E.MILESTONES.map(m=>`<li class="${world.milestones[m.id]?'done':''}"><span>${m.name}</span><small>+${m.reward}</small></li>`).join('')}</ul></details>`;
@@ -285,9 +341,9 @@ function milestonesPanel(open=false) {
 function townPanel(t) {
  const st=windowStats(), key=t.building.town, town=E.TOWNS[key], buys=E.buys(world,key), linked=connectedTowns().includes(key), b=t.building;
  const earning=Object.entries(buys).reduce((n,[r,d])=>n+st.sales(key,r)*d.price,0), next=E.townLevelCost(world,key);
- let html=`<h2>${icon('town','town-c')}${town.name}</h2><div class="subtitle">城镇 Lv.${b.level+1} · 每种货每回合收 ${b.level+1} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${fmt(earning)}</b><small>金币 / 回合</small></div>`;
+ let html=`<h2>${icon('town','town-c')}${town.name}</h2><div class="subtitle">城镇 Lv.${b.level+1} · 每种货每回合收 ${(b.level+1)*E.TOWN_RATE} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${fmt(earning)}</b><small>金币 / 回合</small></div>`;
  html+=`<h3>收购</h3><div class="contract">${Object.entries(buys).map(([r,d])=>{const s=st.sales(key,r),full=saturated(key,r,st);return `<div class="line"><span>${icon(r,r+'-c')}${names[r]}</span><b>${d.price} 金币/件</b><small class="${full?'warn':''}">${full?`已喂饱 · 每回合 ${d.rate} 件全部收下`:`收 ${per(s)} / ${d.rate} 件/回合 · 待收 ${b.demand[r]}`}</small></div>`;}).join('')}</div>`;
- html+=`<div class="actions">${button(`扩建城镇 Lv.${b.level+2}<small>${coins(next)} · 每种货每回合多收 1 件</small>`,{type:'townLevel',tile:t.id},true,!afford(next))}</div>`;
+ html+=`<div class="actions">${button(`扩建城镇 Lv.${b.level+2}<small>${coins(next)} · 每种货每回合多收 ${E.TOWN_RATE} 件</small>`,{type:'townLevel',tile:t.id},true,!afford(next))}</div>`;
  return html;
 }
 function renderSelection() {
@@ -310,25 +366,28 @@ function renderSelection() {
  } else if (t?.building?.type==='town') {
   html=townPanel(t);
  } else if (t?.building) {
-  const b=t.building,rate=E.rate(world,t),next=E.moduleCost(world,t),equip=E.equipmentCost(world),d=diagnose(t,st),r=E.OUTPUT[b.type];
-  const paid=b.modules.reduce((n,m)=>n+m.paid,0)+(b.equipment?.paid||0), state=stateOf(t);
-  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]} · ${b.modules.length} 个模块${b.equipment?' · 设备 ×2':''}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div>${d?`<div class="diag ${d.level}">${d.text}</div>`:''}<div class="metrics"><div><span>产能</span><b>${rate} 件/回合</b></div><div><span>近 30 回合实际</span><b>${per(tileRate(t))} 件/回合</b></div><div><span>堆场 ${names[r]}</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${b.type==='sawmill'?`<div><span>堆场原木</span><b class="${t.loose.log<1?'warn':''}">${t.loose.log}</b></div>`:''}</div><div class="actions">${button(`扩产 +1 模块<small>${coins(next)} · 每回合多 ${rate/b.modules.length} 件</small>`,{type:'module',tile:t.id},true,!afford(next))}${!b.equipment?button(`高效设备<small>${coins(equip)} · 产能 ×2</small>`,{type:'equipment',tile:t.id},false,!afford(equip)):''}</div>`;
-  html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">选择要连接的建筑</button>${button(b.paused?'恢复生产':'暂停生产',{type:'productionPause',tile:t.id})}${b.modules.length>1?button(`拆掉一个模块<small>退回 ${coins(b.modules[b.modules.length-1].paid/2)}</small>`,{type:'removeModule',tile:t.id}):''}${b.equipment?button(`拆下设备<small>退回 ${coins(b.equipment.paid/2)}</small>`,{type:'removeEquipment',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid/2)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
+  const b=t.building,rate=E.rate(world,t),next=E.workerCost(world,t),d=diagnose(t,st),r=E.OUTPUT[b.type],n=b.workers.length;
+  const paid=b.paid+b.workers.reduce((n,m)=>n+m.paid,0), state=stateOf(t);
+  const c=crew(t), full=n>=E.MAX_WORKERS;
+  const dots=Array.from({length:c.n},(_,i)=>`<span class="wcursor" style="${beatStyle(c,i)}">${icon('cursor')}</span>`).join('');
+  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div>${d?`<div class="diag ${d.level}">${d.text}</div>`:''}<div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">还没有工人，先手工生产攒钱</div>'}</div><div class="actions">${full?'':button(`雇第 ${n+1} 名工人<small>${coins(next)} · 每回合自动多 ${E.workerPower(world)} 件</small>`,{type:'worker',tile:t.id},true,!afford(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world)} 件${names[r]}<small>点击地图上的建筑也可以</small></button></div><div class="metrics"><div><span>近 30 回合实际</span><b>${per(tileRate(t))} 件/回合</b></div><div><span>堆场 ${names[r]}</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${b.type==='sawmill'?`<div><span>堆场原木</span><b class="${t.loose.log<1?'warn':''}">${t.loose.log}</b></div>`:''}</div>`;
+  html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">选择要连接的建筑</button>${n?button(`辞退一名工人<small>退回 ${coins(b.workers[n-1].paid/2)}</small>`,{type:'fireWorker',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid/2)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
  } else if (t) {
   const type=['forest','dense'].includes(t.terrain)?'camp':['rock','rich'].includes(t.terrain)?'quarry':'sawmill',cost=E.buildingCost(world,type);
-  html=`<div class="empty-state"><h2>${names[t.terrain]}${['dense','rich'].includes(t.terrain)?' · 产量 ×2':''}</h2><p>${t.terrain==='mountain'?'道路会自动绕过山地。':`可以建${names[type]}。`}</p></div>`;
+  html=`<div class="empty-state"><h2>${names[t.terrain]}</h2><p>${t.terrain==='mountain'?'道路会自动绕过山地。':`可以建${names[type]}。`}</p></div>`;
   if(t.terrain!=='mountain')html+=`<div class="actions">${button(`建造${names[type]}<small>${coins(cost)}</small>`,{type:'build',tile:t.id,buildType:type},true,!afford(cost))}</div>`;
  } else html='<div class="empty-state"><h2>点选建筑、道路或城镇</h2></div>'+milestonesPanel(true);
  box.innerHTML=html;
  for(const d of box.querySelectorAll('details'))if(wasOpen.has(d.dataset.key))d.open=wasOpen.get(d.dataset.key);
  bindCommands(box);
  if($('connect-accessible'))$('connect-accessible').onclick=()=>{connectFrom=t.id;buildType=null;render();};
+ if($('produce'))$('produce').onclick=()=>produce(t.id);
  if(active)[...box.querySelectorAll('[data-command]')].find(b=>b.dataset.command===active)?.focus({preventScroll:true});
 }
 function renderGoals() {
  const st=windowStats(), linked=connectedTowns();
  let c;
- if (!linked.length) c=`<b>第一步</b><span>按住采石场拖到西镇（${coins(E.connection(world,'-1,0','-3,1').cost)}）。连上后石头和原木自动卖出。</span>`;
+ if (!linked.length) c=world.clicks?`<b>原木堆在门口卖不掉</b><span>西镇收原木。按住伐木营拖到西镇修路，货会自动运过去卖。</span>`:`<b>点击伐木营</b><span>每点一下做出 1 根原木。</span>`;
  else {
   const unlinked=townKeys().filter(k=>!linked.includes(k));
   const parts=linked.map(k=>{const b=E.buys(world,k);const earning=Object.entries(b).reduce((n,[r,d])=>n+st.sales(k,r)*d.price,0);const full=Object.keys(b).filter(r=>saturated(k,r,st));return `${E.TOWNS[k].name} +${fmt(earning)}/回合${full.length?`<em class="warn">（${full.map(r=>names[r]).join('、')}已满）</em>`:''}`;});
@@ -342,9 +401,9 @@ function render() {
  const stock=E.totals(world), st=windowStats();
  $('totals').innerHTML=`<div class="resource coins"><span>${icon('coin','coin-c')}金币</span><strong>${world.money.toLocaleString('zh-CN')}</strong><small>+${fmt(st.income)}/回合</small></div>`+E.RES.map(r=>`<div class="resource"><span>${icon(r,r+'-c')}${names[r]}</span><strong>${fmt(stock[r])}</strong><small>+${per(st.rate(r))}/回合</small></div>`).join('');
  $('pause').textContent=world.paused?'继续':'暂停';$('speed').textContent=speed+'×';
- $('research').innerHTML=Object.keys(E.RESEARCH).map(researchButton).join('');bindCommands($('research'));
+ $('research').innerHTML=Object.keys(E.TECH).map(techButton).join('')+Object.keys(E.RESEARCH).map(researchButton).join('');bindCommands($('research'));
  $('cancel').hidden=!buildType&&!connectFrom;
- $('hint').textContent=buildType?`将${names[buildType]}放到高亮格子，松开立即建成`:connectFrom?'选择另一座建筑或城镇，立即连接道路':'拖建筑到地图即可建造 · 从建筑拖到另一处即可连路 · 红、橙、黄道路是最值得扩容的三段 · 1 回合 = 2 秒';
+ $('hint').textContent=buildType?`将${names[buildType]}放到高亮格子，松开立即建成`:connectFrom?'选择另一座建筑或城镇，立即连接道路':'点建筑生产一件 · 拖建筑到地图即可建造 · 从建筑拖到另一处即可连路 · 红、橙、黄道路是最值得扩容的三段 · 1 回合 = 2 秒';
  for(const b of document.querySelectorAll('[data-build]')){
   b.classList.toggle('active',b.dataset.build===buildType);
   b.setAttribute('aria-pressed',b.dataset.build===buildType?'true':'false');
@@ -417,7 +476,7 @@ document.addEventListener('pointerup',event=>{
  const finished=gesture;gesture=null;
  $('drag-label').style.display='none';$('preview').innerHTML='';
  if(!finished.moved){
-  if(finished.kind==='connect'){selected=finished.from;selectedEdge=null;suppressClick=true;render();}
+  if(finished.kind==='connect'){selected=finished.from;selectedEdge=null;suppressClick=true;const b=world.tiles[finished.from].building;if(b.type!=='town')produce(finished.from);else render();}
   return;
  }
  suppressClick=true;
@@ -439,7 +498,7 @@ $('pause').onclick=()=>{world.paused=!world.paused;accumulator=0;last=performanc
 $('speed').onclick=()=>{speed=speed===1?2:speed===2?5:1;render();};
 $('export').onclick=()=>{
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(world)],{type:'application/json'}));
- a.download='tracks-trade-v10.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+ a.download='tracks-trade-v11.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 };
 $('import').onclick=()=>$('import-file').click();
 $('import-file').onchange=async event=>{
@@ -448,13 +507,13 @@ $('import-file').onchange=async event=>{
   if(file.size>10e6)throw Error('文件过大');
   const loaded=E.load(JSON.parse(await file.text()));
   if(!confirm('用这份存档替换当前进度？'))return;
-  world=loaded;selected='0,0';selectedEdge=null;storageBlocked=false;
+  world=loaded;selected=E.START_TILE;selectedEdge=null;storageBlocked=false;
   accumulator=0;last=performance.now();save();cancelGesture();toast('已恢复存档');
  }catch(error){toast('导入失败：'+error.message);}finally{event.target.value='';}
 };
 $('reset').onclick=()=>{
  if(!confirm('重新开始？可先导出当前进度。'))return;
- world=E.newWorld();selected='0,0';selectedEdge=null;storageBlocked=false;
+ world=E.newWorld();selected=E.START_TILE;selectedEdge=null;storageBlocked=false;
  accumulator=0;last=performance.now();save();cancelGesture();
 };
 document.addEventListener('visibilitychange',()=>{accumulator=0;last=performance.now();if(document.hidden){save();if(gesture)cancelGesture();}});
