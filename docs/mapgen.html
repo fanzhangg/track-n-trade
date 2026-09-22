@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>地图生成器原型</title>
+<link rel="stylesheet" href="color-tokens.css"><link rel="stylesheet" href="../site-nav.css">
+<style>
+:root{font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif;color:#273341;background:#eef1f4}
+body{margin:0;display:grid;grid-template-columns:320px 1fr;grid-template-rows:auto 1fr;height:100vh}
+body>.site-nav{grid-column:1 / -1;position:static}
+aside{padding:16px;overflow:auto;background:#fff;border-right:1px solid #e3e8ee}
+h1{font-size:17px;margin:0 0 4px}h2{font-size:13px;margin:18px 0 8px;color:#3d4c5c}
+p.note{color:#788494;font-size:12px;margin:0 0 8px}
+label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;margin:4px 0}
+label input,label select{width:110px;font:inherit;padding:3px 6px;border:1px solid #e3e8ee;border-radius:6px}
+button{font:inherit;padding:8px 12px;border:1px solid #e3e8ee;border-radius:7px;background:#fff;cursor:pointer}
+button.primary{background:#3876e1;border-color:#3876e1;color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:12px}td{padding:3px 0;border-bottom:1px solid #eef1f4}td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+main{position:relative;overflow:hidden}svg{width:100%;height:100%;display:block;cursor:grab}
+.hex{stroke:#fff;stroke-width:1.2}.fog{fill:#c9d1da;stroke:#eef1f4;stroke-width:2}.fogtext{font-size:9px;fill:#50607a;text-anchor:middle}
+.lab{font-size:8px;text-anchor:middle;fill:#1f2d3b;font-weight:600;pointer-events:none}.buy{font-size:7px;text-anchor:middle;fill:#5a3a1a}
+.flower{fill:none;stroke:#1b2a3a;stroke-opacity:.35;stroke-width:2.2}.order{font-size:8px;fill:#1b2a3a;fill-opacity:.55;text-anchor:middle}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;margin-top:6px}.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+</style></head><body>
+<nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="rules.html">规则说明书</a><a href="design.html">玩法设计</a><a href="ui-system.html">UI Design System</a><a href="mapgen.html" aria-current="page">地图生成器</a></div></nav>
+<aside>
+<h1>地图生成器原型</h1>
+<p class="note">直接跑正式引擎 <code>engine.js</code>：起始花固定，前五块教学，之后按当前供需生成。解锁即放下，朝向由引擎选。机器人只负责解锁顺序，不建东西；有城镇的板块会按其收购价假装已有对应产能，供下一块生成时参考。</p>
+<h2>局面</h2>
+<label>种子 <input id="seed" type="number" value="1"></label>
+<label>解锁块数 <input id="count" type="number" value="14" min="0" max="60"></label>
+<label>解锁顺序 <select id="policy"><option value="near">离起点近的优先</option><option value="town">先开城镇背面</option><option value="resource">先开资源背面</option><option value="random">随机（按种子）</option><option value="line">一直往一个方向走</option></select></label>
+<label>假装已解锁科技 <select id="tech"><option value="0">无</option><option value="1">采石场 + 锯木厂</option><option value="2" selected>到石匠铺 + 航道</option><option value="3">到矿山</option><option value="4">全部</option></select></label>
+<h2>生成旋钮（GEN）</h2>
+<label>城镇最小间距 townGap <input id="townGap" type="number" value="1" min="0" max="3"></label>
+<label>几块没城镇就补 townEvery <input id="townEvery" type="number" value="3" min="1" max="6"></label>
+<label>未知背面出城镇概率 <input id="townChance" type="number" value="0.25" step="0.05" min="0" max="1"></label>
+<label>每块墙 最少 <input id="wallMin" type="number" value="2" min="0" max="3"></label>
+<label>每块墙 最多 <input id="wallMax" type="number" value="3" min="0" max="3"></label>
+<label>草地权重 grass <input id="grass" type="number" value="1.5" step="0.5" min="0.5" max="4"></label>
+<label>城镇花草地上限 townGrass <input id="townGrass" type="number" value="3" min="3" max="6"></label>
+<label>每块原料上限 rawMax <input id="rawMax" type="number" value="2" min="1" max="3"></label>
+<label>供需感知 demandAware <input id="demandAware" type="checkbox" checked></label>
+<label>原料可在城镇隔壁 nextDoor <input id="nextDoor" type="checkbox" checked></label>
+<label>候选布局数 CANDIDATES <input id="cands" type="number" value="12" min="1" max="40"></label>
+<div class="row"><button class="primary" id="run">生成</button><button id="next">种子 +1</button><button id="more">再开 1 块</button></div>
+<h2>统计</h2>
+<table id="stats"></table>
+<div class="legend" id="legend"></div>
+<p class="note" style="margin-top:12px">拖动平移，滚轮缩放。花的编号是解锁次序，城镇格下方是收购价。</p>
+</aside>
+<main><svg id="map" viewBox="-600 -450 1200 900"></svg></main>
+<script src="../engine.js"></script>
+<script>
+const E=TradeEngine,$=id=>document.getElementById(id);
+const COLOR={grass:'var(--terrain-grass)',town:'var(--terrain-town)',forest:'var(--terrain-forest)',rock:'var(--terrain-rock)',ore:'var(--terrain-ore)',mountain:'var(--terrain-mountain)',lake:'var(--terrain-lake)'};
+const S=26,pos=t=>[S*Math.sqrt(3)*(t.q+t.r/2),S*1.5*t.r];
+const hex=(x,y,s)=>Array.from({length:6},(_,i)=>{const a=(i*60-30)*Math.PI/180;return `${x+s*Math.cos(a)},${y+s*Math.sin(a)}`;}).join(' ');
+const WALL=['mountain','lake'];
+function knobs(){Object.assign(E.GEN,{townGap:+$('townGap').value,townEvery:+$('townEvery').value,townChance:+$('townChance').value,walls:[+$('wallMin').value,+$('wallMax').value],grass:+$('grass').value,townGrass:+$('townGrass').value,rawMax:+$('rawMax').value,demandAware:$('demandAware').checked,nextDoor:$('nextDoor').checked});}
+// Pretend the economy keeps up with the map: every town's goods get a producer-equivalent so `producible` and the
+// glut rule see a real world, and the chosen tech level opens the buildings the generator keys off.
+function pretend(w){const lvl=+$('tech').value;const techs=[[],['quarry','sawmill'],['quarry','sawmill','mason','waterway'],['quarry','sawmill','mason','waterway','mine'],['quarry','sawmill','mason','waterway','mine','smelter']][lvl];for(const k of techs)w.tech[k]=1;}
+let world=null,fogPick=null;
+function fogs(w){return Object.values(w.flowers).filter(f=>f.state==='fog');}
+function pick(w,policy,rand){const fs=fogs(w);const near=(a,b)=>E.flowerDistance(a)-E.flowerDistance(b)||a.id.localeCompare(b.id);
+ if(policy==='random')return fs[Math.floor(rand()*fs.length)];
+ if(policy==='line'){return fs.sort((a,b)=>(b.a-a.a)||(a.b-b.b)||a.id.localeCompare(b.id))[0];}
+ if(policy==='town'||policy==='resource'){const h=fs.filter(f=>E.fogHint(w,f)===policy).sort(near);if(h.length)return h[0];}
+ return fs.sort(near)[0];}
+function unlock(w,f){w.money=1e9;E.command(w,{type:'explore',flower:f.id});}
+function build(){knobs();const seed=+$('seed').value,n=+$('count').value,policy=$('policy').value,rand=E.rng(seed*977+13);
+ const w=E.newWorld(seed);pretend(w);for(let i=0;i<n;i++){const f=pick(w,policy,rand);if(!f)break;unlock(w,f);}world=w;draw();}
+function measure(w){const tiles=Object.values(w.tiles),placed=Object.values(w.flowers).filter(f=>f.state==='placed'),sandbox=placed.filter(f=>f.order>E.TUTORIAL),towns=sandbox.filter(f=>f.design.buys);
+ const walls=tiles.filter(t=>WALL.includes(t.terrain)).length,grass=tiles.filter(t=>t.terrain==='grass').length;
+ // Each sandbox town: hex steps of new road to the nearest raw tile of each good it buys.
+ const dist=[];for(const f of towns){const town=tiles.find(t=>t.flower===f.id&&t.terrain==='town');for(const r in f.design.buys){let best=null;for(const t of tiles){if(!E.RAW[r].includes(t.terrain))continue;const rt=E.route(w,t.id,town.id);if(rt&&(best===null||rt.tiles.length-1<best))best=rt.tiles.length-1;}dist.push(best===null?'∞':best);}}
+ // Passes: passable adjacencies between different flowers, per flower border.
+ let passes=0,borders=0;for(const f of placed)for(const g of placed)if(f.id<g.id&&Math.max(Math.abs(f.a-g.a),Math.abs(f.b-g.b),Math.abs(f.a+f.b-g.a-g.b))===1){borders++;for(const t of tiles)if(t.flower===f.id&&!WALL.includes(t.terrain))for(const[dq,dr]of E.DIRS){const u=w.tiles[`${t.q+dq},${t.r+dr}`];if(u&&u.flower===g.id&&!WALL.includes(u.terrain))passes++;}}
+ // Largest connected wall mass.
+ const seen=new Set();let biggest=0;for(const t of tiles){if(!WALL.includes(t.terrain)||seen.has(t.id))continue;let n=0;const st=[t];seen.add(t.id);while(st.length){const x=st.pop();n++;for(const[dq,dr]of E.DIRS){const u=w.tiles[`${x.q+dq},${x.r+dr}`];if(u&&WALL.includes(u.terrain)&&!seen.has(u.id)){seen.add(u.id);st.push(u);}}}biggest=Math.max(biggest,n);}
+ const num=dist.filter(x=>x!=='∞');const avg=a=>a.length?(a.reduce((n,x)=>n+x,0)/a.length).toFixed(1):'-';
+ return[['已放板块 / 沙盒板块',`${placed.length} / ${sandbox.length}`],['沙盒城镇（占沙盒比例）',`${towns.length}（${sandbox.length?Math.round(100*towns.length/sandbox.length):0}%）`],['墙占比',`${Math.round(100*walls/tiles.length)}%`],['每块空草地',(grass/placed.length).toFixed(1)],['城镇到最近原料 平均步数',avg(num)],['其中 ≥3 步',num.length?`${Math.round(100*num.filter(x=>x>=3).length/num.length)}%`:'-'],['买不到原料的需求',String(dist.filter(x=>x==='∞').length)],['相邻花之间的可走通道 均值',borders?(passes/borders).toFixed(1):'-'],['最大连片山/湖',String(biggest)],['迷雾背面 城/资/未知',(()=>{const c={town:0,resource:0,unknown:0};for(const f of fogs(w))c[E.fogHint(w,f)]++;return `${c.town} / ${c.resource} / ${c.unknown}`;})()]];}
+function draw(){const w=world,svg=$('map');let s='';
+ for(const f of fogs(w)){const pts=E.flowerTiles(f).map(p=>pos(p));s+=pts.map(([x,y])=>`<polygon class="fog" points="${hex(x,y,S)}"/>`).join('');const[cx,cy]=pts[0];s+=`<text class="fogtext" x="${cx}" y="${cy+3}">${E.HINT_NAME[E.fogHint(w,f)]}</text>`;}
+ for(const t of Object.values(w.tiles)){const[x,y]=pos(t);s+=`<polygon class="hex" points="${hex(x,y,S)}" fill="${COLOR[t.terrain]}"/>`;
+  if(t.terrain==='town'){s+=`<text class="lab" x="${x}" y="${y-2}">城镇</text><text class="buy" x="${x}" y="${y+9}">${Object.entries(t.building.buys).map(([r,p])=>`${E.GOODS[r]}${p}`).join(' ')}</text>`;}
+  else if(!['grass','mountain','lake'].includes(t.terrain))s+=`<text class="lab" x="${x}" y="${y+3}">${E.TERRAIN_NAME[t.terrain]}</text>`;
+  else if(t.terrain==='mountain')s+=`<text class="lab" x="${x}" y="${y+3}" fill="#fff">▲</text>`;}
+ for(const f of Object.values(w.flowers).filter(f=>f.state==='placed')){const tiles=E.flowerTiles(f),keys=new Set(tiles.map(p=>`${p.q},${p.r}`));let d='';
+  for(const p of tiles){const[x,y]=pos(p);for(let i=0;i<6;i++){const[dq,dr]=[[1,0],[0,1],[-1,1],[-1,0],[0,-1],[1,-1]][i];if(keys.has(`${p.q+dq},${p.r+dr}`))continue;const a=(i*60-30)*Math.PI/180,b=((i+1)*60-30)*Math.PI/180;d+=`M${x+S*Math.cos(a)},${y+S*Math.sin(a)}L${x+S*Math.cos(b)},${y+S*Math.sin(b)}`;}}
+  const[cx,cy]=pos(f.center);s+=`<path class="flower" d="${d}"/><text class="order" x="${cx}" y="${cy-S+9}">${f.order||'起'}${f.hint&&f.order>E.TUTORIAL?'·'+E.HINT_NAME[f.hint][0]:''}</text>`;}
+ svg.innerHTML=s;
+ $('stats').innerHTML=measure(w).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+ $('legend').innerHTML=Object.entries(COLOR).map(([k,c])=>`<span><i style="background:${c}"></i>${E.TERRAIN_NAME[k]}</span>`).join('');}
+// Camera: drag to pan, wheel to zoom.
+const svg=$('map');let vb=[-600,-450,1200,900],drag=null;const apply=()=>svg.setAttribute('viewBox',vb.join(' '));
+svg.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,vb:[...vb]};svg.setPointerCapture(e.pointerId);});
+svg.addEventListener('pointermove',e=>{if(!drag)return;const k=vb[2]/svg.clientWidth;vb[0]=drag.vb[0]-(e.clientX-drag.x)*k;vb[1]=drag.vb[1]-(e.clientY-drag.y)*k;apply();});
+svg.addEventListener('pointerup',()=>drag=null);
+svg.addEventListener('wheel',e=>{e.preventDefault();const f=e.deltaY>0?1.15:1/1.15;const r=svg.getBoundingClientRect(),mx=vb[0]+(e.clientX-r.left)/r.width*vb[2],my=vb[1]+(e.clientY-r.top)/r.height*vb[3];vb=[mx-(mx-vb[0])*f,my-(my-vb[1])*f,vb[2]*f,vb[3]*f];apply();},{passive:false});
+$('run').onclick=build;$('next').onclick=()=>{$('seed').value=+$('seed').value+1;build();};
+$('more').onclick=()=>{if(!world)return build();knobs();const rand=E.rng(+$('seed').value*977+13+world.unlocked);const f=pick(world,$('policy').value,rand);if(f){unlock(world,f);$('count').value=world.unlocked;draw();}};
+$('cands').onchange=()=>{alert('候选布局数是引擎常量 CANDIDATES，原型页暂不可调；改 engine.js 后刷新即可。');$('cands').value=E.CANDIDATES;};
+$('cands').value=E.CANDIDATES;
+build();
+</script></body></html>

@@ -26,7 +26,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 @media print{body{background:white;font-size:11pt}h2,h3{break-after:avoid}.toolbar,.flowerctl{display:none}}
 </style><link rel="stylesheet" href="../site-nav.css">
 </head><body>
-<nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="rules.html">规则说明书</a><a href="design.html" aria-current="page">玩法设计</a><a href="ui-system.html">UI Design System</a></div></nav>
+<nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="rules.html">规则说明书</a><a href="design.html" aria-current="page">玩法设计</a><a href="ui-system.html">UI Design System</a><a href="mapgen.html">地图生成器</a></div></nav>
 <div class="page-sections" role="navigation" aria-label="本页章节"><a href="#philosophy">设计哲学</a><a href="#loops">三条循环</a><a href="#clock">时钟与整数</a><a href="#map">地图</a><a href="#tutorial">教学地图</a><a href="#production">生产</a><a href="#logistics">物流与城镇</a><a href="#tech">科技树</a><a href="#economy">经济模型</a><a href="#ui">界面</a><a href="#engine">实现契约</a><a href="#history">沿革与下一版</a></div>
 
 <div class="wrap">
@@ -80,7 +80,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="eyebrow">二</div><h2>三条循环，一种货币</h2><p>v0.11 只有一条循环：产货、运货、卖钱、买产能。现在是三条互相咬合的循环，并用前五块板块的探索顺序把玩法一步一步教给玩家。目标是把<strong>游戏前一小时</strong>打磨好；可重玩性和后期内容留到下一版。</p>
 <div class="grid3">
 <div class="card"><h3>经济</h3><p>点击、雇工人、修路、扩城，把货变成金币。</p></div>
-<div class="card"><h3>空间</h3><p>花金币揭开相邻板块，旋转决定地形朝向，地形改变路网可行性。参考桌游 Recall 的面朝下区域板块。</p></div>
+<div class="card"><h3>空间</h3><p>花金币揭开相邻板块；朝向由引擎按周边地形决定，山脉延续、山口有限。地形决定路网可行性，驿站让路可以先修到山口再定两头。参考桌游 Recall 的面朝下区域板块。</p></div>
 <div class="card"><h3>科技</h3><p>花金币买科技，科技解锁建筑和航道，建筑之间靠配方交织。参考桌游 Roads &amp; Boats 的生产链与运输工具阶梯。</p></div>
 </div>
 <div class="callout"><strong>金币是唯一的全局货币。</strong>货物只存在于生产地的堆场和路上，永远不进玩家的口袋；它们只是把物流转成金币的途径。科技、板块、建筑、工人、道路全部用金币买。</div>
@@ -104,7 +104,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="grid">
 <div>
 <h3>板块是 7 格花</h3>
-<p>一块板块是一朵六边形「花」：中心格加六个邻居，按行看就是 2-3-2。花能无缝铺满六边形平面：花心落在轴坐标 <code>a·(3,−1) + b·(1,2)</code> 的格点上，每朵花恰好有六个相邻的花，已用脚本验证无重叠、无缺口。<strong>花的位置是格点决定的，玩家决定往哪个方向探、以及每朵花的朝向。</strong></p>
+<p>一块板块是一朵六边形「花」：中心格加六个邻居，按行看就是 2-3-2。花能无缝铺满六边形平面：花心落在轴坐标 <code>a·(3,−1) + b·(1,2)</code> 的格点上，每朵花恰好有六个相邻的花，已用脚本验证无重叠、无缺口。<strong>花的位置是格点决定的，玩家只决定往哪个方向探；每朵花的朝向由引擎按周边地形决定。</strong></p>
 <h3>无限、无预设、按局势生成</h3>
 <ul>
 <li>地图没有边界，也没有预设内容，只有起始花 F0 是固定的。每放下一朵花，它周围所有还没有花的位置都变成迷雾；迷雾朝任何方向无限延伸，地图的整体形状由玩家的探索路径决定。</li>
@@ -114,8 +114,9 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <h3>迷雾与解锁</h3>
 <ul>
 <li>与已解锁区域相邻的任何迷雾花都可以解锁，方向任选。价格按<strong>解锁次序</strong>算：前五次固定；之后每块 <code>max(5000, 当前每回合收入 × 30)</code>，和居民、工艺、时代一样按收入定价，所以攒下一块板块的时间恒定在 30 回合左右，不随阶段膨胀。</li>
-<li>解锁后进入预览：<strong>模拟暂停</strong>，板块以随机朝向出现，玩家可以旋转六个朝向。预览里叠画最短路和造价。余额不够时：收入为零就不允许放下（见第二节的无死局规则），否则只警告。</li>
-<li><strong>放下即固定，之后永远不能再转。</strong>这是有意的：旋转是这个游戏里分量最重的一次决定，就要让它有分量。</li>
+<li><strong>解锁即放下，没有预览也不能旋转。</strong>v0.13 曾让玩家旋转六个朝向，实测结果是旋转把地形随机性抵消了：资源永远能转到离城镇最近的一侧，稀疏规则下城镇到最近原料反而只剩 2.8 步；交给引擎定朝向后是 4.7 步，九成城镇的原料在 3 步以外。</li>
+<li><strong>引擎怎么定朝向</strong>：从 12 个合法布局 × 6 个朝向里打分取最高。山接山、湖接湖加分（山脉跨板块延续）；与已有地图之间的可通行邻接控制在 2 格以内（山脉有山口，不是缺口）；至少一格可通行相接（永远接得上）；还没开始赚钱时，新城镇的首条路必须修得起（无死局规则）。地形即命运，路才是决定。</li>
+<li>生成器原型页 <a href="mapgen.html">docs/mapgen.html</a> 可以换种子、调旋钮、看统计，用来审核地图手感。</li>
 <li>迷雾花外观一致，看不出内容差别。</li>
 </ul>
 </div>
@@ -126,12 +127,14 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <h3>沙盒生成规则（第六次解锁起）</h3>
 <div class="table"><table>
 <tr><th>规则</th><th>内容</th><th>目的</th></tr>
-<tr><td>连通</td><td>新花里所有非山格连通，且至少两条边与已有的可通行格相接</td><td>永远不会把玩家围死</td></tr>
-<tr><td>城镇密度</td><td>每三朵花至少一座城镇，两座城镇不相邻</td><td>探索总有回报，市场不挤在一起</td></tr>
+<tr><td>连通</td><td>新花里所有非山格连通；朝向由引擎选，至少一格与已有可通行格相接，可通行邻接尽量不超过两格</td><td>永远不会把玩家围死，同时山脉有山口</td></tr>
+<tr><td>空旷</td><td>每朵花 2 到 3 格山或湖，草地权重 1.5（原 3）；城镇花 = 城镇 + 至多 3 格草地 + 墙，不带任何原料</td><td>地少了，放哪、绕哪才成为问题</td></tr>
+<tr><td>城镇密度</td><td>沙盒城镇彼此不相邻（教学五镇例外）；未知背面的花在连续三次没有城镇后才补一座，且只在有空位处</td><td>市场散开，城镇之间隔着资源花</td></tr>
+<tr><td>迷雾背面</td><td>每块迷雾出现时就定下背面：城镇 / 资源 / 未知。城镇背面必兑现，且不会出现在城镇隔壁</td><td>玩家知道往哪探，引擎守约</td></tr>
 <tr><td>城镇收什么</td><td>优先从「玩家已能生产、但买家少于两个」的货里选；其次选下一级科技解锁的货；最多两种</td><td>新市场消化过剩产能，或者拉玩家往科技树上走</td></tr>
 <tr><td>价格</td><td>基础价 × (1 + 0.1 × 到 F0 的花距离)</td><td>越远越贵，探索本身值钱</td></tr>
-<tr><td>资源跟着经济走</td><td>近期缺什么补什么：伐木营都满编且原木缺口大就补森林；石头卖不出去就不补岩地。铁矿只出现在山旁边，每朵最多一格</td><td>地图回应玩家的局势，不是随机噪声</td></tr>
-<tr><td>地形配比</td><td>山最多 3 且连片，湖最多 3 且连片，草地不少于 2</td><td>不出废板块</td></tr>
+<tr><td>资源跟着经济走</td><td>城镇在买、而地图上已没有空闲对应原料地的货，其原料地形权重加倍（供需缺口）；地图上没有某种原料地时也加权。铁矿只出现在山旁边，每朵最多一格</td><td>地图回应玩家的局势，不是随机噪声</td></tr>
+<tr><td>地形配比</td><td>山最多 3 且连片，湖最多 3 且连片，外圈至少 4 格可走，森林岩地各至多 2</td><td>不出废板块</td></tr>
 <tr><td>没有捷径</td><td>城镇收的货所需的原料地形不出现在同一朵花</td><td>不存在「资源就在城镇旁边」</td></tr>
 </table></div>
 <h3>地形</h3>
@@ -146,7 +149,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <tr><td><i class="sw" style="background:var(--t-lake)"></i> 湖</td><td>买了「航道」后可以铺路</td><td>无</td><td>×3</td></tr>
 </table></div>
 <ul>
-<li>山是硬障碍，路只能绕，这是旋转板块时要考虑的第一件事。</li>
+<li>山是硬障碍，路只能绕。绕不过去就先建驿站，把路修到山口那一格，再从驿站往两头接。</li>
 <li>铁矿是独立地形，一眼能读，以后金矿、银矿照此办理。生成器只把铁矿放在山旁边，所以玩家看到的永远是「山边上有矿」，但这只是生成规则，不是玩家需要知道的机制。</li>
 <li>湖是整格水，可以单格也可以几格连成一片。买了航道之后湖格就是普通的路网节点。桥、河流、密林、富岩地删掉，地形系数只剩 1 / 2 / 3 三档。</li>
 </ul>
@@ -219,7 +222,8 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="eyebrow">七</div><h2>物流与城镇</h2>
 <h3>道路</h3>
 <ul>
-<li><strong>只能在有货可运的两点之间修路</strong>：一方产某种货、另一方收这种货（城镇收购，或加工建筑把它当输入）。路沿着六边形邻接边走，占边不占格；起点和终点之间的中间格只要可通行即可。</li>
+<li><strong>只能在有货可运的两点之间修路</strong>：一方产某种货、另一方收这种货（城镇收购，或加工建筑把它当输入）；<strong>驿站</strong>是例外，它是任意可通行地上 300 金币的路网节点，任何建筑都能连到它。路沿着六边形邻接边走，占边不占格；起点和终点之间的中间格只要可通行即可。</li>
+<li><strong>驿站</strong>不产不收不雇人，只让路能转弯、汇流、提前修到山口；货经过它像经过任何路口一样。拆除全额退款。</li>
 <li><strong>每段造价 <code>250 × 地形系数</code></strong>，系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3）。复用已有路段不再收费。</li>
 <li><strong>道路只负责连通，没有运力和等级。</strong>一件货每回合走一段，一段路同一回合能过任意多件。路的意义只有一个：谁和谁连着，连的代价是距离。产量和需求是仅有的两层上限，瓶颈不会出现在路上。</li>
 <li><strong>选路</strong>：段数最少的路，同长按路段编号取稳定的一条；已经上路的货不能掉头。玩家拆旧路可以改变拓扑。</li>
@@ -270,6 +274,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <tr><th>项目</th><th>价格</th></tr>
 <tr><td>第一名工人：伐木营 / 采石场 / 矿山 / 锯木厂 / 石匠铺 / 铁厂</td><td>400 / 600 / 600 / 1 000 / 1 000 / 1 000，每多一名 ×1.3，最多 3 名</td></tr>
 <tr><td>道路每段</td><td>250 × 地形系数（1 / 2 / 3）</td></tr>
+<tr><td>驿站</td><td>300，任意可通行地，无需科技；拆除全额退款</td></tr>
 <tr><td>加居民</td><td>新增收入 × 30 回合 × 1.5ⁿ = 2 × 时代 × Σ收购价 × 30 × 1.5ⁿ：F1 城镇第 2 名 1 200、第 3 名 1 800。最多 3 名</td></tr>
 <tr><td>工艺 Lv n（按建筑类型）</td><td>新增产量 × 售价 × 30 回合 × 1.5ⁿ = 该类型当前工人数 × 产出价 × 30 × 1.5ⁿ，没有工人时按 1 名算。产出没有市场的货（铁矿石）按它加工成的货计价</td></tr>
 <tr><td>时代</td><td>全图新增收入 × 30 回合 × 1.5ᵉ = Σ(各城镇 居民数 × Σ收购价) × 2 × 30 × 1.5ᵉ，五级封顶</td></tr>

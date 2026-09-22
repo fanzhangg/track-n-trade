@@ -6,8 +6,8 @@
 /* v0.12: fog flowers, previewed flower, tech tree, new terrains */
 .build-buttons{display:flex;gap:9px;flex-wrap:wrap}.tech-button{display:flex;align-items:center;gap:8px;text-align:left;padding:8px 12px}.tech-button .icon{width:18px;height:18px;color:#5170a0}.tech-button.ready{border-color:#77a68b;background:#f2f8f4}.tech-button.ready small{color:#49876b}
 .mason-c{color:#8a5a2b}.mine-c{color:#6b5040}.smelter-c{color:#5f6b7a}.tool-c{color:#a5773f}.ore-c{color:#b3785a}.iron-c{color:#5f6b7a}
-.fog-hex{fill:#c7ccd3;stroke:#c7ccd3;stroke-width:1;transition:fill .1s,stroke .1s}.fog-edge{fill:none;stroke:#eef1f4;stroke-width:4;stroke-linecap:round;pointer-events:none}.fog-flower{cursor:pointer;outline:none}.fog-flower.affordable .fog-hex{fill:#c9d1dd;stroke:#c9d1dd}.fog-flower:hover .fog-hex,.fog-flower:focus-visible .fog-hex{fill:#bcc5d2;stroke:#bcc5d2}.fog-flower.selected .fog-edge{stroke:#3876e1;stroke-width:3}.fog-label{font-size:11px;font-weight:700;fill:#5d6b7c;pointer-events:none}.fog-price{font-size:10px;font-weight:600;fill:#3f6899;font-variant-numeric:tabular-nums;pointer-events:none}.fog-flower:not(.affordable) .fog-price{fill:#8a96a5}.fog-flower.hint-town .fog-label{fill:#8a5a2b}.fog-flower.hint-resource .fog-label{fill:#3f6e3a}.fog-flower.hint-unknown .fog-label{fill:#5d6b7c}
-.preview-hex{stroke:#3876e1;stroke-width:2.5;stroke-dasharray:6 4}.terrain-label.faint{fill:#b3bcc4;font-weight:500}.flower-controls{position:fixed;z-index:9;transform:translateX(-50%);display:flex;gap:8px;align-items:stretch;background:#fffffff2;backdrop-filter:blur(6px);border:1px solid #84adeb;border-radius:12px;padding:8px;box-shadow:0 8px 24px #1b2a3a26}.flower-controls[hidden]{display:none}.flower-controls button{white-space:nowrap}.flower-controls button.primary{padding:8px 16px}.flower-controls button small{font-size:10px}
+.fog-hex{fill:#c7ccd3;stroke:#c7ccd3;stroke-width:1;transition:fill .1s,stroke .1s}.fog-edge{fill:none;stroke:#eef1f4;stroke-width:4;stroke-linecap:round;pointer-events:none}.fog-flower{cursor:pointer;outline:none}.fog-flower.affordable .fog-hex{fill:#c9d1dd;stroke:#c9d1dd}.fog-flower:hover .fog-hex,.fog-flower:focus-visible .fog-hex{fill:#bcc5d2;stroke:#bcc5d2}.fog-flower.selected .fog-edge{stroke:#3876e1;stroke-width:3}.fog-label{font-size:11px;font-weight:700;fill:#5d6b7c;pointer-events:none}.fog-price{font-size:10px;font-weight:600;fill:#3f6899;font-variant-numeric:tabular-nums;pointer-events:none}.fog-flower:not(.affordable) .fog-price{fill:#8a96a5}
+.preview-hex{stroke:#3876e1;stroke-width:2.5;stroke-dasharray:6 4}.terrain-label.faint{fill:#b3bcc4;font-weight:500}
 .road.water{stroke-dasharray:10 6}
 
 .tier{display:grid;gap:8px;padding:10px 0;border-bottom:1px dashed var(--border)}.tier:last-child{border-bottom:0}.tier-label{font-size:11px;color:var(--muted)}.nodes{display:grid;gap:8px}
@@ -41,3 +41,14 @@
 .mobile-warning-box{background:#fff;border-radius:14px;padding:22px 20px;max-width:320px;text-align:center;box-shadow:0 12px 32px #1b2a3a40}
 .mobile-warning-box p{margin:0 0 10px;color:#3d4c5c;font-size:14px;line-height:1.7}
 .mobile-warning-box button{margin-top:8px;width:100%;padding:10px;border-radius:8px}
+
+#growth-body{padding:10px 14px}
+.growth-chart{display:block;width:100%;height:auto}
+.growth-chart .axis{stroke:#dde5ed;stroke-width:1}
+.growth-chart .income-line{fill:none;stroke:#b8743a;stroke-width:2.4}
+.growth-chart .good-area{stroke:none;opacity:.55}
+.growth-chart .chart-label{font-size:10px;fill:#8794a4}
+.growth-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#4f5f70;margin-top:6px;font-variant-numeric:tabular-nums}
+.growth-legend span{display:inline-flex;align-items:center;gap:5px}
+.growth-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}
+.growth-empty{font-size:12px;color:var(--muted);padding:20px 0;text-align:center}

@@ -9,7 +9,7 @@ const goodColor = r => r === 'ore' ? colors.ore_good : colors[r];
 const iconIds = new Set(TradeIcons.catalog.map(item=>item.id));
 const iconAliases = {check:'ui-checkmark',warn:'ui-exclamation',fog:'ui-question',tech:'ui-gear'};
 const icon = (name, cls='') => {
- const id=iconAliases[name]||name;
+ const id=name==='relay'?'rail':(iconAliases[name]||name);
  if(iconIds.has(id))return TradeIcons.icon(id,{base:'assets/icons/v1/',size:E.BUILDINGS.includes(id)||id==='town'?48:id.startsWith('ui-')?18:24,decorative:true});
  return `<svg class="icon ${cls}" aria-hidden="true"><use href="#icon-${name}"/></svg>`;
 };
@@ -27,6 +27,20 @@ let selected = E.START_TILE, selectedEdge = null, selectedFlower = null, buildTy
 let gesture = null, suppressClick = false, interacting = false, speed = 1;
 let last = performance.now(), accumulator = 0, lastSave = 0, lastPaint = 0;
 let storageBlocked = false, welcome = '', popTick = -1, mapKey = '', hovered = null;
+let history = [];
+const HISTORY_CAP = 600, HISTORY = 'tnt-history';
+function loadHistory() {
+ try {
+  const h = JSON.parse(localStorage.getItem(HISTORY) || 'null');
+  if (h && h.seed === world.seed && Array.isArray(h.pts) && h.pts.every(p => p.tick <= world.tick)) history = h.pts;
+ } catch {}
+}
+function recordHistory() {
+ const st=windowStats(), goods={};
+ for (const r of E.SELLABLE) goods[r]=townTiles().reduce((n,t)=>n+(t.building.buys[r]?st.sales(t.id,r)*t.building.buys[r]:0),0);
+ history.push({tick:world.tick, income:st.income, goods});
+ if (history.length > HISTORY_CAP) history = history.filter((_, i) => i % 2 === 0);
+}
 
 try {
  const raw = localStorage.getItem(SAVE);
@@ -36,7 +50,6 @@ try {
  storageBlocked = true;
  welcome = '原存档无法读取，已保留；当前进度可通过导出保存';
 }
-if (world.preview) selectedFlower = world.preview;
 
 function toast(message) {
  $('toast').textContent = message;
@@ -49,6 +62,7 @@ function save() {
  try {
   E.validate(world);
   localStorage.setItem(SAVE, JSON.stringify(world));
+  localStorage.setItem(HISTORY, JSON.stringify({seed:world.seed, pts:history}));
   lastSave = world.tick;
   $('save-status').textContent = '已自动保存';
  } catch { $('save-status').textContent = '保存失败，请导出存档'; }
@@ -61,7 +75,7 @@ function act(command, message) {
   return true;
  } catch (error) { toast(error.message); return false; }
 }
-const messages = {build:'已建成',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',resident:'已加一名居民',tech:'科技已解锁',removeRoad:'在途货物通过后拆除，全额退款',restoreRoad:'已撤销拆除',rotate:'',place:'板块已放下'};
+const messages = {build:'已建成',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',resident:'已加一名居民',tech:'科技已解锁',removeRoad:'在途货物通过后拆除，全额退款',restoreRoad:'已撤销拆除'};
 function bindCommands(root) {
  for (const b of root.querySelectorAll('[data-command]')) b.onclick = () => {
   const c = JSON.parse(b.dataset.command);
@@ -72,12 +86,13 @@ function bindCommands(root) {
 }
 function canPlace(type, tile) { return !!tile && !tile.building && E.RECIPES[type].fits.includes(tile.terrain); }
 const afford = cost => world.money >= cost;
-const unlockedBuildings = () => E.BUILDINGS.filter(b => b === 'camp' || world.tech[b]);
+// The relay needs no tech and is offered from the start, after the workshops.
+const unlockedBuildings = () => [...E.BUILDINGS.filter(b => b === 'camp' || world.tech[b]), 'relay'];
 const townTiles = () => Object.values(world.tiles).filter(t => t.building?.type === 'town');
 // Stock of a good sitting at producers that can reach this town, beyond what its demand pool will take: the part
 // only a click (or more residents) can sell.
 function backlog(town, r) {
- const stock = Object.values(world.tiles).reduce((n, t) => t.building && t.building.type !== 'town' && E.RECIPES[t.building.type].out === r && E.path(world, t.id, town) ? n + t.loose[r] : n, 0);
+ const stock = Object.values(world.tiles).reduce((n, t) => E.workshop(t.building) && E.RECIPES[t.building.type].out === r && E.path(world, t.id, town) ? n + t.loose[r] : n, 0);
  return Math.max(0, stock - world.tiles[town].building.demand[r]);
 }
 const connectedTowns = () => townTiles().filter(u => Object.values(world.tiles).some(t => t.building && t.building.type !== 'town' && u.building.buys[E.RECIPES[t.building.type].out] && E.path(world, t.id, u.id))).map(t => t.id);
@@ -103,11 +118,10 @@ function explore(fid) {
 }
 function tileClick(key) {
  if (suppressClick) { suppressClick = false; return; }
- if (world.preview) { toast('先把新板块放下'); return; }
  if (buildType) return place(buildType, key);
  if (connectFrom) return connect(connectFrom, key);
  selected = key; selectedEdge = null; selectedFlower = null;
- if (world.tiles[key].building) produce(key); else render();
+ if (world.tiles[key].building && world.tiles[key].building.type !== 'relay') produce(key); else render();
 }
 // A click on a workshop makes goods; a click on a town asks for more of every good it buys. Both pop "+n".
 function produce(key) {
@@ -206,7 +220,7 @@ function chainOf(t, st = windowStats()) {
  const walk = (from, to) => { const p = E.path(world, from, to); if (!p) return null; for (const k of p) edges.add(k); return p.length; };
  const wants = b.type === 'town' ? Object.keys(b.buys) : Object.keys(E.RECIPES[b.type].in);
  for (const r of wants) for (const u of Object.values(world.tiles)) {
-  if (!u.building || u.building.type === 'town' || E.RECIPES[u.building.type].out !== r || u.id === t.id) continue;
+  if (!u.building || !E.workshop(u.building) || E.RECIPES[u.building.type].out !== r || u.id === t.id) continue;
   const hops = walk(u.id, t.id); if (hops === null) continue;
   nodes.add(u.id); up.push({tile:u, r, hops, rate:E.rate(world, u), made:tileRate(u), stock:u.loose[r], sent:st.outflow(u.id, r)});
  }
@@ -327,7 +341,7 @@ function diagnose(t, st) {
  if (miss.length) {
   if (!edges.length) return {level:'warn', text:`没有道路，${miss.map(r => names[r]).join('和')}进不来。`};
   for (const r of miss) {
-   const makers = Object.values(world.tiles).filter(x => x.building && x.building.type !== 'town' && E.RECIPES[x.building.type].out === r && E.path(world, x.id, t.id));
+   const makers = Object.values(world.tiles).filter(x => E.workshop(x.building) && E.RECIPES[x.building.type].out === r && E.path(world, x.id, t.id));
    if (!makers.length) return {level:'warn', text:`没有连接到任何产${names[r]}的建筑。`};
   }
   if (st.span < 5) return null;
@@ -339,7 +353,7 @@ function diagnose(t, st) {
  }
  const r = rc.out;
  if (t.loose[r] < E.YARD || madeLastRound(t)) return null;
- const buyers = buyersOf(r, t.id), users = Object.values(world.tiles).filter(x => x.building && x.building.type !== 'town' && E.RECIPES[x.building.type].in[r] && E.path(world, t.id, x.id));
+ const buyers = buyersOf(r, t.id), users = Object.values(world.tiles).filter(x => E.workshop(x.building) && E.RECIPES[x.building.type].in[r] && E.path(world, t.id, x.id));
  if (!buyers.length && !users.length) return {level:'warn', text:`堆场已满。没有连到收${names[r]}的地方。`};
  if (buyers.length && buyers.every(k => saturated(k, r, st)) && !users.length) return {level:'warn', text:`堆场已满。收${names[r]}的城镇已喂饱。`};
  return {level:'info', text:'堆场已满，货正在陆续运出。'};
@@ -363,7 +377,6 @@ const INITIAL_MAP_SCALE = 14 / 11;
 function applyView() {
  const w = svg.clientWidth || 1, h = svg.clientHeight || 1;
  svg.setAttribute('viewBox', `${view.x} ${view.y} ${w / view.scale} ${h / view.scale}`);
- placeFlowerControls();
 }
 function centerOn(x, y, scale = view.scale) {
  view.scale = Math.min(ZOOM[1], Math.max(ZOOM[0], scale));
@@ -420,7 +433,7 @@ function buildMap() {
  svg.innerHTML = `<g id="fog"></g><g id="terrain">${Object.values(world.tiles).map(t => {
   const [x,y] = position(t);
   return `<g class="hex" data-tile="${t.id}" tabindex="0" role="button"><polygon class="ground" points="${hexPoints(x,y,51)}" fill="${colors[t.terrain]}" stroke="${colors[t.terrain]}"/></g>`;
- }).join('')}</g><g id="highlight" pointer-events="none"></g><g id="flower-preview"></g><g id="roads"></g><g id="preview" pointer-events="none"></g><g id="ambient" pointer-events="none">${Object.values(world.tiles).map(t=>{const [x,y]=position(t);return `<g data-tile-ambient="${t.id}" transform="translate(${x},${y})"></g>`;}).join('')}</g><g id="freight" pointer-events="none"></g><g id="tile-ui" pointer-events="none">${Object.values(world.tiles).map(t=>{const [x,y]=position(t);return `<g data-tile-ui="${t.id}" transform="translate(${x},${y})"><g class="tile-content"></g><g class="tile-crew"></g></g>`;}).join('')}</g><g id="pops" pointer-events="none"></g>`;
+ }).join('')}</g><g id="highlight" pointer-events="none"></g><g id="roads"></g><g id="preview" pointer-events="none"></g><g id="ambient" pointer-events="none">${Object.values(world.tiles).map(t=>{const [x,y]=position(t);return `<g data-tile-ambient="${t.id}" transform="translate(${x},${y})"></g>`;}).join('')}</g><g id="freight" pointer-events="none"></g><g id="tile-ui" pointer-events="none">${Object.values(world.tiles).map(t=>{const [x,y]=position(t);return `<g data-tile-ui="${t.id}" transform="translate(${x},${y})"><g class="tile-content"></g><g class="tile-crew"></g></g>`;}).join('')}</g><g id="pops" pointer-events="none"></g>`;
  $('fog').innerHTML = Object.values(world.flowers).filter(f => f.state === 'fog').map(f => {
   const pts = flowerPoints(f), [cx, cy] = pts[0];
   return `<g class="fog-flower" data-flower="${f.id}" tabindex="0" role="button" aria-label="迷雾板块，解锁 ${coins(E.flowerCost(world))}">${pts.map(([x,y]) => `<polygon class="fog-hex" points="${hexPoints(x,y,51)}"/>`).join('')}<path class="fog-edge" d="${flowerOutline(f)}"/><text x="${cx}" y="${cy - 4}" text-anchor="middle" class="fog-label">解锁</text><text x="${cx}" y="${cy + 12}" text-anchor="middle" class="fog-price"></text></g>`;
@@ -443,7 +456,7 @@ function renderHighlight() {
  const ring = (t, cls) => { const [x,y] = position(t); return `<polygon class="hl ${cls}" points="${hexPoints(x,y,49)}"/>`; };
  let html = '';
  if (buildType) for (const t of Object.values(world.tiles)) if (canPlace(buildType, t)) html += ring(t, 'legal');
- if (hovered && world.tiles[hovered] && !world.preview) html += ring(world.tiles[hovered], 'hover');
+ if (hovered && world.tiles[hovered]) html += ring(world.tiles[hovered], 'hover');
  if (selected && world.tiles[selected]) html += ring(world.tiles[selected], 'selected');
  $('highlight').innerHTML = html;
 }
@@ -460,47 +473,17 @@ function tileAt(clientX, clientY) {
  const [x,y] = position(best), dx = Math.abs(p.x-x), dy = Math.abs(p.y-y);
  return dx <= Math.sqrt(3)*25 && dy <= 50-dx/Math.sqrt(3) ? best.id : null;
 }
-function renderPreviewFlower() {
- const f = world.flowers[world.preview];
- const box = $('flower-preview');
- if (!f) { box.innerHTML = ''; return; }
- const tiles = E.flowerTiles(f);
- let html = tiles.map(p => { const [x,y] = position(p), terrain = E.slotTerrain(f.design, p.slot); const scene=terrain==='town'?TradeIcons.svgIcon('town',{x:-21,y:-25,size:42}):AmbientTiles.render({terrain,id:`preview:${f.id}:${p.slot}`,preview:true}); return `<polygon class="preview-hex" points="${hexPoints(x,y,49)}" fill="${colors[terrain]}"/><g transform="translate(${x} ${y})">${scene}</g>` + (terrain === 'town' ? `<text x="${x}" y="${y+28}" text-anchor="middle" class="price-label">${Object.entries(f.design.buys).map(([r,p]) => `${names[r]} ${p}`).join(' · ')}</text>` : ''); }).join('');
- box.innerHTML = html;
-}
-// Rotate / place buttons float in HTML just below the previewed flower and follow it as the camera moves.
-function renderFlowerControls() {
- const el = $('flower-controls'), f = world.flowers[world.preview];
- if (!f) { el.hidden = true; el.dataset.flower = ''; return; }
- if (el.dataset.flower !== f.id) {
-  el.dataset.flower = f.id;
-  el.innerHTML = button('↺ 左转',{type:'rotate',flower:f.id,dir:-1}) + button('右转 ↻',{type:'rotate',flower:f.id,dir:1}) + button('放下板块',{type:'place',flower:f.id},true);
-  bindCommands(el);
- }
- el.hidden = false;
- placeFlowerControls();
-}
-function placeFlowerControls() {
- const el = $('flower-controls'), f = world.flowers[world.preview];
- if (!f || el.hidden) return;
- const m = svg.getScreenCTM(); if (!m) return;
- const [cx, cy] = flowerPoints(f)[0];
- const p = new DOMPoint(cx, cy + 76.5 + 51 + 10).matrixTransform(m);
- el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
-}
 function renderMap() {
  buildMap();
  const st = windowStats();
  const roadLayout=RoadTiles.layout(world.tiles,Object.values(world.edges),position);
  for (const g of svg.querySelectorAll('[data-flower]')) {
   g.classList.toggle('selected', g.dataset.flower === selectedFlower);
-  g.classList.toggle('affordable', afford(E.flowerCost(world)) && !world.preview);
+  g.classList.toggle('affordable', afford(E.flowerCost(world)));
   g.querySelector('.fog-price').textContent = coins(E.flowerCost(world));
  }
- renderPreviewFlower();
- renderFlowerControls();
  renderHighlight();
- const focus=world.tiles[selected]?.building&&!buildType&&!connectFrom?chainOf(world.tiles[selected],st):null;
+ const focus=world.tiles[selected]?.building&&world.tiles[selected].building.type!=='relay'&&!buildType&&!connectFrom?chainOf(world.tiles[selected],st):null;
  svg.classList.toggle('chain',!!focus);
  for (const g of svg.querySelectorAll('[data-tile]')) {
   const t=world.tiles[g.dataset.tile], b=t.building;
@@ -516,6 +499,10 @@ function renderMap() {
    const linked=connectedTowns().includes(t.id);
    const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,backlog:backlog(t.id,id),full:backlog(t.id,id)>0,income:linked?st.sales(t.id,id)*d.price:null}));
    content=BuildingTiles.render({type:'town',name:'城镇',residents:b.residents,offers,status:linked?`+${fmt(earning)}金/回合`:'未连路',alert:!linked});
+  } else if (b?.type === 'relay') {
+   const held=E.RES.reduce((n,r)=>n+t.loose[r],0);
+   content=`<g class="relay-tile">${glyph('rail',-16,-30,32)}<text class="tile-label" text-anchor="middle" y="18">驿站</text>${held?`<text class="tile-stock" text-anchor="middle" y="30">${held} 件待转运</text>`:''}</g>`;
+   g.setAttribute('aria-label',`驿站 (${t.id})`);
   } else if (b) {
    const rc=E.RECIPES[b.type],stall=stallOf(t),count=t.loose[rc.out];
    const status=stall||(count>=E.YARD?'满仓 · 待运出':!b.workers.length?'点击生产':'生产中');
@@ -542,7 +529,7 @@ function renderMap() {
   ui.classList.toggle('chain-dim',!!focus&&!focus.nodes.has(t.id));
   ui.querySelector('.tile-content').innerHTML=content;
   const holder=ui.querySelector('.tile-crew');
-  const c=b?.type==='town'?{n:b.residents,blocked:!Object.values(world.stats.at(-1)?.sales[t.id]||{}).some(n=>n>0),beat:Math.max(.25,E.DT/speed)}:b?crew(t):null;
+  const c=b?.type==='relay'?null:b?.type==='town'?{n:b.residents,blocked:!Object.values(world.stats.at(-1)?.sales[t.id]||{}).some(n=>n>0),beat:Math.max(.25,E.DT/speed)}:b?crew(t):null;
   const key=c?`${b.type}|${c.n}|${c.blocked}|${c.beat}|${world.paused}`:'';
   if(holder.dataset.key!==key){
    holder.dataset.key=key;
@@ -593,10 +580,8 @@ function townPanel(t) {
 function flowerPanel(f) {
  if (f.state === 'fog') {
   const cost=E.flowerCost(world), n=world.unlocked+1;
-  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块${n>E.TUTORIAL?` · 价格 = 每回合收入 × ${E.PAYBACK} 回合`:''}</p></div><div class="actions">${button(`解锁这块板块<small>${coins(cost)}</small>`,{type:'explore',flower:f.id},true,!afford(cost)||!!world.preview)}</div>`;
+  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块${n>E.TUTORIAL?` · 价格 = 每回合收入 × ${E.PAYBACK} 回合`:''}</p></div><div class="actions">${button(`解锁这块板块<small>${coins(cost)}</small>`,{type:'explore',flower:f.id},true,!afford(cost))}</div>`;
  }
- const town=f.design.buys;
- return `<h2>${icon('fog','quarry-c')}新板块</h2><div class="subtitle">${town?`城镇收 ${Object.entries(town).map(([g,p])=>`${names[g]} ${p}`).join('、')}`:'没有城镇'}</div><div class="state wait">预览中，时间已暂停</div>`;
 }
 function renderSelection() {
  const box=$('selection');
@@ -604,14 +589,17 @@ function renderSelection() {
  const wasOpen=new Map([...box.querySelectorAll('details')].map(d=>[d.dataset.key,d.open]));
  let html='';
  const e=world.edges[selectedEdge],t=world.tiles[selected],f=world.flowers[selectedFlower],st=windowStats();
- if (world.preview) html=flowerPanel(world.flowers[world.preview]);
- else if (f && f.state !== 'placed') html=flowerPanel(f);
+ if (f && f.state !== 'placed') html=flowerPanel(f);
  else if (e) {
   const water=[world.tiles[e.a].terrain,world.tiles[e.b].terrain].includes('lake');
   html=`<h2>${icon(water?'waterway':'road','quarry-c')}${water?'航线':'道路'}</h2><div class="subtitle">货物每回合走一段</div><div class="state ${e.removing?'wait':''}">${e.removing?'等待在途货物通过后拆除':'运转中'}</div><div class="metrics"><div><span>近 30 回合运量</span><b>${per(st.flow(e.id))} 件/回合</b></div></div>`;
   html+=`<div class="actions">${e.removing?button('撤销拆除',{type:'restoreRoad',edge:e.id}):button(`拆除这段路<small>退回 ${coins(e.paid)}</small>`,{type:'removeRoad',edge:e.id})}</div>`;
  } else if (t?.building?.type==='town') {
   html=townPanel(t);
+ } else if (t?.building?.type==='relay') {
+  const b=t.building,held=E.RES.filter(r=>t.loose[r]>0).map(r=>`${names[r]} ${t.loose[r]}`).join('、');
+  html=`<h2>${icon('relay','quarry-c')}驿站</h2><div class="subtitle">${names[t.terrain]} · 路网节点</div><div class="state">${Object.values(world.edges).some(e=>e.a===t.id||e.b===t.id)?'已接入路网':'还没有路'}</div><p>不生产、不收购、不雇人。任何建筑都能把路修到这里，货经过它像经过路口。${held?`<br>待转运：${held}`:''}</p>`;
+  html+=`<div class="actions"><button id="connect-accessible">选择要连接的建筑</button>${button(`拆除驿站<small>退回 ${coins(b.paid)}</small>`,{type:'demolish',tile:t.id},false,false,'danger')}</div>`;
  } else if (t?.building) {
   const b=t.building,rate=E.rate(world,t),next=E.workerCost(world,t),rc=E.RECIPES[b.type],r=rc.out,n=b.workers.length;
   const paid=b.paid+b.workers.reduce((n,m)=>n+m.paid,0), state=stateOf(t);
@@ -706,9 +694,35 @@ function renderChain() {
   edges+=`<path class="e ${locked?'locked':''}" d="M${B.x+BS/2},${B.y} L${O.x-GS/2},${O.y}"/>`;
   nodes+=`<g class="${locked?'locked':''}"><title>${rc.name} · ${rc.fits.map(t=>names[t]).join('/')}</title>${TradeIcons.svgIcon(b,{x:B.x-BS/2,y:B.y-BS/2,size:BS})}<text class="lbl" x="${B.x}" y="${B.y+BS/2+11}" text-anchor="middle">${rc.name}</text></g>`;
   const inc=earned(rc.out), price=E.BASE_PRICE[rc.out];
-  nodes+=`<g class="${locked?'locked':''}"><title>${names[rc.out]}${price?` · 基准价 ${price}`:' · 没有城镇收，只能炼铁'}</title><circle class="g ${locked?'locked':''} ${inc>0?'earning':''}" cx="${O.x}" cy="${O.y}" r="${GS/2+3}"/>${TradeIcons.svgIcon(rc.out,{x:O.x-GS/2,y:O.y-GS/2,size:GS})}<text class="gsub ${inc>0?'earning':''}" x="${O.x}" y="${O.y+GS/2+13}" text-anchor="middle">${price?`+${fmt(inc)}/回合`:'不可售'}</text></g>`;
+  nodes+=`<g class="${locked?'locked':''}"><title>${names[rc.out]}${price?` · 基准价 ${price}${inc>0?` · +${fmt(inc)}/回合`:''}`:' · 没有城镇收，只能炼铁'}</title><circle class="g ${locked?'locked':''} ${inc>0?'earning':''}" cx="${O.x}" cy="${O.y}" r="${GS/2+3}"/>${TradeIcons.svgIcon(rc.out,{x:O.x-GS/2,y:O.y-GS/2,size:GS})}<text class="gsub ${inc>0?'earning':''}" x="${O.x}" y="${O.y+GS/2+13}" text-anchor="middle">${names[rc.out]}</text></g>`;
  }
  $('chain-body').innerHTML=`<svg class="chain" viewBox="0 0 ${W} ${H}" role="img" aria-label="生产链">${edges}${nodes}</svg>`;
+}
+// Growth chart: the header's income/turn figure over the whole run, on a linear scale so the exponential curve reads as one.
+function renderGrowth() {
+ if (history.length<2) { $('growth-body').innerHTML='<p class="growth-empty">再玩几回合，增长曲线就会开始画出来。</p>'; return; }
+ const W=310,H=130,PAD=6;
+ const maxIncome=Math.max(1,...history.map(p=>p.income));
+ const x=i=>PAD+(W-PAD*2)*i/(history.length-1);
+ const y=v=>H-8-(H-30)*v/maxIncome;
+ const line=get=>history.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(get(p)).toFixed(1)}`).join('');
+ const last=history.at(-1), sold=E.SELLABLE.filter(r=>history.some(p=>p.goods[r]>0));
+ let base=history.map(()=>0), goodLines='';
+ for (const r of sold) {
+  const top=base.map((b,i)=>b+history[i].goods[r]);
+  const upper=top.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`), lower=base.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).reverse();
+  goodLines+=`<path class="good-area" style="fill:${goodColor(r)}" d="M${upper.join('L')}L${lower.join('L')}Z"/>`;
+  base=top;
+ }
+ const legend=[`<span><i style="background:#b8743a"></i>合计 +${fmt(last.income)}</span>`,...sold.map(r=>`<span><i style="background:${goodColor(r)}"></i>${names[r]} +${fmt(last.goods[r])}</span>`)].join('');
+ $('growth-body').innerHTML=`
+  <svg class="growth-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每回合收入随时间变化">
+   <text class="chart-label" x="${PAD}" y="14">每回合收入 · 峰值 ${fmt(maxIncome)}</text>
+   <line class="axis" x1="${PAD}" y1="${H-8}" x2="${W-PAD}" y2="${H-8}"/>
+   ${goodLines}
+   <path class="income-line" d="${line(p=>p.income)}"/>
+  </svg>
+  <div class="growth-legend">${legend}</div>`;
 }
 function renderToolbar() {
  const bar=$('build-buttons');
@@ -738,6 +752,7 @@ function render() {
  renderToolbar();
  svg.classList.toggle('connecting',!!connectFrom||!!buildType||gesture?.kind==='connect');
  renderGoals();renderMap();renderSelection();renderTech();renderChain();
+ if (!$('growth-panel').classList.contains('collapsed')) renderGrowth();
 }
 
 function preview(event) {
@@ -782,7 +797,7 @@ svg.addEventListener('pointerdown',event=>{
  if(event.button!==0||gesture)return;
  if(event.target.closest('[data-edge]'))return;
  const tile=event.target.closest('[data-tile]')?.dataset.tile;
- if(world.tiles[tile]?.building&&!buildType&&!connectFrom&&!world.preview){
+ if(world.tiles[tile]?.building&&!buildType&&!connectFrom){
   gesture={kind:'connect',from:tile,x:event.clientX,y:event.clientY,moved:false,pointerId:event.pointerId};
  }else if(!buildType&&!connectFrom){
   gesture={kind:'pan',x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,pointerId:event.pointerId};
@@ -845,8 +860,8 @@ $('import-file').onchange=async event=>{
   if(file.size>10e6)throw Error('文件过大');
   const loaded=E.load(JSON.parse(await file.text()));
   if(!confirm('用这份存档替换当前进度？'))return;
-  world=loaded;selected=E.START_TILE;selectedEdge=null;selectedFlower=world.preview;storageBlocked=false;
-  accumulator=0;last=performance.now();mapKey='';save();cancelGesture();fitAll();toast('已恢复存档');
+  world=loaded;selected=E.START_TILE;selectedEdge=null;selectedFlower=null;storageBlocked=false;
+  accumulator=0;last=performance.now();mapKey='';history=[];recordHistory();save();cancelGesture();fitAll();toast('已恢复存档');
  }catch(error){toast('导入失败：'+error.message);}finally{event.target.value='';}
 };
 // Developer cheats: open the page with `?cheat` to reveal a dev section in the menu. Money is added directly
@@ -858,9 +873,8 @@ if(new URLSearchParams(location.search).has('cheat')){
 $('reset').onclick=()=>{
  if(!confirm('重新开始？可先导出当前进度。'))return;
  world=E.newWorld(Math.floor(Math.random()*2**31));selected=E.START_TILE;selectedEdge=null;selectedFlower=null;storageBlocked=false;
- accumulator=0;last=performance.now();mapKey='';save();cancelGesture();fitAll();
-};
-document.addEventListener('visibilitychange',()=>{accumulator=0;last=performance.now();if(document.hidden){save();if(gesture)cancelGesture();}});
+ accumulator=0;last=performance.now();mapKey='';history=[];recordHistory();save();cancelGesture();fitAll();
+};document.addEventListener('visibilitychange',()=>{accumulator=0;last=performance.now();if(document.hidden){save();if(gesture)cancelGesture();}});
 window.addEventListener('pagehide',save);
 // Floating panels fold down to their title bar; the folded set is remembered per browser.
 const PANELS='tnt-panels';
@@ -879,14 +893,14 @@ if(isMobileStack()){
  const open=[...document.querySelectorAll('.panel')].filter(p=>p.id!=='tools-panel'&&!p.classList.contains('collapsed'));
  for(const panel of open.slice(1))setPanel(panel.id,true);
 }
-render();fitAll();requestAnimationFrame(()=>{if(!fitted)fitAll();});if(welcome)toast(welcome);if(!storageBlocked)save();
+loadHistory();recordHistory();render();fitAll();requestAnimationFrame(()=>{if(!fitted)fitAll();});if(welcome)toast(welcome);if(!storageBlocked)save();
 setInterval(()=>{
  const now=performance.now(),elapsed=Math.min(.5,(now-last)/1000);last=now;
- if(!document.hidden&&!world.paused&&!world.preview){
+ if(!document.hidden&&!world.paused){
   accumulator+=elapsed*speed;
   const before=Object.keys(world.milestones);
   let ticked=false;
-  while(accumulator>=E.DT){E.tick(world);accumulator-=E.DT;ticked=true;}
+  while(accumulator>=E.DT){E.tick(world);recordHistory();accumulator-=E.DT;ticked=true;}
   const fresh=Object.keys(world.milestones).filter(k=>!before.includes(k));
   if(fresh.length){const m=E.MILESTONES.find(m=>m.id===fresh[0]);toast(`里程碑「${m.name}」达成，+${m.reward} 金币`);}
   if(world.tick-lastSave>=5)save();

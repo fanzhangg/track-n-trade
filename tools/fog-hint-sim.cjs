@@ -54,22 +54,21 @@ const POLICIES={
  town:()=>['town','unknown','resource'],
  resource:()=>['resource','unknown','town'],
  unknown:()=>['unknown','town','resource'],
+ informed:w=>{const h=want(w);return h==='unknown'?(w.unlocked%2?['town','resource','unknown']:['resource','town','unknown']):[h,...['town','resource','unknown'].filter(x=>x!==h)];},
  smart:w=>{const h=want(w);return [h,...['unknown','town','resource'].filter(x=>x!==h)];},
  random:(w,rand)=>{const h=E.HINTS[Math.floor(rand()*3)];return [h,...E.HINTS.filter(x=>x!==h)];}};
 function pickFog(w,policy,rand){const order=POLICIES[policy](w,rand);const near=f=>E.flowerDistance(f);
  for(const h of order){const fs=fogs(w).filter(f=>E.fogHint(w,f)===h).sort((a,b)=>near(a)-near(b)||a.id.localeCompare(b.id));if(fs.length)return fs[0];}
  return fogs(w)[0];}
-function place(w,f){let best=null;for(let i=0;i<6;i++){const r=E.previewRoute(w,f);const cost=r?r.cost:0;if(!best||cost<best.cost)best={rot:f.rotation,cost};act(w,{type:'rotate',flower:f.id,dir:1});}
- while(f.rotation!==best.rot)act(w,{type:'rotate',flower:f.id,dir:1});
- for(let i=0;i<6;i++){if(act(w,{type:'place',flower:f.id}))return;act(w,{type:'rotate',flower:f.id,dir:1});}}
+// Flowers are laid down by the engine the moment they are unlocked; nothing to orient here.
+function place(w,f){}
 function play(seed,policy,ticks){const w=E.newWorld(seed),rand=E.rng(seed*31+7),log=[];
  for(let i=0;i<ticks;i++){
-  if(w.preview)place(w,w.flowers[w.preview]);
   let n=0;for(const t of tiles(w)){if(n>=CLICKS)break;if(t.building&&t.building.type!=='town'&&act(w,{type:'click',tile:t.id}))n++;}
   for(let k=0;k<4&&(roads(w)||grow(w));k++);
   const f=pickFog(w,policy,rand);
   if(f){const cost=E.flowerCost(w,f);const first=!E.earning(w)&&w.unlocked===0;
-   if(w.money>=cost+(first?0:RESERVE)){if(act(w,{type:'explore',flower:f.id})){log.push(E.fogHint(w,f));place(w,w.flowers[w.preview]);}}}
+   if(w.money>=cost+(first?0:RESERVE)){if(act(w,{type:'explore',flower:f.id})){log.push(E.fogHint(w,f));place(w,w.flowers[f.id]);}}}
   E.tick(w);}
  return{earned:w.earned,income:E.income(w),unlocked:w.unlocked,opened:log};}
 const seeds=+SEEDS,ticks=+TICKS,discounts=DISC.split(',').map(Number),policies=Object.keys(POLICIES);

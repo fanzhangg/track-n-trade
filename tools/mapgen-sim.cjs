@@ -3,7 +3,13 @@
 // spare grass there is, how many road segments a building needs, and whether the economy still grows.
 // 用法：node tools/mapgen-sim.cjs [seeds=20] [ticks=1500]
 const E=require('../engine.js');
-const [,,SEEDS=20,TICKS=1500]=process.argv;
+const [,,SEEDS=20,TICKS=1500,MAXF=20,ONLY='']=process.argv;
+// Map-intrinsic measures taken the moment a town flower is placed: how many hex steps of new road the nearest raw
+// terrain of each good it buys is away (supplyDist), and how many free grass tiles lie within 3 steps (sites).
+const intrinsic={supplyDist:[],sites:[]};
+function onPlaced(w,f){if(!f.design.buys||f.order<=E.TUTORIAL)return;const town=tiles(w).find(t=>t.flower===f.id&&t.terrain==='town');
+ for(const r in f.design.buys){let best=null;for(const t of tiles(w)){if(!E.RAW[r].includes(t.terrain))continue;const rt=E.route(w,t.id,town.id);if(rt&&(best===null||rt.tiles.length-1<best))best=rt.tiles.length-1;}intrinsic.supplyDist.push(best===null?9:best);}
+ let n=0;for(const t of tiles(w)){if(t.terrain!=='grass'||t.building)continue;const rt=E.route(w,t.id,town.id);if(rt&&rt.tiles.length-1<=3)n++;}intrinsic.sites.push(n);}
 const RESERVE=1500,CLICKS=2;
 const tiles=w=>Object.values(w.tiles);
 const outOf=b=>E.RECIPES[b.type].out;
@@ -27,7 +33,9 @@ function roads(w){let did=false;
 // thoughtful player would do, so the map, not the bot, decides how long the roads get.
 function site(w,b){const rc=E.RECIPES[b],free=tiles(w).filter(t=>!t.building&&rc.fits.includes(t.terrain));if(!free.length)return null;
  const cs=consumers(w,rc.out);if(!cs.length)return free[0];
- return free.map(t=>({t,c:Math.min(...cs.map(c=>{const r=E.route(w,t.id,c.id);return r?r.cost:1e9;}))})).sort((a,b)=>a.c-b.c||a.t.id.localeCompare(b.t.id))[0].t;}
+ // Six nearest by hex distance are routed for real; the rest cannot be cheaper by much and would make the bot crawl.
+ const near=free.map(t=>({t,d:Math.min(...cs.map(c=>E.hexDist(t,c)))})).sort((a,b)=>a.d-b.d||a.t.id.localeCompare(b.t.id)).slice(0,6);
+ return near.map(({t})=>({t,c:Math.min(...cs.map(c=>{const r=E.route(w,t.id,c.id);return r?r.cost:1e9;}))})).sort((a,b)=>a.c-b.c||a.t.id.localeCompare(b.t.id))[0].t;}
 function build(w,r){const b=typeFor(r);if(!b)return false;if(b!=='camp'&&!need(w,b))return false;
  const t=site(w,b);if(!t||w.money<E.PRICE[b]+RESERVE)return false;
  if(!act(w,{type:'build',tile:t.id,buildType:b}))return false;
@@ -52,9 +60,8 @@ function want(w){const{s,d}=balance(w);
 function pickFog(w){const h=want(w),order=[h,...['unknown','town','resource'].filter(x=>x!==h)];
  for(const h of order){const fs=fogs(w).filter(f=>E.fogHint(w,f)===h).sort((a,b)=>E.flowerDistance(a)-E.flowerDistance(b)||a.id.localeCompare(b.id));if(fs.length)return fs[0];}
  return fogs(w)[0];}
-function place(w,f){let best=null;for(let i=0;i<6;i++){const r=E.previewRoute(w,f);const cost=r?r.cost:0;if(!best||cost<best.cost)best={rot:f.rotation,cost};act(w,{type:'rotate',flower:f.id,dir:1});}
- while(f.rotation!==best.rot)act(w,{type:'rotate',flower:f.id,dir:1});
- for(let i=0;i<6;i++){if(act(w,{type:'place',flower:f.id}))return;act(w,{type:'rotate',flower:f.id,dir:1});}}
+// Flowers are laid down by the engine the moment they are unlocked; nothing to orient here.
+function place(w,f){onPlaced(w,f);}
 // What the finished map looks like.
 function measure(w){
  const placedAll=Object.values(w.flowers).filter(f=>f.state==='placed'),placed=placedAll.filter(f=>f.order>E.TUTORIAL),towns=placed.filter(f=>f.design.buys);
@@ -73,32 +80,42 @@ function measure(w){
  const gaps=[];for(const a of towns)for(const b of towns)if(a.id<b.id)gaps.push(Math.max(Math.abs(a.a-b.a),Math.abs(a.b-b.b),Math.abs(a.a+a.b-b.a-b.b)));
  const roadPaid=Object.values(w.edges).reduce((n,e)=>n+e.paid,0);
  const avg=a=>a.length?a.reduce((n,x)=>n+x,0)/a.length:0;
- return{earned:w.earned,income:E.income(w),flowers:w.unlocked,townShare:placed.length?towns.length/placed.length:0,minGap:gaps.length?Math.min(...gaps):0,
+ const sd=intrinsic.supplyDist.splice(0),sites=intrinsic.sites.splice(0);
+ return{supplyDist:avg(sd),far:sd.filter(x=>x>=3).length/Math.max(1,sd.length),sites:avg(sites),earned:w.earned,income:E.income(w),flowers:w.unlocked,townShare:placed.length?towns.length/placed.length:0,minGap:gaps.length?Math.min(...gaps):0,
   hops:avg(hops),chain:avg(chain),unlinked,starved,freeGrass:freeGrass/Math.max(1,placedAll.length),wallShare:walls/tiles(w).length,
   edgesPerBld:buildings?edges/buildings:0,roadSpend:roadPaid/Math.max(1,w.earned)};}
 function play(seed,ticks){const w=E.newWorld(seed);
  for(let i=0;i<ticks;i++){
-  if(w.preview)place(w,w.flowers[w.preview]);
   let n=0;for(const t of tiles(w)){if(n>=CLICKS)break;if(t.building&&t.building.type!=='town'&&act(w,{type:'click',tile:t.id}))n++;}
   for(let k=0;k<4&&(roads(w)||grow(w));k++);
-  const f=pickFog(w);
+  const f=w.unlocked<+MAXF?pickFog(w):null;
   if(f){const cost=E.flowerCost(w,f);const first=!E.earning(w)&&w.unlocked===0;
-   if(w.money>=cost+(first?0:RESERVE)){if(act(w,{type:'explore',flower:f.id}))place(w,w.flowers[w.preview]);}}
+   if(w.money>=cost+(first?0:RESERVE)){if(act(w,{type:'explore',flower:f.id}))place(w,w.flowers[f.id]);}}
   E.tick(w);}
  return measure(w);}
 const STRATEGIES={
- S0_current:{},
+ S0_dense:{townGap:0,townEvery:2,townChance:.4,walls:[0,3],grass:3,townGrass:6,demandAware:false},
+ S4_default:{},
+ P15:{flowerPayback:15},
+ P10:{flowerPayback:10},
+ P10_tut:{flowerPayback:10,tutorialPrice:.5},
+ P6_tut:{flowerPayback:6,tutorialPrice:.5},
  S1_townGap:{townGap:1,townEvery:3,townChance:.25},
  S2_walls:{townGap:1,townEvery:3,townChance:.25,walls:[2,3],grass:1.5},
  S3_townGrass:{townGap:1,townEvery:3,townChance:.25,walls:[2,3],grass:1.5,townGrass:3},
- S4_demand:{townGap:1,townEvery:3,townChance:.25,walls:[2,3],grass:1.5,townGrass:3,demandAware:true},
  S5_gap2:{townGap:2,townEvery:3,townChance:.25,walls:[2,3],grass:1.5,townGrass:3,demandAware:true},
- S6_soft:{townGap:1,townEvery:3,townChance:.25,walls:[1,3],grass:2,townGrass:4,demandAware:true}};
+ S6_soft:{townGap:1,townEvery:3,townChance:.25,walls:[1,3],grass:2,townGrass:4,demandAware:true},
+ S7_nextDoor:{townGap:1,townEvery:3,townChance:.25,walls:[2,3],grass:1.5,townGrass:3,demandAware:true,nextDoor:false},
+ S8_nextDoorOnly:{townGap:1,townEvery:3,townChance:.25,demandAware:true,nextDoor:false},
+ S9_gap0_nextDoor:{townEvery:2,townChance:.4,walls:[2,3],grass:1.5,townGrass:3,demandAware:true,nextDoor:false}};
 const DEFAULT={...E.GEN};
 const seeds=+SEEDS,ticks=+TICKS;
-console.log(`seeds ${seeds}, ${ticks} rounds`);
+console.log(`seeds ${seeds}, ${ticks} rounds, up to ${MAXF} flowers`);
 const rows={};
-for(const[name,knobs]of Object.entries(STRATEGIES)){Object.assign(E.GEN,DEFAULT,knobs);const acc={};let fails=0;
+for(const[name,knobs]of Object.entries(STRATEGIES)){if(ONLY&&!ONLY.split(',').includes(name))continue;Object.assign(E.GEN,DEFAULT,knobs);const acc={};let fails=0;
  for(let s=1;s<=seeds;s++){let m;try{m=play(s,ticks);}catch(e){fails++;continue;}for(const k in m)acc[k]=(acc[k]||0)+m[k];}
  const n=Math.max(1,seeds-fails),row={};for(const k in acc)row[k]=+(acc[k]/n).toFixed(k==='earned'||k==='income'?0:2);row.fails=fails;rows[name]=row;}
 console.table(rows);
+if(process.env.DEBUG){Object.assign(E.GEN,DEFAULT,STRATEGIES[process.env.DEBUG]);const w=E.newWorld(1);const save=play;/* replay one seed and list town flowers */
+ const w2=(()=>{const w=E.newWorld(1);for(let i=0;i<+TICKS;i++){let n=0;for(const t of tiles(w)){if(n>=CLICKS)break;if(t.building&&t.building.type!=='town'&&act(w,{type:'click',tile:t.id}))n++;}for(let k=0;k<4&&(roads(w)||grow(w));k++);const f=w.unlocked<+MAXF?pickFog(w):null;if(f){const cost=E.flowerCost(w,f);if(w.money>=cost+(w.unlocked?RESERVE:0)&&act(w,{type:'explore',flower:f.id}))place(w,w.flowers[f.id]);}E.tick(w);}return w;})();
+ for(const f of Object.values(w2.flowers).filter(f=>f.state==='placed').sort((a,b)=>a.order-b.order))console.log(f.order,f.id,f.hint,f.design.buys?JSON.stringify(f.design.buys):'-',[f.design.center,...f.design.ring].join(','));}

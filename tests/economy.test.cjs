@@ -13,7 +13,7 @@ const fogs=w=>Object.values(w.flowers).filter(f=>f.state==='fog').map(f=>f.id).s
 const tilesOf=(w,pred)=>Object.values(w.tiles).filter(pred);
 const townTiles=w=>tilesOf(w,t=>t.terrain==='town').map(t=>t.id);
 // Unlock the next flower in the given fog slot and place it in the first orientation the engine accepts.
-function unlock(w,fid=fogs(w)[0]){w=E.apply(w,{type:'explore',flower:fid});for(let i=0;i<6;i++){try{return E.apply(w,{type:'place',flower:fid});}catch(e){w=E.apply(w,{type:'rotate',flower:fid,dir:1});}}throw Error('no orientation accepted');}
+function unlock(w,fid=fogs(w)[0]){return E.apply(w,{type:'explore',flower:fid});}
 // Drop a building of the given type on the first free tile that fits, buying the tech if needed.
 function need(w,k){for(const r of E.TECH[k].requires)w=need(w,r);return w.tech[k]?w:tech(w,k);}
 function build(w,type){w=rich(w);if(type!=='camp')w=need(w,type);const t=tilesOf(w,t=>!t.building&&E.RECIPES[type].fits.includes(t.terrain))[0];assert.ok(t,'no tile for '+type);return [E.apply(w,{type:'build',tile:t.id,buildType:type}),t.id];}
@@ -58,39 +58,40 @@ test('any fog flower can be unlocked in any direction; the n-th unlock is always
 });
 test('the tutorial generator satisfies its constraints over a thousand seeds',()=>{
  const forbid=[['forest','lake','ore'],['rock','lake','ore'],['forest','lake','ore'],['forest','rock','ore'],['forest','lake','ore']];
- for(let seed=1;seed<=1000;seed++){const w=fresh(seed);for(let n=1;n<=5;n++){const d=E.generateFlower(w,n,{a:1,b:0});const tiles=[d.center,...d.ring];
+ for(let seed=1;seed<=1000;seed++){const w=fresh(seed),f=w.flowers['1,0'];for(let n=1;n<=5;n++){const d=E.generateFlower(w,n,f).design;const tiles=[d.center,...d.ring];
   assert.ok(E.validDesign(tiles),`seed ${seed} F${n} invalid`);
   for(const t of forbid[n-1])assert.ok(!tiles.includes(t),`seed ${seed} F${n} has ${t}`);
   assert.equal(tiles.filter(t=>t==='town').length,1);
   for(const[t,k]of Object.entries(E.TUTORIAL_SPEC[n-1].must))assert.ok(tiles.filter(x=>x===t).length>=k,`seed ${seed} F${n} lacks ${t}`);
   assert.ok(Object.keys(d.buys).length<=2);
-  const same=E.generateFlower(w,n,{a:0,b:1});assert.deepEqual(same,d,'content depends on order and seed, not direction');}}
+  const same=E.generateFlower(w,n,f);assert.deepEqual(same.design,d,'generation is deterministic');}}
 });
 test('the sandbox generator obeys its rules over many seeds: valid layouts, towns spaced, goods the player can make, prices rise with distance, no town beside its own raw terrain',()=>{
  for(let seed=1;seed<=150;seed++){let w=rich(fresh(seed));for(let i=0;i<5;i++)w=unlock(w);
-  let gap=0;for(let i=0;i<10;i++){const slot=fogs(w)[i%fogs(w).length];w=unlock(w,slot);const f=w.flowers[slot],tiles=[f.design.center,...f.design.ring];
+  for(let i=0;i<10;i++){const slot=fogs(w)[i%fogs(w).length];w=unlock(w,slot);const f=w.flowers[slot],tiles=[f.design.center,...f.design.ring];
    assert.ok(E.validDesign(tiles),`seed ${seed} unlock ${f.order} invalid`);
    if(f.hint==='town')assert.ok(f.design.buys,`seed ${seed}: town fog without a town`);if(f.hint==='resource')assert.ok(!f.design.buys,`seed ${seed}: resource fog with a town`);
-   if(f.design.buys){gap=0;for(const[r,p]of Object.entries(f.design.buys)){assert.ok(E.SELLABLE.includes(r));assert.ok(p>=E.BASE_PRICE[r]*.6-1,'price never below the distance-scaled base');for(const raw of E.RAW[r])assert.ok(!tiles.includes(raw),`seed ${seed}: town buying ${r} shares a flower with ${raw}`);}}
-   else if(f.hint==='unknown'){gap++;assert.ok(gap<=2,`seed ${seed}: three unknown flowers without a town`);}
+   if(f.design.buys){for(const[r,p]of Object.entries(f.design.buys)){assert.ok(E.SELLABLE.includes(r));assert.ok(p>=E.BASE_PRICE[r]*.6-1,'price never below the distance-scaled base');for(const raw of E.RAW[r])assert.ok(!tiles.includes(raw),`seed ${seed}: town buying ${r} shares a flower with ${raw}`);}}
+   else if(f.hint==='unknown'){// An unknown back turns into a town after three townless unlocks, unless a sandbox town or a town-hinted fog is next door.
+    const since=f.order-Math.max(0,...Object.values(w.flowers).filter(g=>g.state==='placed'&&g.design.buys&&g.order<f.order).map(g=>g.order));
+    const crowded=Object.values(w.flowers).some(g=>g.id!==f.id&&((g.state==='placed'&&g.order>E.TUTORIAL&&g.design.buys)||(g.state==='fog'&&g.hint==='town'))&&Math.max(Math.abs(f.a-g.a),Math.abs(f.b-g.b),Math.abs(f.a+f.b-g.a-g.b))<=1);
+    assert.ok(since<3||crowded,`seed ${seed}: unknown flower ${f.order} with room stayed townless after ${since} unlocks`);}
    assert.ok(fogs(w).some(k=>w.flowers[k].hint==='town'),'a town is always on offer');
    for(const o of tiles.map((t,i)=>t==='ore'?i:-1).filter(i=>i>=0))assert.ok(tiles.some((t,i)=>t==='mountain'&&i!==o),'ore only with a mountain');}
   E.validate(w);}
 });
-test('the start budget always covers the first road: for every direction, orientation and a hundred seeds some orientation is affordable and the guard blocks the others',()=>{
+test('the start budget always covers the first road: for every direction and a hundred seeds the engine lays the first flower so a road from the camp to its town is affordable',()=>{
  for(let seed=1;seed<=100;seed++)for(const slot of fogs(fresh())){let w=fresh(seed);w=E.apply(w,{type:'explore',flower:slot});const f=w.flowers[slot];
-  let ok=0;for(let rot=0;rot<6;rot++){const r=E.previewRoute(w,w.flowers[slot]);if(r&&r.cost<=w.money){ok++;E.apply(w,{type:'place',flower:slot});}else assert.throws(()=>E.apply(w,{type:'place',flower:slot}),/换个朝向/);w=E.apply(w,{type:'rotate',flower:slot,dir:1});}
-  assert.ok(ok>0,`seed ${seed} slot ${slot}: no affordable orientation`);}
+  assert.equal(f.state,'placed');const town=townTiles(w)[0];const r=E.route(w,CAMP,town);assert.ok(r&&r.cost<=w.money,`seed ${seed} slot ${slot}: first road costs ${r?.cost} with ${w.money}`);}
 });
-test('preview: the clock stops, other commands are refused, rotation changes the terrain layout, placing is final',()=>{
+test('no rotating: exploring lays the flower at once, joined to the map by passable land; rotate and place are unknown commands',()=>{
  let w=fresh();const slot=fogs(w)[2];w=E.apply(w,{type:'explore',flower:slot});
- const t0=w.tick;E.tick(w);assert.equal(w.tick,t0,'no ticks while previewing');
- assert.throws(()=>E.apply(w,{type:'click',tile:CAMP}),/先把新板块放下/);
- const f=w.flowers[slot],before=E.flowerTiles(f).map(p=>E.slotTerrain(f.design,p.slot));
- w=E.apply(w,{type:'rotate',flower:slot,dir:1});const after=E.flowerTiles(w.flowers[slot]).map(p=>E.slotTerrain(f.design,p.slot));
- assert.deepEqual(after.slice(1),[before[6],...before.slice(1,6)],'rotation shifts the ring by one');
- w=E.apply(w,{type:'rotate',flower:slot,dir:-1});assert.deepEqual(E.flowerTiles(w.flowers[slot]).map(p=>E.slotTerrain(f.design,p.slot)),before);
- w=unlock(fresh(),slot);assert.throws(()=>E.apply(w,{type:'rotate',flower:slot,dir:1}),/只有预览中/);
+ assert.equal(w.flowers[slot].state,'placed');assert.equal(w.preview,null);assert.equal(Object.keys(w.tiles).length,14);
+ assert.throws(()=>E.apply(w,{type:'rotate',flower:slot,dir:1}),/未知操作/);assert.throws(()=>E.apply(w,{type:'place',flower:slot}),/未知操作/);
+ // Every flower ever placed touches the rest of the map through at least one passable pair of tiles.
+ for(const seed of [1,2,3]){let v=rich(fresh(seed));for(let i=0;i<12;i++)v=unlock(v);
+  for(const f of Object.values(v.flowers).filter(f=>f.state==='placed'&&f.order)){const mine=E.flowerTiles(f).map(p=>v.tiles[`${p.q},${p.r}`]);
+   assert.ok(mine.some(t=>E.passable(v,t)&&E.DIRS.some(([dq,dr])=>{const u=v.tiles[`${t.q+dq},${t.r+dr}`];return u&&u.flower!==f.id&&E.passable(v,u);})),`seed ${seed} flower ${f.id} is walled off`);}}
  E.tick(w);assert.equal(w.tick,1);
 });
 test('roads: no segment through a mountain, none onto a lake before the waterway tech, none into fog; cost is 250 x terrain regardless of road level',()=>{
@@ -224,3 +225,54 @@ test('a long road delays freight but never caps it: the pipeline target adds one
  assert.equal(E.pipeline(w,t,'log'),E.buffer(w,t)+E.rate(w,t)*hops);
  run(w,90);const S=w.stats,out=S.reduce((n,s)=>n+(s.tiles[far]||0),0)/S.length;
  assert.ok(out>=E.rate(w,t)*.95,`sawmill runs at capacity over a ${hops}-segment road: ${out.toFixed(2)} of ${E.rate(w,t)}`);});
+
+// ---------- sparse map generation (GEN) ----------
+// Play the generator forward by unlocking fog in a fixed order with plenty of money, so every sandbox flower is
+// exercised; the tutorial is skipped by taking the first five as they come.
+function explored(seed,n){let w=rich(fresh(seed));for(let i=0;i<n;i++){const fid=fogs(w).sort()[i%fogs(w).length];w=unlock(w,fid);}return w;}
+const sandbox=w=>Object.values(w.flowers).filter(f=>f.state==='placed'&&f.order>E.TUTORIAL);
+const gap=(a,b)=>Math.max(Math.abs(a.a-b.a),Math.abs(a.b-b.b),Math.abs(a.a+a.b-b.a-b.b));
+test('sparse maps: sandbox towns never touch, every sandbox flower has 2-3 walls, a town flower is town + grass + walls only',()=>{
+ for(const seed of [1,2,3,4,5]){const w=explored(seed,14);const fs=sandbox(w);assert.ok(fs.length>=9);
+  const towns=fs.filter(f=>f.design.buys);
+  for(const a of towns)for(const b of towns)if(a!==b)assert.ok(gap(a,b)>=2,`towns ${a.id} and ${b.id} touch (seed ${seed})`);
+  for(const f of fs){const tiles=[f.design.center,...f.design.ring],walls=tiles.filter(t=>['mountain','lake'].includes(t)).length;
+   assert.ok(walls>=2&&walls<=3,`${f.id} has ${walls} walls (seed ${seed})`);
+   if(f.design.buys){assert.ok(!tiles.some(t=>['forest','rock','ore'].includes(t)),`town flower ${f.id} carries raw (seed ${seed})`);assert.ok(tiles.filter(t=>t==='grass').length<=3);}}}
+});
+test('sparse maps: a town back is honoured, and an unknown back next to a town-hinted fog stays townless',()=>{
+ for(const seed of [1,2,3]){const w=explored(seed,12);
+  for(const f of sandbox(w))if(f.hint==='town')assert.ok(f.design.buys,`${f.id} promised a town (seed ${seed})`);
+  for(const f of Object.values(w.flowers))if(f.state==='fog'&&f.hint==='town')for(const g of sandbox(w))if(g.design.buys)assert.ok(gap(f,g)>=2,'a town hint never sits next to a sandbox town');}
+});
+test('demand-aware generation: raw the towns buy but the map lacks is drawn more often; same state, same flower',()=>{
+ let w=explored(1,6);
+ // Strip every rock from the map and make every town buy stone: rock is now in deficit.
+ for(const t of Object.values(w.tiles))if(t.terrain==='rock'&&!t.building){t.terrain='grass';const f=w.flowers[t.flower];const tiles=E.flowerTiles(f).find(p=>p.q===t.q&&p.r===t.r);if(tiles.slot===0)f.design.center='grass';else f.design.ring[tiles.slot-1]='grass';}
+ for(const t of Object.values(w.tiles))if(t.building?.type==='town'){t.building.buys={stone:30};w.flowers[t.flower].design.buys={stone:30};}
+ assert.ok(E.rawDeficit(w).rock>=1);
+ const fid=fogs(w).find(k=>w.flowers[k].hint==='resource')||fogs(w)[0];
+ const a=E.apply(w,{type:'explore',flower:fid}),b=E.apply(w,{type:'explore',flower:fid});
+ assert.deepEqual(a.flowers[fid].design,b.flowers[fid].design,'generation is a pure function of seed, order and world');
+ // Over many seeds a resource flower drawn under a rock deficit carries rock far more often than not.
+ let withRock=0,total=0;for(let seed=1;seed<=12;seed++){let v=explored(seed,6);for(const t of Object.values(v.tiles))if(t.terrain==='rock'&&!t.building){t.terrain='grass';const f=v.flowers[t.flower];const p=E.flowerTiles(f).find(p=>p.q===t.q&&p.r===t.r);if(p.slot===0)f.design.center='grass';else f.design.ring[p.slot-1]='grass';}
+  for(const t of Object.values(v.tiles))if(t.building?.type==='town'){t.building.buys={stone:30};v.flowers[t.flower].design.buys={stone:30};}
+  const k=fogs(v).find(k=>v.flowers[k].hint==='resource');if(!k)continue;const d=E.apply(v,{type:'explore',flower:k}).flowers[k].design;total++;if([d.center,...d.ring].includes('rock'))withRock++;}
+ assert.ok(withRock/total>=.75,`rock drawn in ${withRock}/${total} deficit flowers`);
+});
+
+// ---------- relays ----------
+test('relay: a road node on any passable tile, no tech; roads may end at it, freight passes through it, it neither produces nor hires, demolish refunds',()=>{
+ let w=unlock(fresh(1));const town=townTiles(w)[0];w=rich(w);
+ const g=tilesOf(w,t=>!t.building&&t.terrain==='grass'&&t.flower!=='0,0')[0];
+ w=E.apply(w,{type:'build',tile:g.id,buildType:'relay'});assert.equal(w.tiles[g.id].building.type,'relay');assert.equal(w.tiles[g.id].building.paid,E.PRICE.relay);
+ assert.throws(()=>E.apply(w,{type:'click',tile:g.id}),/驿站/);assert.throws(()=>E.apply(w,{type:'worker',tile:g.id}),/工坊/);
+ assert.throws(()=>E.apply(w,{type:'build',tile:tilesOf(w,t=>t.terrain==='mountain')[0].id,buildType:'relay'}),/不适合/);
+ // Camp to relay, relay to town: the freight path runs through the relay.
+ w=E.apply(w,{type:'connect',from:CAMP,to:g.id});w=E.apply(w,{type:'connect',from:g.id,to:town});
+ assert.ok(E.path(w,CAMP,town),'camp reaches the town over the relay');
+ w=hire(w,CAMP,1);run(w,60);assert.ok(w.sold[town].log>0,'logs sold through the relay');
+ assert.ok(!E.demands(w).some(d=>d.tile===g.id),'a relay asks for nothing');
+ const m=w.money;w=E.apply(w,{type:'demolish',tile:g.id});assert.equal(w.money,m+E.PRICE.relay);assert.equal(w.tiles[g.id].building,null);
+ E.validate(w);
+});
