@@ -10,25 +10,46 @@
   const shape='<circle class="bt-state-base" r="6"/><path class="bt-state-ink" d="M0-3v3.5m0 2v.2"/>';
   return `<g class="bt-state bt-state-${kind}" transform="translate(${x} ${y})" role="img" aria-label="${esc(label)}"><title>${esc(label)}</title>${shape}</g>`;
  }
- function render({type,name,output,count=0,capacity=20,status='',alert=false,residents=1,offers=[]},base='assets/icons/v1/'){
+ function levelBadge(level,x,y){
+  if(!Number.isSafeInteger(level)||level<1)return '';
+  const width=Math.max(12,String(level).length*5+4);
+  return `<g class="bt-level" transform="translate(${x} ${y})" role="img" aria-label="当前等级 ${level}"><title>当前等级 ${level}</title><rect class="bt-level-base" x="${-width/2}" y="-6" width="${width}" height="12" rx="6"/><text class="bt-level-number" text-anchor="middle" dominant-baseline="central">${level}</text></g>`;
+ }
+ const labelWidths=new Map();
+ let labelContext;
+ function labelWidth(value){
+  const text=String(value);
+  if(!labelWidths.has(text)){
+   labelContext ||= document.createElement('canvas').getContext('2d');
+   labelContext.font='700 12px system-ui,"Microsoft YaHei",sans-serif';
+   labelWidths.set(text,labelContext.measureText(text).width);
+  }
+  return labelWidths.get(text);
+ }
+ function render({type,name,output,count=0,capacity=20,status='',alert=false,residents=1,offers=[],level=null},base='assets/icons/v1/'){
   const icon=(id,x,y,size)=>root.TradeIcons.svgIcon(id,{base,x,y,size});
+  const row=(id,value,center,classes)=>{const x=center-(22+labelWidth(value))/2;return `<g class="bt-label-content">${icon(id,x,30,18)}<text x="${x+22}" y="39" dominant-baseline="central" class="${classes}">${esc(value)}</text></g>`;};
+  let frameWidth=Math.max(56,34+labelWidth(count));
   let html=`<g class="building-tile-ui" pointer-events="none"><title>${esc(name)}${status?' · '+esc(status):''}</title><ellipse class="bt-site" cx="0" cy="14" rx="28" ry="11"/><g class="bt-miniature">${icon(type,-24,-24,48)}</g>`;
   if(type==='town'){
    // Before a road arrives the price is the decision; once linked, what the town actually pays per round is.
    const label=o=>o.income!=null?'+'+Math.round(o.income):'$'+o.price;
-   const width=offers.length>1?84:46;
-   html+=`<g class="bt-floating"><rect class="bt-float-bg" x="${-width/2}" y="25" width="${width}" height="20" rx="5"/>`;
-   html+=offers.map((o,i)=>{const x=offers.length>1?-40+i*41:-21;return `<g class="bt-offer ${o.full?'is-full':''}" data-good="${esc(o.id)}">${o.full?`<rect class="bt-full-bg" x="${x-1}" y="26" width="40" height="18" rx="4"/>`:''}${icon(o.id,x,26,18)}<text x="${x+19}" y="39" class="bt-price ${o.income!=null?'bt-income':''}" ${label(o).length>3?'textLength="21" lengthAdjust="spacingAndGlyphs"':''}>${esc(label(o))}</text></g>`;}).join('')+'</g>';
+   const widths=offers.map(o=>Math.max(56,34+labelWidth(label(o))));
+   const width=frameWidth=Math.max(56,widths.reduce((sum,w)=>sum+w,0));
+   html+=`<g class="bt-floating"><rect class="bt-float-bg" x="${-width/2}" y="25" width="${width}" height="28" rx="5"/>`;
+   let left=-width/2;
+   html+=offers.map((o,i)=>{const x=left;left+=widths[i];return `<g class="bt-offer ${o.full?'is-full':''}" data-good="${esc(o.id)}">${o.full?`<rect class="bt-full-bg" x="${x+2}" y="27" width="${widths[i]-4}" height="24" rx="4"/>`:''}${row(o.id,label(o),x+widths[i]/2,`bt-price ${o.income!=null?'bt-income':''}`)}</g>`;}).join('')+'</g>';
    // Goods the town could buy but its demand pool cannot absorb, piled up at the producers: click the town to take them.
    const backlog=offers.reduce((n,o)=>n+(o.backlog||0),0);
-   if(backlog>0)html+=`<g class="bt-floating bt-backlog"><rect class="bt-float-bg bt-full-bg" x="-25" y="48" width="50" height="16" rx="4"/><text x="0" y="60" text-anchor="middle" class="bt-price bt-backlog-text">积压 ${esc(backlog)}</text></g>`;
+   if(backlog>0)html+=`<g class="bt-floating bt-backlog"><rect class="bt-float-bg bt-full-bg" x="-28" y="57" width="56" height="22" rx="5"/><text x="0" y="68" dominant-baseline="central" text-anchor="middle" class="bt-price bt-backlog-text">积压 ${esc(backlog)}</text></g>`;
   }else{
-   html+=`<g class="bt-floating ${count>=capacity||alert?'has-alert':''}"><rect class="bt-float-bg" x="-25" y="25" width="50" height="22" rx="5"/>${icon(output,-23,25,22)}<text x="4" y="41" class="bt-quantity ${count===0||count>=capacity?'bt-alert':''}">${esc(count)}</text></g>`;
+   html+=`<g class="bt-floating ${count>=capacity||alert?'has-alert':''}"><rect class="bt-float-bg" x="${-frameWidth/2}" y="25" width="${frameWidth}" height="28" rx="5"/>${row(output,count,0,`bt-quantity ${count===0||count>=capacity?'bt-alert':''}`)}</g>`;
   }
-  // One badge per tile; a blocking warning takes precedence over empty stock.
+  // Level sits on the left corner; the single exceptional-state badge stays on the right.
+  html+=levelBadge(level,-frameWidth/2+3,27);
   const full=type==='town'?offers.some(o=>o.full):count>=capacity;
   const kind=full?'full':alert?'warning':null;
-  if(kind)html+=marker(kind,type==='town'?(offers.length>1?42:23):25,25,kind==='full'?(type==='town'?'高亮货物积压，点城镇收购':'产物满仓，等待运出'):kind==='empty'?'产物库存为空':status||'需要注意');
+  if(kind)html+=marker(kind,frameWidth/2-3,27,kind==='full'?(type==='town'?'高亮货物积压，点城镇收购':'产物满仓，等待运出'):kind==='empty'?'产物库存为空':status||'需要注意');
   return html+'</g>';
  }
  function people({kind='worker',count=0,active=true,paused=false,beat=1,clock=0,base='assets/icons/v1/'}){
@@ -36,6 +57,6 @@
   const start=-(count-1)*6;
   return `<g class="bt-people bt-people-${kind} ${!active||paused?'is-idle':''}">${Array.from({length:count},(_,i)=>{const x=start+i*12;return `<g class="bt-person"><ellipse class="bt-person-shadow" cx="${x}" cy="-23" rx="5.6" ry="2"/><g class="bt-person-beat" style="--beat:${beat}s;animation-delay:-${(clock+i*beat/count)%beat}s">${root.TradeIcons.svgIcon(kind,{base,x:x-8.5,y:-41,size:17})}</g></g>`;}).join('')}</g>`;
  }
- root.BuildingTiles={render,people,marker};
+ root.BuildingTiles={render,people,marker,levelBadge};
  root.AmbientTiles={render:ambient};
 })(window);

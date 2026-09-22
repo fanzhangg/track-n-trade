@@ -1,12 +1,13 @@
 /* Restrained tabletop accents; no cards, labels or decorative frames. */
 .bt-miniature{filter:none}
 .bt-site{fill:var(--road-dirt);stroke:none}
-.bt-quantity{font:650 11px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums;paint-order:stroke;stroke:var(--surface-panel);stroke-width:1.2px;stroke-opacity:.5}
-.bt-price{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums}
+.bt-quantity,.bt-price{font:700 12px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums}
 .building-tile-ui{--bt-danger:#bc352d;--bt-danger-tint:#fff0e9}
 .bt-quantity.bt-alert{fill:var(--bt-danger);stroke:none}
 .bt-state-base{fill:var(--bt-danger,#bc352d);stroke:var(--surface-panel);stroke-width:.6}
 .bt-state-ink{fill:none;stroke:var(--surface-panel);stroke-width:1.5;stroke-linecap:round}
+.bt-level-base{fill:var(--surface-panel);stroke:var(--border-control);stroke-width:.6}
+.bt-level-number{fill:var(--text-secondary);font:700 8px system-ui,"Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}
 .bt-floating.has-alert .bt-float-bg{fill:var(--bt-danger-tint);stroke:var(--border-control)}
 .bt-full-bg{fill:var(--bt-danger-tint);stroke:none}
 .bt-offer.is-full .bt-price{fill:var(--bt-danger)}
@@ -44,6 +45,6 @@
 .terrain-association b{color:var(--text-primary);font-weight:650}
 .terrain-association .assoc-arrow{color:var(--text-disabled)}
 .road-junction{fill:var(--road-dirt);stroke:none;pointer-events:none}
-.bt-backlog-text{fill:var(--bt-danger);font-size:8px}
+.bt-backlog-text{fill:var(--bt-danger);font-size:10px}
 .bt-income{fill:#49876b}
 .bt-offer.is-full .bt-income{fill:var(--bt-danger)}
