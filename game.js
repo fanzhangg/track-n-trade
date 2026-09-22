@@ -865,12 +865,19 @@ window.addEventListener('pagehide',save);
 // Floating panels fold down to their title bar; the folded set is remembered per browser.
 const PANELS='tnt-panels';
 let folded={};try{folded=JSON.parse(localStorage.getItem(PANELS)||'{}');}catch{}
+const isMobileStack=()=>window.matchMedia('(max-width:740px)').matches;
 for(const panel of document.querySelectorAll('.panel')){
  if(panel.id in folded)panel.classList.toggle('collapsed',!!folded[panel.id]);
  panel.querySelector('.panel-head').addEventListener('click',e=>{
   if(e.target.closest('button,details,a'))return;
-  setPanel(panel.id,!panel.classList.contains('collapsed'));
+  const opening=panel.classList.contains('collapsed');
+  setPanel(panel.id,!opening);
+  if(opening&&isMobileStack())for(const other of document.querySelectorAll('.panel'))if(other!==panel&&other.id!=='tools-panel')setPanel(other.id,true);
  });
+}
+if(isMobileStack()){
+ const open=[...document.querySelectorAll('.panel')].filter(p=>p.id!=='tools-panel'&&!p.classList.contains('collapsed'));
+ for(const panel of open.slice(1))setPanel(panel.id,true);
 }
 render();fitAll();requestAnimationFrame(()=>{if(!fitted)fitAll();});if(welcome)toast(welcome);if(!storageBlocked)save();
 setInterval(()=>{
