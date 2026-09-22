@@ -163,7 +163,10 @@ function techCost(w,k){const u=TECH[k];if(k==='era')return eraCost(w);if(u.build
 const techOwned=(w,k)=>!TECH[k].repeat&&w.tech[k]>0;
 const techMaxed=(w,k)=>TECH[k].max!=null&&w.tech[k]>=TECH[k].max;
 const techAvailable=(w,k)=>TECH[k].requires.every(r=>w.tech[r]>0);
-const workerPower=(w,type)=>1+(w.tech[craftOf(type)]||0),clickPower=w=>1+w.tech.tools,eraPower=w=>1+(w.tech.era||0);
+const workerPower=(w,type)=>1+(w.tech[craftOf(type)]||0),eraPower=w=>1+(w.tech.era||0);
+// A click is worth half a round of whatever the tile does on its own (a workshop's workers, a town's residents),
+// never less than the golden finger's 1 + tools, so clicking keeps pace with the economy instead of fading out.
+function clickPower(w,t){const base=1+w.tech.tools;const b=t?.building;if(!b)return base;const auto=b.type==='town'?townRate(w,b):rate(w,t);return Math.max(base,Math.ceil(auto/2));}
 const passable=(w,t)=>t.terrain!=='mountain'&&(t.terrain!=='lake'||w.tech.waterway>0);
 const terrainFactor=(a,b)=>Math.max(TERRAIN_FACTOR[a.terrain],TERRAIN_FACTOR[b.terrain]);
 function segmentCost(factor){return ROAD_BASE*factor;}
@@ -225,7 +228,10 @@ function previewRoute(w,f){const temp=copy(w);temp.serial+=1000;materialize(temp
 function command(w,c){const t=w.tiles[c.tile],b=t?.building;const fail=m=>{throw Error(m);};
  if(w.preview&&!['rotate','place'].includes(c.type))fail('先把新板块放下');
  if(c.type==='build'){if(!RECIPES[c.buildType])fail('未知建筑');if(c.buildType!=='camp'&&!w.tech[c.buildType])fail(`先在科技树里解锁${RECIPES[c.buildType].name}`);if(!t||t.building)fail('这里已有建筑');if(!RECIPES[c.buildType].fits.includes(t.terrain))fail('这种建筑不适合这块地');const cost=buildingCost(w,c.buildType);pay(w,cost);t.building={id:id(w),type:c.buildType,paid:cost,workers:[]};
- }else if(c.type==='click'){if(!b||b.type==='town')fail('点击工坊才能生产');const rc=RECIPES[b.type];let n=Math.min(clickPower(w),YARD-t.loose[rc.out]);if(n<=0)fail('堆场已满，先把货运出去');for(const r in rc.in)n=Math.min(n,t.loose[r]);if(n<=0){const missing=Object.keys(rc.in).filter(r=>t.loose[r]<1).map(r=>GOODS[r]).join('和');fail(`没有${missing}可加工`);}for(const r in rc.in){t.loose[r]-=n;w.consumption[r]+=n;}t.loose[rc.out]+=n;w.production[rc.out]+=n;w.manual.out[rc.out]+=n;w.manual.tiles[t.id]=(w.manual.tiles[t.id]||0)+n;w.clicks++;
+ }else if(c.type==='click'){if(!b)fail('点击工坊才能生产');
+  // A town click asks for half a round more of every good it buys; the demand pool caps it like a yard caps output.
+  if(b.type==='town'){const d=buys(w,t.id);let total=0;for(const r in d){const n=Math.min(clickPower(w,t),d[r].pool-b.demand[r]);if(n<=0)continue;b.demand[r]+=n;total+=n;}if(!total)fail('需求还没用完，多修路多产货');w.clicks++;return;}
+  const rc=RECIPES[b.type];let n=Math.min(clickPower(w,t),YARD-t.loose[rc.out]);if(n<=0)fail('堆场已满，先把货运出去');for(const r in rc.in)n=Math.min(n,t.loose[r]);if(n<=0){const missing=Object.keys(rc.in).filter(r=>t.loose[r]<1).map(r=>GOODS[r]).join('和');fail(`没有${missing}可加工`);}for(const r in rc.in){t.loose[r]-=n;w.consumption[r]+=n;}t.loose[rc.out]+=n;w.production[rc.out]+=n;w.manual.out[rc.out]+=n;w.manual.tiles[t.id]=(w.manual.tiles[t.id]||0)+n;w.clicks++;
  }else if(c.type==='worker'){if(!b||b.type==='town')fail('先选择一座已建工坊');if(b.workers.length>=MAX_WORKERS)fail(`每座建筑最多 ${MAX_WORKERS} 名工人，产能要靠新建筑和工人培训`);const cost=workerCost(w,t);pay(w,cost);b.workers.push({id:id(w),paid:cost});
  }else if(c.type==='fireWorker'){if(!b||b.type==='town')fail('请选择工坊');if(!b.workers.length)fail('这里没有工人');refund(w,b.workers.pop().paid);
  }else if(c.type==='tech'){const u=TECH[c.key];if(!u)fail('未知科技');if(techOwned(w,c.key))fail('已经买过这项科技');if(techMaxed(w,c.key))fail('已经是最高等级');if(!techAvailable(w,c.key))fail(`先解锁${u.requires.filter(r=>!w.tech[r]).map(r=>TECH[r].name).join('和')}`);pay(w,techCost(w,c.key));w.tech[c.key]++;

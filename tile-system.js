@@ -17,6 +17,9 @@
    const width=offers.length>1?84:46;
    html+=`<g class="bt-floating"><rect class="bt-float-bg" x="${-width/2}" y="25" width="${width}" height="20" rx="5"/>`;
    html+=offers.map((o,i)=>{const x=offers.length>1?-40+i*41:-21;return `<g class="bt-offer ${o.full?'is-full':''}" data-good="${esc(o.id)}">${o.full?`<rect class="bt-full-bg" x="${x-1}" y="26" width="40" height="18" rx="4"/>`:''}${icon(o.id,x,26,18)}<text x="${x+19}" y="39" class="bt-price" ${String(o.price).length>3?'textLength="21" lengthAdjust="spacingAndGlyphs"':''}>$${esc(o.price)}</text></g>`;}).join('')+'</g>';
+   // Goods the town could buy but its demand pool cannot absorb, piled up at the producers: click the town to take them.
+   const backlog=offers.reduce((n,o)=>n+(o.backlog||0),0);
+   if(backlog>0)html+=`<g class="bt-floating bt-backlog"><rect class="bt-float-bg bt-full-bg" x="-25" y="48" width="50" height="16" rx="4"/><text x="0" y="60" text-anchor="middle" class="bt-price bt-backlog-text">积压 ${esc(backlog)}</text></g>`;
   }else{
    html+=`<g class="bt-floating ${count>=capacity||alert?'has-alert':''}"><rect class="bt-float-bg" x="-25" y="25" width="50" height="22" rx="5"/>${icon(output,-23,25,22)}<text x="4" y="41" class="bt-quantity ${count===0||count>=capacity?'bt-alert':''}">${esc(count)}</text></g>`;
   }

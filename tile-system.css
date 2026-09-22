@@ -44,3 +44,4 @@
 .terrain-association b{color:var(--text-primary);font-weight:650}
 .terrain-association .assoc-arrow{color:var(--text-disabled)}
 .road-junction{fill:var(--road-dirt);stroke:none;pointer-events:none}
+.bt-backlog-text{fill:var(--bt-danger);font-size:8px}

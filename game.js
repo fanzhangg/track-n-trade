@@ -74,6 +74,12 @@ function canPlace(type, tile) { return !!tile && !tile.building && E.RECIPES[typ
 const afford = cost => world.money >= cost;
 const unlockedBuildings = () => E.BUILDINGS.filter(b => b === 'camp' || world.tech[b]);
 const townTiles = () => Object.values(world.tiles).filter(t => t.building?.type === 'town');
+// Stock of a good sitting at producers that can reach this town, beyond what its demand pool will take: the part
+// only a click (or more residents) can sell.
+function backlog(town, r) {
+ const stock = Object.values(world.tiles).reduce((n, t) => t.building && t.building.type !== 'town' && E.RECIPES[t.building.type].out === r && E.path(world, t.id, town) ? n + t.loose[r] : n, 0);
+ return Math.max(0, stock - world.tiles[town].building.demand[r]);
+}
 const connectedTowns = () => townTiles().filter(u => Object.values(world.tiles).some(t => t.building && t.building.type !== 'town' && u.building.buys[E.RECIPES[t.building.type].out] && E.path(world, t.id, u.id))).map(t => t.id);
 function cancelGesture() {
  gesture = null; buildType = null; connectFrom = null;
@@ -101,13 +107,16 @@ function tileClick(key) {
  if (buildType) return place(buildType, key);
  if (connectFrom) return connect(connectFrom, key);
  selected = key; selectedEdge = null; selectedFlower = null;
- if (world.tiles[key].building && world.tiles[key].building.type !== 'town') produce(key); else render();
+ if (world.tiles[key].building) produce(key); else render();
 }
+// A click on a workshop makes goods; a click on a town asks for more of every good it buys. Both pop "+n".
 function produce(key) {
- const t = world.tiles[key], r = E.RECIPES[t.building.type].out, before = t.loose[r];
+ const t = world.tiles[key], b = t.building, town = b.type === 'town';
+ const r = town ? null : E.RECIPES[b.type].out, before = town ? {...b.demand} : t.loose[r];
  try {
   world = E.apply(world, {type:'click', tile:key});
-  pop(key, world.tiles[key].loose[r] - before, r);
+  if (town) { const after = world.tiles[key].building.demand; for (const g in before) if (after[g] > before[g]) pop(key, after[g] - before[g], g); }
+  else pop(key, world.tiles[key].loose[r] - before, r);
   const g = svg.querySelector(`[data-tile="${key}"]`);
   g.classList.remove('bump'); void g.getBoundingClientRect(); g.classList.add('bump');
   render();
@@ -382,7 +391,7 @@ function renderMap() {
   if (b?.type === 'town') {
    const earning=Object.entries(E.buys(world,t.id)).reduce((n,[r,d])=>n+st.sales(t.id,r)*d.price,0);
    const linked=connectedTowns().includes(t.id);
-   const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,full:saturated(t.id,id,st)}));
+   const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,full:saturated(t.id,id,st),backlog:backlog(t.id,id)}));
    content=BuildingTiles.render({type:'town',name:'城镇',residents:b.residents,offers,status:linked?`+${fmt(earning)}金/回合`:'未连路',alert:!linked});
   } else if (b) {
    const rc=E.RECIPES[b.type],stall=stallOf(t),count=t.loose[rc.out];
@@ -450,7 +459,7 @@ function townPanel(t) {
  let html=`<h2>${icon('town','town-c')}城镇</h2><div class="subtitle">${E.ERAS[world.tech.era]} · 每种货每回合收 ${rate} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${fmt(earning)}</b><small>金币 / 回合</small></div>`;
  html+=`<div class="crew"><div class="crew-top"><span>居民 ${b.residents}</span><b>${b.residents} × ${E.TOWN_RATE*era} = ${rate} 件/回合</b></div><div class="slots residents">${Array.from({length:b.residents},(_,i)=>`<span class="resident bt-person-beat ${world.paused||!Object.values(world.stats.at(-1)?.sales[key]||{}).some(n=>n>0)?'is-idle':''}" style="--beat:${Math.max(.25,E.DT/speed)}s;animation-delay:-${i*.15}s">${icon('resident')}</span>`).join('')}</div></div>`;
  html+=`<h3>收购</h3><div class="contract">${Object.entries(buys).map(([r,d])=>{const s=st.sales(key,r),sat=saturated(key,r,st);return `<div class="line"><span>${icon(r,r+'-c')}${names[r]}</span><b>${d.price} 金币/件</b><small class="${sat?'warn':''}">${sat?`收不下了 · 每回合 ${d.rate} 件全部收下`:`收 ${per(s)} / ${d.rate} 件/回合 · 待收 ${b.demand[r]}`}</small></div>`;}).join('')}</div>`;
- if(!full)html+=`<div class="actions">${button(`加第 ${b.residents+1} 名居民<small>${coins(next)} · 每种货每回合多收 ${E.TOWN_RATE*era} 件</small>`,{type:'resident',tile:t.id},true,!afford(next))}</div>`;
+ html+=`<div class="actions">${full?'':button(`加第 ${b.residents+1} 名居民<small>${coins(next)} · 每种货每回合多收 ${E.TOWN_RATE*era} 件</small>`,{type:'resident',tile:t.id},true,!afford(next))}<button id="produce" class="produce">${icon('town','')}手工收购 每种货 ${E.clickPower(world,t)} 件<small>点城镇加需求，货会立刻派来</small></button></div>`;
  return html;
 }
 function flowerPanel(f) {
@@ -481,7 +490,7 @@ function renderSelection() {
   const c=crew(t), full=n>=E.MAX_WORKERS;
   const dots=Array.from({length:c.n},(_,i)=>`<span class="wmeeple" style="${beatStyle(c,i)}">${icon('worker')}</span>`).join('');
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:names[r];
-  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div>${d?`<div class="diag ${d.level}">${d.text}</div>`:''}<div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(`雇第 ${n+1} 名工人<small>${coins(next)} · 每回合自动多 ${E.workerPower(world,b.type)} 件</small>`,{type:'worker',tile:t.id},true,!afford(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 到货 / 消耗</span><b>${per(st.inflow(t.id,i))} / ${per(tileRate(t))} 件</b></div><div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
+  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div>${d?`<div class="diag ${d.level}">${d.text}</div>`:''}<div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(`雇第 ${n+1} 名工人<small>${coins(next)} · 每回合自动多 ${E.workerPower(world,b.type)} 件</small>`,{type:'worker',tile:t.id},true,!afford(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 到货 / 消耗</span><b>${per(st.inflow(t.id,i))} / ${per(tileRate(t))} 件</b></div><div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
   html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">选择要连接的建筑</button>${n?button(`辞退一名工人<small>退回 ${coins(b.workers[n-1].paid)}</small>`,{type:'fireWorker',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
  } else if (t) {
   const fits=unlockedBuildings().filter(b=>E.RECIPES[b].fits.includes(t.terrain));
@@ -509,7 +518,7 @@ function renderGoals() {
 // The tech tree is one card per building, plus the golden finger (manual clicks) and the waterway. A card
 // starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
 function techCards() {
- const cards = [{id:'finger', name:'金手指', icon:'worker', tier:1, kind:'economy', desc:'手工生产：点击任何建筑就出 1 件货', craft:'tools', per:n=>`每次点击 ${n} 件`},
+ const cards = [{id:'finger', name:'金手指', icon:'worker', tier:1, kind:'economy', desc:'手工点击：点工坊出货，点城镇加需求。每次至少这么多，工人和居民多了还会跟着涨', craft:'tools', per:n=>`每次点击至少 ${n} 件`},
   {id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
  for (const b of E.BUILDINGS) {
   const t = E.TECH[b], rc = E.RECIPES[b];
@@ -676,7 +685,7 @@ document.addEventListener('pointerup',event=>{
  svg.classList.remove('panning');
  if(finished.kind==='pan'){if(finished.moved)suppressClick=true;return;}
  if(!finished.moved){
-  if(finished.kind==='connect'){selected=finished.from;selectedEdge=null;selectedFlower=null;suppressClick=true;const b=world.tiles[finished.from].building;if(b.type!=='town')produce(finished.from);else render();}
+  if(finished.kind==='connect'){selected=finished.from;selectedEdge=null;selectedFlower=null;suppressClick=true;produce(finished.from);}
   return;
  }
  suppressClick=true;

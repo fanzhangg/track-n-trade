@@ -191,3 +191,19 @@ test('save and reload is exact; invalid saves rejected',()=>{
  const rot=E.copy(w);Object.values(rot.flowers).find(f=>f.state==='placed'&&f.order).rotation++;assert.throws(()=>E.load(rot),/不一致/);
  const noFog=E.copy(w);delete noFog.flowers[fogs(w)[0]];assert.throws(()=>E.load(noFog),/迷雾缺失/);
 });
+
+test('a click scales with the economy: never below 1 + tools, otherwise half a round of automatic output',()=>{
+ let w=fresh();assert.equal(E.clickPower(w,w.tiles[CAMP]),1);
+ w=rich(w);w=hire(w,CAMP,3);w.tech.campCraft=3;assert.equal(E.clickPower(w,w.tiles[CAMP]),6,'3 workers x 4 = 12 per round, half is 6');
+ w.tech.tools=7;assert.equal(E.clickPower(w,w.tiles[CAMP]),8,'the golden finger is a floor');
+ w=click(w,CAMP);assert.equal(w.tiles[CAMP].loose.log,8);});
+
+test('a click on a town adds half a round of demand for every good it buys, capped by the pool',()=>{
+ let {w,town}=started(1);const b=()=>w.tiles[town].building;const pool=E.buys(w,town).log.pool;
+ w.tiles[town].building.demand.log=0;assert.equal(E.clickPower(w,w.tiles[town]),1,'one resident takes 2 a round, half is 1');
+ w=E.apply(w,{type:'click',tile:town});assert.equal(b().demand.log,1);assert.equal(w.clicks,1);
+ w=rich(w);w=E.apply(w,{type:'resident',tile:town});w=E.apply(w,{type:'resident',tile:town});assert.equal(E.clickPower(w,w.tiles[town]),3);
+ w.tiles[town].building.demand.log=E.buys(w,town).log.pool;assert.throws(()=>E.apply(w,{type:'click',tile:town}),/需求还没用完/);
+ w.tiles[town].building.demand.log=E.buys(w,town).log.pool-1;w=E.apply(w,{type:'click',tile:town});assert.equal(b().demand.log,E.buys(w,town).log.pool,'clipped at the pool');
+ // Clicking the town drains a full yard that the residents alone could not: the goods are dispatched at once.
+ w.tiles[town].building.demand.log=0;w=click(w,CAMP,20);const before=w.money;for(let i=0;i<10;i++)w=E.apply(w,{type:'click',tile:town});run(w,20);assert.ok(w.money>before,'the clicked-for logs sold');});
