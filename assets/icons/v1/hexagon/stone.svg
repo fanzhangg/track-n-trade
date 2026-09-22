@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="26.729995727539062" height="24.20001220703125" viewBox="219.99000549316406 464.75 26.729995727539062 24.20001220703125"><defs>
+    <linearGradient gradientUnits="userSpaceOnUse" x1="-819.2" x2="819.2" spreadMethod="pad" gradientTransform="matrix(-0.006866455078125 -0.006866455078125 0.0206298828125 -0.0206298828125 476.1 157.9)" id="gradient0">
+      <stop offset="0" stop-color="#FFCC00"></stop>
+      <stop offset="1" stop-color="#ECBC00"></stop>
+    </linearGradient>
+    <linearGradient gradientUnits="userSpaceOnUse" x1="-819.2" x2="819.2" spreadMethod="pad" gradientTransform="matrix(0 0.00567626953125 -0.01031494140625 0 267 595.55)" id="gradient1">
+      <stop offset="0" stop-color="#FFCC00"></stop>
+      <stop offset="1" stop-color="#FF9900"></stop>
+    </linearGradient>
+    <linearGradient gradientUnits="userSpaceOnUse" x1="-819.2" x2="819.2" spreadMethod="pad" gradientTransform="matrix(-0.0078277587890625 -0.0078277587890625 0.0093231201171875 -0.0093231201171875 179 64.8)" id="gradient2">
+      <stop offset="0" stop-color="#B9C6C6"></stop>
+      <stop offset="1" stop-color="#D4E2E2"></stop>
+    </linearGradient>
+    <linearGradient gradientUnits="userSpaceOnUse" x1="-819.2" x2="819.2" spreadMethod="pad" gradientTransform="matrix(0.0075531005859375 -0.0075531005859375 0.0093231201171875 0.0093231201171875 155.2 64)" id="gradient3">
+      <stop offset="0" stop-color="#B9C6C6"></stop>
+      <stop offset="1" stop-color="#D4E2E2"></stop>
+    </linearGradient>
+    <linearGradient gradientUnits="userSpaceOnUse" x1="-819.2" x2="819.2" spreadMethod="pad" gradientTransform="matrix(0 0.00567626953125 -0.01031494140625 0 227.35 648.8)" id="gradient4">
+      <stop offset="0" stop-color="#FFCC00"></stop>
+      <stop offset="1" stop-color="#FF9900"></stop>
+    </linearGradient>
+  </defs><path stroke="none" fill="#5A6B6B" d="M243.7 482.5 L241.05 467.85 235.75 467.75 229.5 468.8 223.55 470.85 223 477.4 232.15 486 243.7 482.5 M243.05 467.5 L245.7 482.15 Q245.8 482.9 245.4 483.55 L244.3 484.45 232.75 487.95 231.7 487.95 230.8 487.45 221.65 478.85 221.15 478.15 Q220.95 477.7 221 477.25 L221.55 470.7 Q221.6 470.1 222 469.65 L222.9 468.95 228.85 466.9 229.2 466.85 235.45 465.8 235.8 465.75 241.1 465.85 Q241.8 465.85 242.35 466.35 242.9 466.8 243.05 467.5"></path><path stroke="none" fill="#879393" d="M235.75 467.75 L241.05 467.85 243.7 482.5 236.85 473.7 235.75 467.75 M223 477.4 L223.55 470.85 229.5 468.8 229.45 470.15 223 477.4"></path><path stroke="none" fill="#A4AFAF" d="M223 477.4 L229.45 470.15 229.5 468.8 235.75 467.75 236.85 473.7 234.15 474.55 232.15 486 223 477.4"></path><path stroke="none" fill="#B5C2C2" d="M243.7 482.5 L232.15 486 234.15 474.55 236.85 473.7 243.7 482.5"></path></svg>

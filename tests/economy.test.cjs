@@ -113,9 +113,10 @@ test('tech tree: buildings need their tech, prerequisites gate purchases, one-of
  assert.throws(()=>E.apply(w,{type:'tech',key:'mine'}),/先解锁/);
  w=tech(w,'quarry');w=E.apply(w,{type:'build',tile:rock.id,buildType:'quarry'});
  assert.throws(()=>E.apply(w,{type:'tech',key:'quarry'}),/已经买过/);
- assert.equal(E.techCost(w,'training'),5000);w=tech(w,'training');assert.equal(E.techCost(w,'training'),10000);assert.equal(E.workerPower(w),2);
+ assert.equal(E.techCost(w,'campCraft'),2000);w=tech(w,'campCraft');assert.equal(E.techCost(w,'campCraft'),4000);assert.equal(E.workerPower(w,'camp'),2);assert.equal(E.workerPower(w,'quarry'),1,'craft is per building type');
+ assert.ok(!E.techAvailable(w,'sawmillCraft'),'a craft needs its building');w=tech(w,'sawmill');assert.ok(E.techAvailable(w,'sawmillCraft'));assert.equal(E.techCost(w,'sawmillCraft'),4000);
  assert.equal(E.techCost(w,'mine'),5000);assert.equal(E.techCost(w,'smelter'),40000);
- assert.ok(!E.techAvailable(w,'mine'));w=tech(w,'sawmill','mason');assert.ok(E.techAvailable(w,'mine'));
+ assert.ok(!E.techAvailable(w,'mine'));w=tech(w,'mason');assert.ok(E.techAvailable(w,'mine'));
 });
 test('a mine only stands on ore, a camp only on forest, a quarry only on rock, workshops on grass',()=>{
  let w=rich(fresh());w=tech(w,'quarry','sawmill','mason','mine','smelter');

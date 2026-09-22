@@ -1,0 +1,11 @@
+/* Shared Kenney icon system; preserve map gestures and worker cursor animation. */
+.tt-icon{pointer-events:none;vertical-align:middle}
+.tt-map-icon,.tt-map-icon image{image-rendering:auto;pointer-events:none}
+.money-hud>.tt-icon{align-self:center}
+.controls button .tt-icon,.menu button .tt-icon{margin-right:5px}
+.contract .line .tt-icon{flex-shrink:0}
+.owned-mark .tt-icon{--icon-size:16px!important}
+.toolbar button[data-build]>.tt-icon{flex-shrink:0}
+.toolbar button[data-build]>span:last-child{white-space:nowrap}
+.node-head b{display:flex;align-items:center;gap:8px}
+.locked-note .tt-icon{margin-right:5px}

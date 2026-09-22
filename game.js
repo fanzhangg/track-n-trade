@@ -1,13 +1,23 @@
 'use strict';
 const E = TradeEngine;
 const $ = id => document.getElementById(id);
-const SAVE = 'tnt-mvp-v12';
+const SAVE = 'tnt-mvp-v14';
 const names = Object.assign({town:'城镇'}, E.GOODS, E.TERRAIN_NAME, Object.fromEntries(Object.entries(E.RECIPES).map(([k, r]) => [k, r.name])));
 const colors = {forest:'var(--terrain-forest)',grass:'var(--terrain-grass)',rock:'var(--terrain-rock)',ore:'var(--terrain-ore)',mountain:'var(--terrain-mountain)',lake:'var(--terrain-lake)',town:'var(--terrain-town)',fog:'var(--terrain-fog)',
  log:'var(--goods-log)',stone:'var(--goods-stone)',board:'var(--goods-board)',tool:'var(--goods-tool)',ore_good:'var(--goods-ore)',iron:'var(--goods-iron)'};
 const goodColor = r => r === 'ore' ? colors.ore_good : colors[r];
-const icon = (name, cls='') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#icon-${name}"/></svg>`;
-const glyph = (name, x, y, size, fill) => `<use href="#icon-${name}" x="${x}" y="${y}" width="${size}" height="${size}" fill="${fill}"/>`;
+const iconIds = new Set(TradeIcons.catalog.map(item=>item.id));
+const iconAliases = {check:'ui-checkmark',warn:'ui-exclamation',fog:'ui-question',tech:'ui-gear'};
+const icon = (name, cls='') => {
+ const id=iconAliases[name]||name;
+ if(iconIds.has(id))return TradeIcons.icon(id,{base:'assets/icons/v1/',size:E.BUILDINGS.includes(id)||id==='town'?48:id.startsWith('ui-')?18:24,decorative:true});
+ return `<svg class="icon ${cls}" aria-hidden="true"><use href="#icon-${name}"/></svg>`;
+};
+const glyph = (name, x, y, size, fill) => iconIds.has(name)?TradeIcons.svgIcon(name,{x,y,size}):`<use href="#icon-${name}" x="${x}" y="${y}" width="${size}" height="${size}" fill="${fill}"/>`;
+document.querySelector('.money-hud .icon').outerHTML=icon('coin');
+for(const [buttonId,iconId] of [['import','ui-import'],['export','ui-export']]){
+ const button=$(buttonId);button.innerHTML=icon(iconId)+button.textContent;
+}
 const fmt = n => Math.round(n).toLocaleString('zh-CN');
 const per = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
 const coins = n => `${Math.round(n).toLocaleString('zh-CN')} 金币`;
@@ -21,7 +31,7 @@ let storageBlocked = false, welcome = '', popTick = -1, mapKey = '', hovered = n
 try {
  const raw = localStorage.getItem(SAVE);
  if (raw) { world = E.load(JSON.parse(raw)); welcome = '已恢复进度'; }
- else if (['tnt-mvp-v11','tnt-mvp-v10','tnt-mvp-v9','tnt-mvp-v8'].some(k => localStorage.getItem(k))) welcome = 'v0.12：地图改为逐块探索，建筑和道路由科技树解锁。旧存档已保留但不再读取。';
+ else if (['tnt-mvp-v13','tnt-mvp-v12','tnt-mvp-v11','tnt-mvp-v10','tnt-mvp-v9','tnt-mvp-v8'].some(k => localStorage.getItem(k))) welcome = 'v0.13：道路只负责连通，工人培训改为按建筑类型的工艺升级。旧存档已保留但不再读取。';
 } catch {
  storageBlocked = true;
  welcome = '原存档无法读取，已保留；当前进度可通过导出保存';
@@ -116,33 +126,30 @@ function pop(key, n, r) {
 
 function windowStats() {
  const S = world.stats;
- const empty = {span:0, rate:() => 0, util:() => 0, flow:() => 0, blocked:() => 0, rank:() => 0, inflow:() => 0, income:0, sales:() => 0, ranked:[]};
+ const empty = {span:0, rate:() => 0, flow:() => 0, inflow:() => 0, outflow:() => 0, income:0, sales:() => 0};
  if (!S.length) return empty;
  const span = world.tick - S[0].tick + 1;
- const out = E.zero(), edges = {}, inflow = {}, sales = {};
+ const out = E.zero(), edges = {}, inflow = {}, outflow = {}, sales = {};
  let income = 0;
  for (const s of S) {
   E.add(out, s.out); income += s.income;
   for (const [k, v] of Object.entries(s.sales)) E.add(sales[k] || (sales[k] = E.zero()), v);
   for (const [k, v] of Object.entries(s.edges)) {
-   const u = edges[k] || (edges[k] = {cap:0, flow:0, blocked:0});
-   u.cap += v.capacity; u.blocked += v.blocked;
+   const u = edges[k] || (edges[k] = {flow:0});
    for (const [f, n] of Object.entries(v.flows)) {
     u.flow += n;
     const m = f.match(/^(.*)>(.*):(\w+)$/);
     (inflow[m[2]] || (inflow[m[2]] = E.zero()))[m[3]] += n;
+    (outflow[m[1]] || (outflow[m[1]] = E.zero()))[m[3]] += n;
    }
   }
  }
- const ranked = Object.entries(edges).filter(([k, u]) => u.blocked > 0 && world.edges[k] && !world.edges[k].removing).sort((a, b) => b[1].blocked - a[1].blocked || a[0].localeCompare(b[0])).slice(0, 3).map(([k]) => k);
  return {
-  span, ranked,
+  span,
   rate: r => out[r] / span,
-  util: k => edges[k] && edges[k].cap > 0 ? Math.min(1, edges[k].flow / edges[k].cap) : 0,
   flow: k => edges[k] ? edges[k].flow / span : 0,
-  blocked: k => edges[k] ? edges[k].blocked / span : 0,
-  rank: k => ranked.indexOf(k) + 1,
   inflow: (k, r) => (inflow[k]?.[r] || 0) / span,
+  outflow: (k, r) => (outflow[k]?.[r] || 0) / span,
   income: income / span,
   sales: (k, r) => (sales[k]?.[r] || 0) / span,
  };
@@ -154,7 +161,7 @@ function tileRate(t) {
 }
 function crew(t) {
  const n = t.building.workers.length, producing = stateOf(t) === '生产中';
- const beat = Math.max(.25, E.DT / speed / E.workerPower(world));
+ const beat = Math.max(.25, E.DT / speed / E.workerPower(world, t.building.type));
  return {n, producing, blocked: n > 0 && !producing, beat};
 }
 function beatStyle(c, i, clock = performance.now() / 1000) {
@@ -171,6 +178,13 @@ function stateOf(t) {
  if (t.loose[E.RECIPES[b.type].out] >= E.YARD && !madeLastRound(t)) return '堆场已满，停工';
  if (!b.workers.length) return '没有工人，点击才生产';
  return '生产中';
+}
+// The one thing the map says about a stalled workshop: which input it lacks. A full yard already shows as an
+// amber 20 with idle workers, so it gets no text.
+function stallOf(t) {
+ const b = t.building, miss = missingInputs(t);
+ if (!b.workers.length || madeLastRound(t) || !miss.length) return '';
+ return `缺${miss.map(r => names[r]).join('、')}`;
 }
 function buyersOf(r, from) { return townTiles().filter(u => u.building.buys[r] && E.path(world, from, u.id)).map(u => u.id); }
 function saturated(k, r, st = windowStats()) { return st.span >= 5 && st.sales(k, r) >= E.buys(world, k)[r].rate * .95; }
@@ -364,22 +378,20 @@ function renderMap() {
   let content='';
   if (b?.type === 'town') {
    const earning=Object.entries(E.buys(world,t.id)).reduce((n,[r,d])=>n+st.sales(t.id,r)*d.price,0);
-   const linked=connectedTowns().includes(t.id), full=Object.keys(b.buys).filter(r=>saturated(t.id,r,st));
+   const linked=connectedTowns().includes(t.id);
    content=`${glyph('town',-16,-46,32,'')}<text y="-2" text-anchor="middle" class="tile-label">城镇 Lv.${b.level+1}<tspan class="tile-status ${linked?'':'alert'}"> ${linked?`+${fmt(earning)}/回合`:'未连路'}</tspan></text>`;
    content+=Object.entries(E.buys(world,t.id)).map(([r,d],i)=>{
-    const y=10+i*10,want=b.demand[r]/d.pool,fullNow=full.includes(r);
-    return glyph(r,-27,y-7,8,'')+`<text x="-17" y="${y}" class="price-label">${d.price}</text><rect x="6" y="${y-6}" width="20" height="4" rx="1" class="demand-track"/><rect x="6" y="${y-6}" width="${Math.max(0,Math.min(1,want))*20}" height="4" rx="1" class="demand-fill ${fullNow?'alert':''}"/>`;
+    const y=11+i*11, full=saturated(t.id,r,st);
+    const x=full?-38:-24;
+    return glyph(r,x,y-10,12,'')+`<text x="${x+15}" y="${y}" class="price-label">${d.price}金${full?'<tspan class="tile-status alert"> 收不下了</tspan>':''}</text>`;
    }).join('');
   } else if (b) {
-   const d=diagnose(t, st), rc=E.RECIPES[b.type], r=rc.out;
-   content=glyph(b.type,-16,-24,32,'');
-   const stocks=[[r,t.loose[r],t.loose[r]>=E.YARD]];
-   for (const i of Object.keys(rc.in).reverse()) if (t.loose[i]<1) stocks.unshift([i,0,true]);
-   const shown=stocks.filter(([,n,alert])=>n>0||alert);
-   const w=shown.length*30, x0=-w/2;
-   content+=shown.map(([r,n,alert],i)=>glyph(r,x0+i*30,17,9,'')+`<text x="${x0+i*30+11}" y="24.5" class="tile-stock ${alert?'alert':''}">${n>0?n:'缺'}</text>`).join('');
-   if(E.workerPower(world)>1&&b.workers.length)content+=`<text x="${14*(b.workers.length-1)/2+10}" y="38" class="tile-mult">×${E.workerPower(world)}</text>`;
-   if (d?.level==='warn') content+='<circle cx="16" cy="-22" r="6" class="warn-dot"/><text x="16" y="-18.5" text-anchor="middle" fill="white" font-size="8" font-weight="700">!</text>';
+   content=glyph(b.type,-24,-46,48,'');
+   const rc=E.RECIPES[b.type], stall=stallOf(t);
+   if(stall)content+=`<text y="13" text-anchor="middle" class="tile-status alert">${stall}</text>`;
+   const shown=[...Object.keys(rc.in),rc.out].map(g=>[g,t.loose[g]]).filter(([,n])=>n>0);
+   const x0=-shown.length*17;
+   content+=shown.map(([g,n],i)=>glyph(g,x0+i*34,18,9,'')+`<text x="${x0+i*34+11}" y="25.5" class="tile-stock ${n>=E.YARD?'alert':''}">${n}</text>`).join('');
   } else if (t.terrain==='mountain') {
    content=glyph('mountain',-16,-16,32,'#a3aeb8');
   } else if (t.terrain==='lake') {
@@ -398,7 +410,7 @@ function renderMap() {
    holder.classList.toggle('blocked',!!c&&c.blocked);
    holder.classList.toggle('halted',!!c&&world.paused);
    const size=16,slot=14,dx=-slot*((c?.n||1)-1)/2-size/2;
-   holder.innerHTML=c?Array.from({length:c.n},(_,i)=>`<g class="wdot-beat" style="${beatStyle(c,i)}"><use class="cursor" href="#icon-cursor" x="${dx+i*slot}" y="26" width="${size}" height="${size}"/></g>`).join(''):'';
+   holder.innerHTML=c?Array.from({length:c.n},(_,i)=>`<g class="wdot-beat" style="${beatStyle(c,i)}"><use class="cursor" href="#icon-cursor" x="${dx+i*slot}" y="30" width="${size}" height="${size}"/></g>`).join(''):'';
   }
  }
  $('roads').innerHTML=Object.values(world.edges).map(e => {
@@ -406,7 +418,7 @@ function renderMap() {
   const length=Math.hypot(u-x,v-y),angle=Math.atan2(v-y,u-x)*180/Math.PI;
   const start=world.tiles[e.a].building ? .28 : 0, end=world.tiles[e.b].building ? .28 : 0;
   const flowing=st.flow(e.id)>0, water=[world.tiles[e.a].terrain,world.tiles[e.b].terrain].includes('lake');
-  return `<line x1="${x+(u-x)*start}" y1="${y+(v-y)*start}" x2="${u-(u-x)*end}" y2="${v-(v-y)*end}" class="road level${world.roadLevel} ${water?'water':''} ${e.removing?'removing':''} ${e.id===selectedEdge?'selected':''} ${flowing?'flowing':''}"/><rect class="road-hit" x="${-length*.22}" y="-9" width="${length*.44}" height="18" transform="translate(${(x+u)/2},${(y+v)/2}) rotate(${angle})" data-edge="${e.id}" tabindex="0" role="button" aria-label="${water?'航线':E.ROAD_NAME[world.roadLevel]} (${e.a}) 到 (${e.b})"/>`;
+  return `<line x1="${x+(u-x)*start}" y1="${y+(v-y)*start}" x2="${u-(u-x)*end}" y2="${v-(v-y)*end}" class="road ${water?'water':''} ${e.removing?'removing':''} ${e.id===selectedEdge?'selected':''} ${flowing?'flowing':''}"/><rect class="road-hit" x="${-length*.22}" y="-9" width="${length*.44}" height="18" transform="translate(${(x+u)/2},${(y+v)/2}) rotate(${angle})" data-edge="${e.id}" tabindex="0" role="button" aria-label="${water?'航线':'道路'} (${e.a}) 到 (${e.b})"/>`;
  }).join('');
  const f=Math.max(0,Math.min(1,accumulator/E.DT));
  $('freight').innerHTML=world.shipments.filter(s=>s.edge).map(s=>{
@@ -455,8 +467,8 @@ function renderSelection() {
  if (world.preview) html=flowerPanel(world.flowers[world.preview]);
  else if (f && f.state !== 'placed') html=flowerPanel(f);
  else if (e) {
-  const cap=E.capacity(world),water=[world.tiles[e.a].terrain,world.tiles[e.b].terrain].includes('lake');
-  html=`<h2>${icon('road','quarry-c')}${water?'航线':E.ROAD_NAME[world.roadLevel]}</h2><div class="subtitle">全图道路 · 每回合 ${cap} 件</div><div class="state ${e.removing?'wait':''}">${e.removing?'等待在途货物通过后拆除':'运转中'}</div><div class="metrics"><div><span>近 30 回合实际</span><b>${per(st.flow(e.id))} 件/回合</b></div></div>`;
+  const water=[world.tiles[e.a].terrain,world.tiles[e.b].terrain].includes('lake');
+  html=`<h2>${icon(water?'waterway':'road','quarry-c')}${water?'航线':'道路'}</h2><div class="subtitle">货物每回合走一段</div><div class="state ${e.removing?'wait':''}">${e.removing?'等待在途货物通过后拆除':'运转中'}</div><div class="metrics"><div><span>近 30 回合运量</span><b>${per(st.flow(e.id))} 件/回合</b></div></div>`;
   html+=`<div class="actions">${e.removing?button('撤销拆除',{type:'restoreRoad',edge:e.id}):button(`拆除这段路<small>退回 ${coins(e.paid)}</small>`,{type:'removeRoad',edge:e.id})}</div>`;
  } else if (t?.building?.type==='town') {
   html=townPanel(t);
@@ -466,7 +478,7 @@ function renderSelection() {
   const c=crew(t), full=n>=E.MAX_WORKERS;
   const dots=Array.from({length:c.n},(_,i)=>`<span class="wcursor" style="${beatStyle(c,i)}">${icon('cursor')}</span>`).join('');
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:names[r];
-  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div>${d?`<div class="diag ${d.level}">${d.text}</div>`:''}<div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(`雇第 ${n+1} 名工人<small>${coins(next)} · 每回合自动多 ${E.workerPower(world)} 件</small>`,{type:'worker',tile:t.id},true,!afford(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world)} 件${names[r]}</button></div><div class="metrics"><div><span>近 30 回合实际</span><b>${per(tileRate(t))} 件/回合</b></div><div><span>堆场 ${names[r]}</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>堆场 ${names[i]}</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
+  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div>${d?`<div class="diag ${d.level}">${d.text}</div>`:''}<div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(`雇第 ${n+1} 名工人<small>${coins(next)} · 每回合自动多 ${E.workerPower(world,b.type)} 件</small>`,{type:'worker',tile:t.id},true,!afford(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 到货 / 消耗</span><b>${per(st.inflow(t.id,i))} / ${per(tileRate(t))} 件</b></div><div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
   html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">选择要连接的建筑</button>${n?button(`辞退一名工人<small>退回 ${coins(b.workers[n-1].paid)}</small>`,{type:'fireWorker',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
  } else if (t) {
   const fits=unlockedBuildings().filter(b=>E.RECIPES[b].fits.includes(t.terrain));
@@ -487,17 +499,41 @@ function renderGoals() {
  $('goal-hud').innerHTML=next?`<span>下一目标</span><b>${next.name}</b><small>+${next.reward}</small>`:'';
 }
 // The tech tree: one dialog, tiers top to bottom; buyable nodes are live, owned ones ticked, locked ones grey with their missing prerequisites.
+// The tech tree is one card per building, plus the golden finger (manual clicks) and the waterway. A card
+// starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
+function techCards() {
+ const cards = [{id:'finger', name:'金手指', icon:'cursor', tier:1, kind:'economy', desc:'手工生产：点击任何建筑就出 1 件货', craft:'tools', per:n=>`每次点击 ${n} 件`}];
+ for (const b of E.BUILDINGS) {
+  const t = E.TECH[b], rc = E.RECIPES[b];
+  const ins = Object.keys(rc.in).map(r => names[r]).join(' + ');
+  cards.push({id:b, name:names[b], icon:b, tier:t ? t.tier : 1, kind:'building', unlock:t ? b : null, craft:E.craftOf(b),
+   desc:t ? t.desc : `在${names[rc.fits[0]]}建，产${names[rc.out]}`, per:n=>`每名工人每回合 ${n} 件`});
+ }
+ cards.push({id:'waterway', name:E.TECH.waterway.name, icon:'waterway', tier:E.TECH.waterway.tier, kind:'waterway', unlock:'waterway', desc:E.TECH.waterway.desc});
+ return cards;
+}
 function renderTech() {
  const key=Object.keys(E.TECH).map(k=>`${world.tech[k]||0}${E.techAvailable(world,k)?'a':''}${afford(E.techCost(world,k))?'$':''}`).join('');
  if ($('tech-body').dataset.key===key) return;
  $('tech-body').dataset.key=key;
- const tiers=[...new Set(Object.values(E.TECH).map(t=>t.tier))].sort();
- const kindName={building:'建筑',road:'道路',waterway:'航道',economy:'经济'};
- $('tech-body').innerHTML=tiers.map(tier=>`<div class="tier"><div class="tier-label">第 ${tier} 层</div><div class="nodes">${Object.entries(E.TECH).filter(([,t])=>t.tier===tier).map(([k,t])=>{
-  const owned=E.techOwned(world,k), avail=E.techAvailable(world,k), cost=E.techCost(world,k), level=t.repeat?world.tech[k]:0;
-  const missing=t.requires.filter(r=>!world.tech[r]).map(r=>E.TECH[r].name);
-  const cls=owned?'owned':!avail?'locked':afford(cost)?'ready':'costly';
-  return `<div class="node ${cls} kind-${t.kind}"><div class="node-head"><b>${t.name}${level?` Lv.${level}`:''}</b><small>${kindName[t.kind]}</small></div><p>${t.desc}</p>${owned?`<div class="owned-mark">${icon('check')}已解锁</div>`:!avail?`<div class="locked-note">需要先解锁${missing.join('、')}</div>`:button(`解锁<small>${coins(cost)}</small>`,{type:'tech',key:k},true,!afford(cost))}</div>`;
+ const cards=techCards(), tiers=[...new Set(cards.map(c=>c.tier))].sort();
+ $('tech-body').innerHTML=tiers.map(tier=>`<div class="tier"><div class="tier-label">第 ${tier} 层</div><div class="nodes">${cards.filter(c=>c.tier===tier).map(c=>{
+  const owned=!c.unlock||world.tech[c.unlock]>0;
+  const level=c.craft?world.tech[c.craft]||0:0;
+  let cls, body;
+  if (!owned) {
+   const avail=E.techAvailable(world,c.unlock), cost=E.techCost(world,c.unlock);
+   const missing=E.TECH[c.unlock].requires.filter(r=>!world.tech[r]).map(r=>E.TECH[r].name);
+   cls=!avail?'locked':afford(cost)?'ready':'costly';
+   body=!avail?`<div class="locked-note">${icon('ui-locked')}需要先解锁${missing.join('、')}</div>`:button(`解锁<small>${coins(cost)}</small>`,{type:'tech',key:c.unlock},true,!afford(cost));
+  } else if (c.craft) {
+   const cost=E.techCost(world,c.craft);
+   cls=afford(cost)?'owned ready':'owned';
+   body=`<div class="craft-now">${c.per(level+1)}</div>`+button(`升级到 Lv.${level+2}<small>${coins(cost)} · ${c.per(level+2)}</small>`,{type:'tech',key:c.craft},true,!afford(cost));
+  } else {
+   cls='owned'; body=`<div class="owned-mark">${icon('check')}已开通</div>`;
+  }
+  return `<div class="node ${cls} kind-${c.kind}"><div class="node-head"><b>${iconIds.has(c.icon)?icon(c.icon):`<span class="building-icon">${icon(c.icon)}</span>`}${c.name}${owned&&c.craft?` Lv.${level+1}`:''}</b></div><p>${c.desc}</p>${body}</div>`;
  }).join('')}</div></div>`).join('');
  bindCommands($('tech-body'));
 }
@@ -533,7 +569,7 @@ function renderToolbar() {
  const want=unlockedBuildings().join(',');
  if (bar.dataset.key!==want) {
   bar.dataset.key=want;
-  bar.innerHTML=unlockedBuildings().map(b=>`<button data-build="${b}"><span class="building-icon ${b}"><svg class="icon"><use href="#icon-${b}"/></svg></span><span>${names[b]}<small></small></span></button>`).join('');
+  bar.innerHTML=unlockedBuildings().map(b=>`<button data-build="${b}">${icon(b)}<span>${names[b]}<small></small></span></button>`).join('');
   for(const button of bar.querySelectorAll('[data-build]')){
    button.onpointerdown=event=>{if(event.button!==0)return;gesture={kind:'build',type:button.dataset.build,x:event.clientX,y:event.clientY,moved:false,pointerId:event.pointerId};button.setPointerCapture(event.pointerId);};
    button.onclick=()=>{if(suppressClick){suppressClick=false;return;}buildType=buildType===button.dataset.build?null:button.dataset.build;connectFrom=null;render();};
@@ -546,12 +582,12 @@ function renderToolbar() {
   b.classList.toggle('unaffordable',!afford(E.buildingCost(world,b.dataset.build)));
  }
  const ready=Object.keys(E.TECH).filter(k=>!E.techOwned(world,k)&&E.techAvailable(world,k)&&afford(E.techCost(world,k))).length;
- $('tech-ready').textContent=ready?`${ready} 项可解锁`:'';
+ $('tech-ready').textContent=ready?`${ready} 项可买`:'';
 }
 function render() {
  const st=windowStats();
  $('money').textContent=world.money.toLocaleString('zh-CN');$('income').textContent=`+${fmt(st.income)}/回合`;
- $('pause').textContent=world.paused?'继续':'暂停';$('speed').textContent=speed+'×';
+ $('pause').innerHTML=icon(world.paused?'ui-play':'ui-pause')+(world.paused?'继续':'暂停');$('speed').textContent=speed+'×';
  $('cancel').hidden=!buildType&&!connectFrom;
  renderToolbar();
  svg.classList.toggle('connecting',!!connectFrom||!!buildType||gesture?.kind==='connect');
