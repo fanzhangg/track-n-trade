@@ -1,0 +1,43 @@
+/* Tracks & Trade · Color foundation v0.2. Vivid tabletop palette; opt-in.
+   Inspired by Dorfromantik, Roads & Boats and Age of Steam; original values. */
+:root {
+  --surface-canvas: #faf1d9;
+  --surface-panel: #fffdf4;
+  --surface-inset: #eee1bc;
+  --surface-map: #d7ebd3;
+  --text-primary: #243746;
+  --text-secondary: #53616b;
+  --text-disabled: #60645d;
+  --border-subtle: #d6cba9;
+  --border-control: #7d806e;
+  --action-primary: #245bc4;
+  --action-hover: #1949a4;
+  --action-pressed: #14377c;
+  --action-subtle: #e1edff;
+  --focus-ring: #245bc4;
+  --value-warning: #905000;
+  --value-warning-bg: #ffebac;
+  --bottleneck-1: #bc302e;
+  --bottleneck-2: #a4470d;
+  --bottleneck-3: #796000;
+  --rank-1-fill: #f34b43;
+  --rank-2-fill: #ff8a2b;
+  --rank-3-fill: #ffd43b;
+  --terrain-grass: #b5d957;
+  --terrain-forest: #57b66a;
+  --terrain-rock: #c7c5b7;
+  --terrain-ore: #e69b61;
+  --terrain-mountain: #8e9fb1;
+  --terrain-lake: #4db8df;
+  --terrain-town: #f5cf56;
+  --terrain-fog: #becbd3;
+  --terrain-detail: #23633f;
+  --building-roof: #c94c34;
+  --road-base: #655442;
+  --goods-log: #8c4b24;
+  --goods-board: #bd830c;
+  --goods-stone: #62728b;
+  --goods-tool: #7e49aa;
+  --goods-ore: #c3512c;
+  --goods-iron: #2469ab;
+}
