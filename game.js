@@ -391,7 +391,7 @@ function renderMap() {
   if (b?.type === 'town') {
    const earning=Object.entries(E.buys(world,t.id)).reduce((n,[r,d])=>n+st.sales(t.id,r)*d.price,0);
    const linked=connectedTowns().includes(t.id);
-   const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,backlog:backlog(t.id,id),full:backlog(t.id,id)>0}));
+   const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,backlog:backlog(t.id,id),full:backlog(t.id,id)>0,income:linked?st.sales(t.id,id)*d.price:null}));
    content=BuildingTiles.render({type:'town',name:'城镇',residents:b.residents,offers,status:linked?`+${fmt(earning)}金/回合`:'未连路',alert:!linked});
   } else if (b) {
    const rc=E.RECIPES[b.type],stall=stallOf(t),count=t.loose[rc.out];
@@ -560,24 +560,24 @@ function setPanel(id, collapsed) {
  try{localStorage.setItem(PANELS,JSON.stringify(folded));}catch{}
 }
 // The production chain: raw buildings on the left, their goods, then processing buildings and products. Data comes from the engine's recipes.
+// The production chain as a picture: building icons feeding good icons, each good labelled with what the whole
+// map earns from it per round, so the player sees which chain carries the income and which one is idle.
 function renderChain() {
- const key=unlockedBuildings().join(',');
- if ($('chain-body').dataset.key===key) return;
- $('chain-body').dataset.key=key;
  const raw=E.BUILDINGS.filter(b=>!Object.keys(E.RECIPES[b].in).length), proc=E.BUILDINGS.filter(b=>Object.keys(E.RECIPES[b].in).length);
- const N={}, W=320, ROW=76, BW=66, BH=34, GR=17;
- raw.forEach((b,i)=>{N[b]={x:44,y:36+i*ROW,b:1};N[E.RECIPES[b].out]={x:122,y:36+i*ROW};});
- proc.forEach((b,i)=>{N[b]={x:200,y:36+i*ROW,b:1};N[E.RECIPES[b].out]={x:280,y:36+i*ROW};});
- const H=36+ROW*(Math.max(raw.length,proc.length)-1)+40;
- const unlocked=new Set(unlockedBuildings());
+ const N={}, W=320, ROW=78, BS=40, GS=30;
+ raw.forEach((b,i)=>{N[b]={x:44,y:40+i*ROW};N[E.RECIPES[b].out]={x:122,y:40+i*ROW};});
+ proc.forEach((b,i)=>{N[b]={x:200,y:40+i*ROW};N[E.RECIPES[b].out]={x:280,y:40+i*ROW};});
+ const H=40+ROW*(Math.max(raw.length,proc.length)-1)+44;
+ const unlocked=new Set(unlockedBuildings()), st=windowStats();
+ const earned=r=>townTiles().reduce((n,t)=>n+(t.building.buys[r]?st.sales(t.id,r)*t.building.buys[r]:0),0);
  let edges='', nodes='';
  for (const b of E.BUILDINGS) {
-  const locked=!unlocked.has(b), rc=E.RECIPES[b], B=N[b];
-  for (const i of Object.keys(rc.in)) { const A=N[i]; edges+=`<path class="e ${i==='log'?'log':''} ${locked?'locked':''}" d="M${A.x+GR},${A.y} C${A.x+GR+30},${A.y} ${B.x-BW/2-30},${B.y} ${B.x-BW/2},${B.y}"/>`; }
-  const O=N[rc.out]; edges+=`<path class="e ${locked?'locked':''}" d="M${B.x+BW/2},${B.y} L${O.x-GR},${O.y}"/>`;
-  nodes+=`<g class="${locked?'locked':''}"><rect class="b ${locked?'locked':''}" x="${B.x-BW/2}" y="${B.y-BH/2}" width="${BW}" height="${BH}" rx="7"/><text class="lbl" x="${B.x}" y="${B.y-2}" text-anchor="middle">${rc.name}</text><text class="sub" x="${B.x}" y="${B.y+10}" text-anchor="middle">${rc.fits.map(t=>names[t]).join('/')}</text></g>`;
-  const price=E.BASE_PRICE[rc.out];
-  nodes+=`<g class="${locked?'locked':''}"><circle class="g ${locked?'locked':''}" cx="${O.x}" cy="${O.y}" r="${GR}"/><text class="glbl" x="${O.x}" y="${O.y+(price?-1:4)}" text-anchor="middle">${names[rc.out]}</text>${price?`<text class="gsub" x="${O.x}" y="${O.y+10}" text-anchor="middle">${price}</text>`:''}</g>`;
+  const locked=!unlocked.has(b), rc=E.RECIPES[b], B=N[b], O=N[rc.out];
+  for (const i of Object.keys(rc.in)) { const A=N[i]; edges+=`<path class="e ${i==='log'?'log':''} ${locked?'locked':''}" d="M${A.x+GS/2},${A.y} C${A.x+GS/2+30},${A.y} ${B.x-BS/2-30},${B.y} ${B.x-BS/2},${B.y}"/>`; }
+  edges+=`<path class="e ${locked?'locked':''}" d="M${B.x+BS/2},${B.y} L${O.x-GS/2},${O.y}"/>`;
+  nodes+=`<g class="${locked?'locked':''}"><title>${rc.name} · ${rc.fits.map(t=>names[t]).join('/')}</title>${TradeIcons.svgIcon(b,{x:B.x-BS/2,y:B.y-BS/2,size:BS})}<text class="lbl" x="${B.x}" y="${B.y+BS/2+11}" text-anchor="middle">${rc.name}</text></g>`;
+  const inc=earned(rc.out), price=E.BASE_PRICE[rc.out];
+  nodes+=`<g class="${locked?'locked':''}"><title>${names[rc.out]}${price?` · 基准价 ${price}`:' · 没有城镇收，只能炼铁'}</title><circle class="g ${locked?'locked':''} ${inc>0?'earning':''}" cx="${O.x}" cy="${O.y}" r="${GS/2+3}"/>${TradeIcons.svgIcon(rc.out,{x:O.x-GS/2,y:O.y-GS/2,size:GS})}<text class="gsub ${inc>0?'earning':''}" x="${O.x}" y="${O.y+GS/2+13}" text-anchor="middle">${price?`+${fmt(inc)}/回合`:'不可售'}</text></g>`;
  }
  $('chain-body').innerHTML=`<svg class="chain" viewBox="0 0 ${W} ${H}" role="img" aria-label="生产链">${edges}${nodes}</svg>`;
 }

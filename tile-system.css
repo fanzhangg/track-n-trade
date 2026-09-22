@@ -45,3 +45,5 @@
 .terrain-association .assoc-arrow{color:var(--text-disabled)}
 .road-junction{fill:var(--road-dirt);stroke:none;pointer-events:none}
 .bt-backlog-text{fill:var(--bt-danger);font-size:8px}
+.bt-income{fill:#49876b}
+.bt-offer.is-full .bt-income{fill:var(--bt-danger)}
