@@ -34,12 +34,12 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <h1>规则说明书</h1>
 <p class="lede">这是给玩家看的完整规则。Tracks &amp; Trade 是一个单人物流建设游戏：你点击、雇人、铺路、揭开地图、买科技；系统自动把货送到需要它的地方、卖成金币。<strong>你设计网络，系统跑网络。</strong>本页列出每一条规则和每一个数字，需要什么翻到哪一节即可。</p>
 <ul class="toc">
-<li><a href="#goal">一 · 你在玩什么</a></li><li><a href="#start">二 · 开局与前十分钟</a></li><li><a href="#clock">三 · 时钟与整数</a></li><li><a href="#map">四 · 地图、迷雾与板块</a></li><li><a href="#terrain">五 · 地形</a></li><li><a href="#buildings">六 · 建筑与货物</a></li><li><a href="#production">七 · 生产：点击与工人</a></li><li><a href="#roads">八 · 道路</a></li><li><a href="#freight">九 · 派货</a></li><li><a href="#towns">十 · 城镇</a></li><li><a href="#tech">十一 · 科技树</a></li><li><a href="#coins">十二 · 金币、退款与里程碑</a></li><li><a href="#ui">十三 · 界面与操作</a></li><li><a href="#save">十四 · 存档</a></li><li><a href="#faq">十五 · 常见问题</a></li><li><a href="#sheet">附录 · 数字速查表</a></li>
+<li><a href="#goal">你在玩什么</a></li><li><a href="#start">开局与前十分钟</a></li><li><a href="#clock">时钟与整数</a></li><li><a href="#map">地图、迷雾与板块</a></li><li><a href="#terrain">地形</a></li><li><a href="#buildings">建筑与货物</a></li><li><a href="#production">生产：点击与工人</a></li><li><a href="#roads">道路</a></li><li><a href="#freight">派货</a></li><li><a href="#towns">城镇</a></li><li><a href="#tech">科技树</a></li><li><a href="#coins">金币、退款与里程碑</a></li><li><a href="#ui">界面与操作</a></li><li><a href="#save">存档</a></li><li><a href="#faq">常见问题</a></li><li><a href="#sheet">数字速查表</a></li>
 </ul>
 </header>
 
 <section id="goal">
-<div class="eyebrow">一</div><h2>你在玩什么</h2>
+<h2>你在玩什么</h2>
 <p>地图上有森林、岩地、铁矿这样的资源地形，和收购货物的城镇。资源在原地才能开采，城镇只收送到门口的货。你要做的事只有四种：</p>
 <div class="grid">
 <div class="card"><h3>建</h3><p>在合适的地形上放建筑：伐木营出原木，采石场出石头，锯木厂把原木变木板……每座建筑要先在科技树里解锁（伐木营除外）。</p></div>
@@ -51,7 +51,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="start">
-<div class="eyebrow">二</div><h2>开局与前十分钟</h2>
+<h2>开局与前十分钟</h2>
 <div class="grid">
 <div>
 <p>新档开始时你有 <strong>2 000 金币</strong> 和一朵起始板块：中间一格草地，周围一格森林（上面已经有一座伐木营）、两格岩地、一格草地、一格贴着山的铁矿、一座山。<strong>没有城镇，没有路。</strong>周围六个方向全是迷雾。</p>
@@ -73,7 +73,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="clock">
-<div class="eyebrow">三</div><h2>时钟与整数</h2>
+<h2>时钟与整数</h2>
 <ul>
 <li><strong>游戏按回合走。</strong>1× 速度下一回合 2 秒。顶栏可切换 1× / 2× / 5×，倍速只压缩真实时间，不改变任何数量。</li>
 <li><strong>暂停</strong>按钮停下模拟；把页面切到后台也会暂停，回来时<strong>不会</strong>补算你离开的时间。没有离线收益。</li>
@@ -85,7 +85,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="map">
-<div class="eyebrow">四</div><h2>地图、迷雾与板块</h2>
+<h2>地图、迷雾与板块</h2>
 <h3>板块是七格花</h3>
 <p>地图由六边形格子组成，七个格子（中心加六个邻居）组成一朵「花」，这就是一块板块。花和花无缝拼在一起，每朵花恰好有六个邻居。地图<strong>没有边界</strong>：每放下一朵花，它周围所有空位都变成新的迷雾，地图的形状由你的探索路线决定。</p>
 <h3>解锁</h3>
@@ -125,7 +125,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="terrain">
-<div class="eyebrow">五</div><h2>地形</h2>
+<h2>地形</h2>
 <div class="table"><table>
 <tr><th>地形</th><th>能不能走路</th><th>能建什么</th><th>道路造价系数</th></tr>
 <tr><td><i class="sw" style="background:var(--t-grass)"></i>草地</td><td>可</td><td>锯木厂、石匠铺、铁厂</td><td class="num">×1</td></tr>
@@ -144,7 +144,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="buildings">
-<div class="eyebrow">六</div><h2>建筑与货物</h2>
+<h2>建筑与货物</h2>
 <p>六种建筑、六种货。每座建筑只有一种产出；加工建筑的配方统一是<strong>每种输入各一件，出一件</strong>。</p>
 <div class="table"><table>
 <tr><th>建筑</th><th>建在</th><th>输入</th><th>产出</th><th class="num">建造价</th><th class="num">第一名工人</th><th>怎么解锁</th></tr>
@@ -172,7 +172,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="production">
-<div class="eyebrow">七</div><h2>生产：点击与工人</h2>
+<h2>生产：点击与工人</h2>
 <p><strong>建筑不会自己生产。</strong>产量只来自两处：</p>
 <div class="table"><table>
 <tr><th>来源</th><th>产出</th><th>限制</th></tr>
@@ -184,7 +184,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <li>选中建筑后点「雇工人」。同一座建筑里每多一名工人，下一名贵 30%：<code>起价 × 1.3^(已有工人数)</code>，向整数四舍五入。伐木营三名工人分别是 400、520、676。</li>
 <li>满 3 名后按钮消失。产量要再往上只有两条路：<strong>再建一座</strong>，或在科技树里升这一类建筑的<strong>工艺</strong>。</li>
 <li>「辞退」退回这名工人的实付全款。辞退的是最后雇的那一名。</li>
-<li>地图上一名工人画成一只朝建筑点击的手指。<strong>手指停下变灰，就是这座建筑停工了</strong>：堆场满、缺输入，或者你按了暂停。</li>
+<li>地图上一名工人画成一枚摆在建筑旁的蓝灰 meeple。<strong>棋子停止跳动并降饱和，就是这座建筑停工了</strong>：堆场满、缺输入，或者你按了暂停。城镇居民使用相同轮廓的陶土 meeple。</li>
 </ul>
 <h3>什么时候会停工</h3>
 <ul>
@@ -193,11 +193,11 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <li>一回合能做多少件，取工人产能、产出堆场剩余空间、每种输入的现有件数三者的最小值。</li>
 </ul>
 <h3>工艺</h3>
-<p>每种建筑在科技树里有一项可重复购买的「X 工艺」。每买一级，<strong>全图这一类建筑的每名工人</strong>每回合多产 1 件。它不影响点击产量，也不加手指，只是手指点得更快。价格见第十一节。</p>
+<p>每种建筑在科技树里有一项可重复购买的「X 工艺」。每买一级，<strong>全图这一类建筑的每名工人</strong>每回合多产 1 件。它不影响点击产量，也不加棋子，只是棋子跳得更快。价格见第十一节。</p>
 </section>
 
 <section id="roads">
-<div class="eyebrow">八</div><h2>道路</h2>
+<h2>道路</h2>
 <ul>
 <li><strong>怎么修：</strong>按住地图上一座建筑，拖到另一座建筑或城镇，松手。途中会显示这条路的造价，钱不够时拒绝。选中建筑后面板里也有「选择要连接的建筑」按钮，适合触屏。</li>
 <li><strong>只能在有货可运的两点之间修路：</strong>一方产某种货，另一方收这种货（城镇收购，或加工建筑把它当输入）。城镇和城镇之间不能修，锯木厂和采石场之间也不能修（锯木厂不要石头）。</li>
@@ -211,7 +211,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="freight">
-<div class="eyebrow">九</div><h2>派货：需求拉货，按价值排序</h2>
+<h2>派货：需求拉货，按价值排序</h2>
 <p>你不操作任何运输。每回合系统按下面的规则决定哪件货去哪里：</p>
 <ul>
 <li><strong>需求方提出需求。</strong>城镇要它收的货，加工建筑要它的输入。每个需求带一个<strong>价值</strong>：城镇需求的价值是收购价；加工建筑某种输入的价值是它的产出<strong>沿着已有道路</strong>最终能卖到的最高价。</li>
@@ -225,7 +225,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="towns">
-<div class="eyebrow">十</div><h2>城镇</h2>
+<h2>城镇</h2>
 <ul>
 <li>城镇随板块出现，<strong>没有名字</strong>，用它收的货区分。每座最多收<strong>两种</strong>货，收购价固定按件，不随供货量浮动。</li>
 <li><strong>收购速度：</strong>每种货每回合收 <code>2 × (1 + 等级)</code> 件。新城镇是 0 级，每种货每回合收 2 件。</li>
@@ -239,7 +239,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="tech">
-<div class="eyebrow">十一</div><h2>科技树</h2>
+<h2>科技树</h2>
 <p>一棵全局科技树，全部用金币买。前置条件全部是科技，不要求地图上建成对应建筑。工具栏里的「科技树」面板：能买的亮着，买过的打勾，前置没满足的灰并写出还缺什么。</p>
 <h3>一次性科技</h3>
 <div class="table"><table>
@@ -269,7 +269,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="coins">
-<div class="eyebrow">十二</div><h2>金币、退款与里程碑</h2>
+<h2>金币、退款与里程碑</h2>
 <h3>钱从哪来</h3>
 <ul>
 <li><strong>卖货：</strong>货到城镇门口按收购价入账。这是唯一持续的收入。</li>
@@ -298,7 +298,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="ui">
-<div class="eyebrow">十三</div><h2>界面与操作</h2>
+<h2>界面与操作</h2>
 <h3>地图上的操作</h3>
 <div class="table"><table>
 <tr><th>你做的</th><th>发生的</th></tr>
@@ -311,7 +311,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </table></div>
 <h3>地图上画的东西</h3>
 <ul>
-<li><strong>建筑：</strong>图标、工人手指、堆场数量。满 20 数量变琥珀色；加工建筑缺输入时写「缺原木」；每回合生产时冒「+n」。</li>
+<li><strong>建筑：</strong>图标、落在板块上的工人 meeple、堆场数量。满 20 数量变琥珀色；加工建筑缺输入时写「缺原木」；每回合生产时冒「+n」。</li>
 <li><strong>城镇：</strong>等级、每回合收入、每种货的单价。收购量用满时价格旁写「收不下了」。</li>
 <li><strong>道路：</strong>路上的小点是真实在走的货，颜色是货物种类。道路不标数字。</li>
 <li><strong>迷雾板块：</strong>半透明深色，中间写价格，买得起时边缘亮。</li>
@@ -335,7 +335,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="save">
-<div class="eyebrow">十四</div><h2>存档</h2>
+<h2>存档</h2>
 <ul>
 <li>游戏<strong>自动保存</strong>在浏览器本地，顶栏「更多」里能看到保存状态。清除浏览器数据会丢档。</li>
 <li>「导出存档」下载一个 JSON 文件，「导入存档」读回来。存档里包含种子和解锁次序，所以换设备后板块内容也一样。</li>
@@ -345,7 +345,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="faq">
-<div class="eyebrow">十五</div><h2>常见问题</h2>
+<h2>常见问题</h2>
 <h4>伐木营点不动了。</h4><p>堆场满 20 了。要么揭开板块找城镇修路卖掉，要么先别管它。</p>
 <h4>路修好了，货怎么不走？</h4><p>新路段下一回合才通。如果过了几回合还不走，看看目的地：城镇是不是写着「收不下了」，加工建筑的输入堆场是不是已经够用。也可能你在预览新板块，模拟暂停中。</p>
 <h4>拖建筑修路，提示「这条路没有货可运」。</h4><p>只能在产某种货和收这种货的两点之间修路。锯木厂不要石头，城镇之间也无货可运。先看这座城镇收什么、这座加工建筑吃什么。</p>
@@ -359,7 +359,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="sheet">
-<div class="eyebrow">附录</div><h2>数字速查表</h2>
+<h2>数字速查表</h2>
 <div class="grid">
 <div class="card"><h3>时间与容量</h3>
 <ul><li>1 回合 = 2 秒（1×）；速度 1× / 2× / 5×</li><li>堆场 20 件 / 每种货 / 每座建筑</li><li>货物每回合走 1 段路</li><li>统计窗口 30 回合</li><li>每座建筑最多 3 名工人</li></ul></div>

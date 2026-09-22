@@ -513,6 +513,28 @@
         "height": 748
       },
       "sha256": "284c2ac257be77cc7ab1f78ecc78d19eeab50ccca802db803581b51a0313f318"
+    },
+    {
+      "id": "worker",
+      "file": "redrawn/worker-v2.png",
+      "pack": "Project · City Kit inspired 2D redraw",
+      "source": "Built-in imagegen; redrawn/prompts.json#worker",
+      "license": "Project asset; not a Kenney source copy",
+      "width": 1254,
+      "height": 1254,
+      "bounds": {"x": 134, "y": 121, "width": 987, "height": 1013},
+      "sha256": "97052bc052514a8f5927e992a97399a35a774c20222f458e4ce28203ca05cbc9"
+    },
+    {
+      "id": "resident",
+      "file": "redrawn/resident-v2.png",
+      "pack": "Project · City Kit inspired 2D redraw",
+      "source": "Built-in imagegen; redrawn/prompts.json#resident",
+      "license": "Project asset; not a Kenney source copy",
+      "width": 1254,
+      "height": 1254,
+      "bounds": {"x": 133, "y": 121, "width": 992, "height": 1018},
+      "sha256": "9520ab95002e36e12414834ccc9fb5836b3d0483ab7e634006a3d3c965314296"
     }
   ]
 }
