@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tracks &amp; Trade — MVP 概念设计 v0.5</title>
+{{SHARED_STYLE}}
+<style>.concept-image img{width:100%;max-height:480px;object-fit:contain;display:block;border-radius:14px}.caption{font-size:13px;color:#57656a}</style></head><body>
+<nav><strong>Tracks &amp; Trade / MVP v0.5</strong><a href="#loop">核心循环</a><a href="#choices">玩家选择</a><a href="#slice">体验切片</a><a href="#scope">范围</a><a href="tracks_trade_gameplay_spec.html">完整实现规格</a></nav>
+<main class="wrap"><header><div class="eyebrow">CONCEPT DESIGN · 2026-09-21</div><h1>让你设计的网络，<br>自己生产、运输和建设。</h1>
+<p class="lede">以 Roads &amp; Boats 的局部资源经济为骨架，把手动运货改成连路后的自动配送，再加入 Cookie Clicker 的递增扩产成本与效率跃升。</p>
+<div class="callout"><strong>核心乐趣：</strong>发现东西没有到达需要它的地方，设计一张更好的网络，看它自行运转；然后用它运来的材料建设下一张网络。</div>
+<p>本页解释体验目标；算法、地图、价格、施工边界与验收以 <a href="tracks_trade_gameplay_spec.html">可实现玩法规格 v0.5</a> 为准。现有 index.html 仍是旧规则原型。</p>
+<div class="concept-image">{{CONCEPT_IMAGE}}</div><p class="caption">保留原概念图作为画风参考：桌游感地形、地点库存、可见运输。图中的具体建筑、资源和界面不代表 v0.5 功能范围。</p></header>
+
+<section id="pillars"><div class="eyebrow">DESIGN PRINCIPLES</div><h2>四条不可破坏的原则</h2><div class="grid">
+<div class="card"><h3>资源是当地的实物</h3><p>原木在森林，木板在锯木厂，石头在采石场。建设必须把材料送到工地；全图合计只用于统计，不能当钱包扣费。</p></div>
+<div class="card"><h3>连接后自动运作</h3><p>工厂和工地自动提出需求，道路自动配送。玩家不买驴、不指挥每一趟运货，只决定建设位置、道路结构和工程优先级。</p></div>
+<div class="card"><h3>增长产生新的选择</h3><p>同类生产模块越来越贵，玩家在加模块和攒高效设备之间取舍。新产能需要相应物流，也可能让别处成为瓶颈。</p></div>
+<div class="card"><h3>鼓励拆掉重试</h3><p>所有建筑、设备、道路、桥均全额返还实际材料；库存不丢。道路不随数量涨价，生产价格档位拆除后可复用。退款留在当地，搬迁由自动运输完成。</p></div>
+</div></section>
+
+<section id="loop"><div class="eyebrow">CORE LOOP</div><h2>生产的成果，就是下一次建设的材料</h2>
+<ol><li><strong>生产：</strong>伐木营在当地生成原木。</li><li><strong>配送：</strong>连通的锯木厂按需求接收原木，经过真实时间到货。</li><li><strong>加工：</strong>当地原木转成当地木板。</li><li><strong>建设：</strong>玩家放下采石场、设备或新厂蓝图，木板和石头自动运到施工点。</li><li><strong>改善：</strong>新生产能力和新道路投入运行，玩家看到产量与货流改变。</li></ol>
+<p>石头用于道路、桥和建筑，木板用于建筑、设备与道路扩容。三种资源已经能形成“现有网络建设未来网络”的闭环，第一版不需要纸、铁、金币或最终财富。</p>
+<p>挂机时生产和已有订单继续执行，玩家不在也不会丢资源。首轮仅前台模拟，页面隐藏暂停、关闭不结算离线收益；界面明确说明。</p></section>
+
+<section id="choices"><div class="eyebrow">MEANINGFUL CHOICES</div><h2>同一个问题，要允许不同的网络答案</h2>
+<div class="table"><table><thead><tr><th>问题</th><th>可比较的方案</th><th>为什么值得思考</th></tr></thead><tbody>
+<tr><td>一段道路太忙</td><td>扩容共用路段 / 另铺支线</td><td>共用设施投资与货流分离的取舍。</td></tr><tr><td>原料离加工很远</td><td>集中加工 / 在原料附近建厂</td><td>运输对象和路径变化，成品也必须送到使用地点。</td></tr><tr><td>下一份产能越来越贵</td><td>继续加模块 / 攒高效设备</td><td>立即增加能力或放大已有投入，均需当地材料。</td></tr><tr><td>工地与生产争运力</td><td>优先工程 / 扩容 / 调整连接</td><td>短期建造速度与稳定生产之间的选择。</td></tr><tr><td>布局不满意</td><td>暂停规划、批量拆建、全额重投</td><td>探索新的组合不用支付不可逆的材料罚款。</td></tr></tbody></table></div>
+<p>两级道路足够做首次验证：普通 0.5 单位/秒，扩容 2 单位/秒，双向各货共享。普通道路每边固定 2 石头，扩容额外 4 木板+4 石头；桥 8 木板+4 石头。各段行进 2 秒，不需要管理运输单位。</p>
+<p>局部资源也约束拆建：旧厂材料在旧厂位置，必须运去新厂。规划模式暂停时间并预览结果；取消草稿不改变世界，提交后按真实供料施工。</p></section>
+
+<section id="slice"><div class="eyebrow">FIRST PLAYABLE SLICE</div><h2>一次完整的物流成长体验</h2>
+<ol><li><strong>现成小链：</strong>从一座伐木营、一座锯木厂、一座采石场和两条路开始，直接看到当地生产与自动运输。</li><li><strong>新地点：</strong>铺支路、放第二营蓝图，看着材料逐段送达和建筑开始工作。</li><li><strong>首个选择：</strong>新增原木超过原有加工能力，比较扩产与另建厂，随后识别共享路段压力。</li><li><strong>第一次重构：</strong>尝试扩路或分流，随时全额收回不合适的方案。</li><li><strong>效率跃升：</strong>为某厂集齐设备材料，效率翻倍；观察原料和下游是否跟上。</li><li><strong>跨河：</strong>运料到岸边修桥，再把石头运过桥铺路，建设富岩地和密林供应。</li></ol>
+<p>教学跟随行为推进，不用累计木板锁选项，不保证固定分钟数发生升级。约 30–60 分钟为测试目标。无强制终局，也暂不承诺长线无限成长。</p></section>
+
+<section id="scope"><div class="eyebrow">MVP BOUNDARY</div><h2>先把一条可重构的建设闭环做完整</h2><div class="grid"><div class="card"><h3>必须做</h3><ul><li>37 格固定六边形图，林、岩地、草地、山与河。</li><li>三资源当地库存，三种生产建筑。</li><li>重复扩产成本增长，每厂一次效率 ×2。</li><li>共享运力道路、一次扩容、具体地点的桥。</li><li>需求拉货、公平分配、当地施工、真实在途。</li><li>全额拆建、批量规划、暂停和存档。</li></ul></div><div class="card"><h3>后续再考虑</h3><ul><li>手动车辆与船只、复杂交通模拟。</li><li>矿业、纸、研究、鹅、证券和终局财富。</li><li>市场交易、多人竞争、随机事件。</li><li>离线收益、飞升和无限扩图。</li><li>复杂逐货比例与全局最优调度。</li></ul></div></div></section>
+
+<section id="success"><div class="eyebrow">SUCCESS CRITERIA</div><h2>验收乐趣，不只验收数字上涨</h2><ul>
+<li>玩家能指出资源实际在哪里，并理解为什么某处还不能施工。</li><li>同一瓶颈有不同解法，玩家会比较共用干线、支线与加工位置。</li><li>玩家敢拆旧设施，且不会因退款损失或重新涨价而后悔尝试。</li><li>材料自动抵达并建成设施后，玩家能看到自己设计带来的改善。</li><li>放下操作后仍有积累和工程进展，无需不断微操恢复运输。</li></ul>
+<p>完整规则、开局坐标、资源守恒和 14 项功能验收见 <a href="tracks_trade_gameplay_spec.html#acceptance">实现规格</a>。本概念稿不再使用早期的“地图造满才开始中盘”“停止扩张兑现财富”等目标。</p></section>
+</main><footer><div class="wrap">Tracks &amp; Trade · MVP 概念设计 v0.5 · <a href="tracks_trade_gameplay_spec.html">打开可实现玩法规格</a></div></footer></body></html>

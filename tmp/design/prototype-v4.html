@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tracks & Trade — MVP</title>
+<style>
+:root{--paper:#f4efe3;--ink:#17212b;--muted:#62707b;--green:#577b45;--gold:#d9a33c;--brick:#b85d44;--line:#d7cfbe;--panel:#fffaf0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.45;user-select:none}
+#top{position:sticky;top:0;z-index:5;display:flex;gap:28px;align-items:center;padding:12px 20px;background:var(--ink);color:#fff}
+#top .big{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+#top .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#aeb9c2}
+#top .v{font-weight:700;font-variant-numeric:tabular-nums}
+#top .bn{color:#fbe7b6}
+#top .sp{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:#aeb9c2}
+#top button{background:#2c3a46;color:#fff;border:0;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px}
+#top button.on{background:var(--gold);color:var(--ink)}
+#main{display:grid;grid-template-columns:1fr 300px;gap:16px;padding:16px 20px;max-width:1280px;margin:0 auto}
+#mapwrap{background:#eef2e2;border:1px solid rgba(23,33,43,.12);border-radius:16px;padding:6px;position:relative}
+#map{width:100%;max-height:calc(100vh - 230px);display:block}
+.route{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.route.t0{stroke:#a07a4a;stroke-width:2.5;stroke-dasharray:4 8}
+.route.t1{stroke:#8a5a2a;stroke-width:4;stroke-dasharray:8 8}
+.route.t2{stroke:#3b4a58;stroke-width:5;stroke-dasharray:6 4}
+.route.t3{stroke:#2c3a46;stroke-width:7;stroke-dasharray:none}
+.route.ghost{stroke:#17212b;stroke-width:2;stroke-dasharray:3 7;opacity:.35}
+.route.hi{stroke:#d9a33c}
+.route-bg{fill:none;stroke:#fffaf0;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+.route-lbl{font-size:10px;font-weight:800;fill:#17212b;pointer-events:none}
+.route-lbl-bg{fill:#fffaf0;stroke:#d9a33c;stroke-width:1.5}
+#hint{position:absolute;left:12px;top:10px;font-size:11px;color:#6f7c62;font-weight:700}
+#sel{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px;min-height:76px}
+#sel h3{margin:0 0 6px;font-size:15px}
+#sel .st{color:var(--muted);font-size:13px;margin-bottom:8px}
+#sel .acts{display:flex;flex-wrap:wrap;gap:8px}
+button.act{background:#fff;border:1px solid #c5b99f;border-radius:9px;padding:7px 12px;font-size:13px;cursor:pointer;font-weight:700;color:var(--ink)}
+button.act:hover{background:#f7f1e3}
+button.act:disabled{opacity:.45;cursor:not-allowed}
+button.act.danger{border-color:#d4a596;color:var(--brick)}
+#shop{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;align-self:start;position:sticky;top:64px}
+#shop h3{margin:6px 0 8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
+.row{display:grid;grid-template-columns:22px 1fr auto;gap:8px;padding:8px 4px;border-top:1px dashed #e0d7c4;align-items:start}
+.row:first-of-type{border-top:0}
+.row .n{font-weight:800}.row .n small{font-weight:600;color:var(--muted);margin-left:6px}
+.row .e{font-size:12px;color:var(--muted)}
+.row .p{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row.ok .p{color:var(--green)}
+.row.up{cursor:pointer;border-radius:8px}
+.row.up:hover{background:#f7f1e3}
+.row.up.locked{opacity:.5;cursor:not-allowed}
+.row.up.bought{opacity:.55}.row.up.bought .p{color:var(--muted)}
+.row.hidden{display:none}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:1}
+@media(max-width:900px){#main{grid-template-columns:1fr}#shop{position:static}}
+</style>
+<link rel="stylesheet" href="site-nav.css">
+</head>
+<body>
+<nav class="site-nav game-nav" aria-label="页面导航"><a class="site-brand" href="index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="index.html" aria-current="page">游戏原型</a><a href="docs/tracks_trade_mvp_design.html">概念设计</a><a href="docs/tracks_trade_gameplay_spec.html">玩法规格</a></div></nav>
+<div id="top">
+  <div><div class="k">木板</div><div class="big" id="planks">0</div></div>
+  <div><div class="k">每秒</div><div class="v" id="rate">+0.0</div></div>
+  <div><div class="k">瓶颈</div><div class="v bn" id="bottle">—</div></div>
+  <div><div class="k">下一个升级</div><div class="v" id="next">—</div></div>
+  <div class="sp">
+    <span id="clock">0:00</span>
+    <button id="spd1" class="on">×1</button><button id="spd5">×5</button>
+    <button id="reset">重置</button>
+  </div>
+</div>
+<div id="main">
+  <div>
+    <div id="mapwrap"><div id="hint">线 = 营到锯木厂的路线，样式 = 路线等级 · 点营 = 手搬 1 根 · 点格子 = 选择</div><svg id="map"></svg></div>
+    <div id="sel"><h3>点一个格子</h3><div class="st">林里的木头，没运回来就不存在。</div></div>
+  </div>
+  <div id="shop">
+    <h3>阶梯 · 越买越贵</h3>
+    <div id="ladders"></div>
+    <h3 style="margin-top:14px">升级 · 只买一次</h3>
+    <div id="upgrades"></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+'use strict';
+// ---------- constants ----------
+const R = 40, SQ3 = Math.sqrt(3);
+const CAP = 20, GROW = 1.15;
+const TERRAIN = {grass:{c:'#d5e6a8',n:'草地'},forest:{c:'#8fbb63',n:'林',rate:.5},big:{c:'#5f9448',n:'大林',rate:1.5},dense:{c:'#3f6a2a',n:'密林',rate:2},mountain:{c:'#bdb8ac',n:'山'},river:{c:'#8ac4d6',n:'河'}};
+// route tiers: rate = per-second throughput at distance 1, divided by hex steps
+const TIER = [
+  {name:'驴道',icon:'🫏',rate:1,  dotSec:2,  base:0,   tech:null},
+  {name:'马道',icon:'🐎',rate:2.5,dotSec:1.2,base:30,  tech:'wagon'},
+  {name:'铁路',icon:'🚂',rate:6,  dotSec:.7, base:150, tech:'rail'},
+  {name:'公路',icon:'🚚',rate:15, dotSec:.4, base:800, tech:'truck'},
+];
+const LADDER = {
+  camp:{icon:'⛺',name:'伐木营',base:10,eff:'+0.5 原木/秒（大林 1.5 · 密林 2）· 囤 20 · 自带驴道 · 在林格上建'},
+  sawmill:{icon:'🪚',name:'锯木厂',base:20,eff:()=>`+${sawRate()} 原木 → 木板/秒 · 在草地上建`},
+  t1:{icon:'🐎',name:'马道',base:30,eff:'路线运力 1 → 2.5（÷ 格数）· 点营升级',tech:'wagon'},
+  t2:{icon:'🚂',name:'铁路',base:150,eff:'路线运力 2.5 → 6 · 点营升级',tech:'rail'},
+  t3:{icon:'🚚',name:'公路',base:800,eff:'路线运力 6 → 15 · 点营升级',tech:'truck'},
+};
+const UPG = [
+  {id:'wagon',icon:'🐎',name:'马车',price:500,eff:'解锁马道：路线可升级为马道'},
+  {id:'boat',icon:'⛵',name:'造船术',price:1500,eff:'河可通行，对岸解锁'},
+  {id:'rail',icon:'🚂',name:'铁路术',price:5000,eff:'解锁铁路：马道可升级为铁路'},
+  {id:'steam',icon:'⚙',name:'蒸汽锯',price:20000,eff:'所有锯木厂 ×4'},
+  {id:'truck',icon:'🚚',name:'公路术',price:60000,eff:'解锁公路：铁路可升级为公路'},
+  {id:'expedition',icon:'🧭',name:'远征',price:200000,eff:'地图外扩一环（24 格）'},
+];
+const BASE_MAP = {
+ '-3,0':'big','-3,1':'mountain','-3,2':'grass','-3,3':'big',
+ '-2,-1':'grass','-2,0':'mountain','-2,1':'forest','-2,2':'grass','-2,3':'grass',
+ '-1,-2':'mountain','-1,-1':'forest','-1,0':'grass','-1,1':'forest','-1,2':'grass','-1,3':'river',
+ '0,-3':'big','0,-2':'grass','0,-1':'forest','0,0':'grass','0,1':'grass','0,2':'river','0,3':'grass',
+ '1,-3':'grass','1,-2':'forest','1,-1':'grass','1,0':'grass','1,1':'river','1,2':'dense',
+ '2,-3':'mountain','2,-2':'grass','2,-1':'grass','2,0':'river','2,1':'dense',
+ '3,-3':'big','3,-2':'grass','3,-1':'river','3,0':'dense',
+};
+const RING4 = {
+ '-4,0':'grass','-4,1':'big','-4,2':'mountain','-4,3':'grass','-4,4':'big',
+ '-3,4':'grass','-2,4':'river','-1,4':'dense','0,4':'grass',
+ '1,3':'dense','2,2':'grass','3,1':'big','4,0':'grass',
+ '4,-1':'grass','4,-2':'river','4,-3':'big','4,-4':'grass',
+ '3,-4':'mountain','2,-4':'grass','1,-4':'big','0,-4':'grass','-3,-1':'grass','-2,-2':'big','-1,-3':'grass',
+};
+// ---------- state ----------
+let S, selKey = null, speed = 1;
+function newState(){
+  const tiles = {};
+  for(const k in BASE_MAP) tiles[k] = mkTile(k, BASE_MAP[k]);
+  tiles['0,0'].b = 'sawmill';
+  tiles['0,-1'].b = 'camp'; tiles['0,-1'].tier = 0;
+  return {tiles, planks:10, cum:0, up:{}, t:0, rate:0};
+}
+function mkTile(k, terr){ const [q,r]=k.split(',').map(Number); return {k,q,r,terr,b:null,logs:0,tier:0,route:null,flow:0}; }
+const hexes = () => Object.values(S.tiles);
+const key = (q,r) => q+','+r;
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]];
+const nbrs = t => DIRS.map(d=>S.tiles[key(t.q+d[0],t.r+d[1])]).filter(Boolean);
+const cx = t => R*SQ3*(t.q + t.r/2), cy = t => R*1.5*t.r;
+const count = kind => kind[0]==='t' ? hexes().filter(t=>t.b==='camp' && t.tier>=+kind[1]).length : hexes().filter(t=>t.b===kind).length;
+const price = kind => Math.round(LADDER[kind].base * Math.pow(GROW, count(kind)));
+const refund = kind => Math.floor(LADDER[kind].base * Math.pow(GROW, Math.max(0,count(kind)-1)) * .5);
+const routeMult = () => 1;
+const sawRate = () => S.up.steam ? 4 : 1;
+const campRate = t => TERRAIN[t.terr].rate || 0;
+// ---------- pathing (automatic) ----------
+const passable = t => t.terr!=='mountain' && (t.terr!=='river' || S.up.boat);
+function bfs(fromKey){
+  const dist = {[fromKey]:0}, prev = {}; const q=[fromKey];
+  while(q.length){ const k=q.shift(); for(const n of nbrs(S.tiles[k])){ if(!passable(n)||dist[n.k]!==undefined) continue; dist[n.k]=dist[k]+1; prev[n.k]=k; q.push(n.k); } }
+  return {dist, prev};
+}
+// nearest sawmill that is not congested; else nearest
+function pickRoute(fromKey){
+  const {dist, prev} = bfs(fromKey);
+  const mills = hexes().filter(t=>t.b==='sawmill' && dist[t.k]!==undefined).sort((a,b)=>dist[a.k]-dist[b.k]);
+  if(!mills.length) return null;
+  const m = mills.find(t=>t.logs < CAP) || mills[0];
+  const p=[]; for(let k=m.k;k;k=prev[k]) p.unshift(k);
+  return p;
+}
+function reachable(){ const out={}; for(const t of hexes()) if(t.b==='sawmill'){ const {dist}=bfs(t.k); Object.assign(out,dist); } return out; }
+const stepsOf = p => p ? p.length-1 : Infinity;
+const capacity = (t, p) => { const s=stepsOf(p||t.route); return isFinite(s)&&s>0 ? TIER[t.tier].rate*routeMult()/s : 0; };
+// ---------- simulation ----------
+function step(dt){
+  S.t += dt; let produced = 0;
+  const camps = hexes().filter(t=>t.b==='camp');
+  for(const c of camps){
+    c.logs = Math.min(c.logs + campRate(c)*dt, Math.max(CAP, c.logs));
+    if(!c.route || (S.t - (c.routeAt||0)) > 2 || !S.tiles[c.route[c.route.length-1]] || S.tiles[c.route[c.route.length-1]].b!=='sawmill'){ c.route = pickRoute(c.k); c.routeAt = S.t; }
+    const cap = capacity(c); const move = Math.min(c.logs, cap*dt);
+    if(move>0 && c.route){ c.logs -= move; S.tiles[c.route[c.route.length-1]].logs += move; }
+    c.flow += (move/dt - c.flow)*Math.min(1,.5*dt);
+  }
+  for(const t of hexes()) if(t.b==='sawmill'){ const take = Math.min(t.logs, sawRate()*dt); t.logs -= take; produced += take; }
+  S.planks += produced; S.cum += produced;
+  S.rate += (produced/dt - S.rate)*Math.min(1, .3*dt);
+}
+function stats(){
+  let cut=0, haul=0, hauled=0;
+  for(const c of hexes()) if(c.b==='camp'){ cut+=campRate(c); const h=capacity(c); haul+=h; hauled+=Math.min(h,campRate(c)); }
+  const saw = count('sawmill')*sawRate();
+  const sawed = Math.min(hauled, saw);
+  const lossHaul = cut-hauled, lossSaw = hauled-sawed;
+  const bn = (lossHaul<=.05 && lossSaw<=.05) ? '伐木' : lossSaw>lossHaul ? '锯木' : '运力';
+  return {cut,haul,saw,bn,eff:sawed};
+}
+// ---------- actions ----------
+function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show'); clearTimeout(toast.h); toast.h=setTimeout(()=>el.classList.remove('show'),1600); }
+function pay(n){ if(S.planks<n){ toast('木板不够'); return false; } S.planks-=n; return true; }
+function canBuildCamp(t){ return !!TERRAIN[t.terr].rate && !t.b && !!reachable()[t.k]; }
+function build(t, kind){
+  if(kind==='camp'){ if(!canBuildCamp(t)) return toast('这里够不着'); if(!pay(price('camp'))) return; t.b='camp'; t.logs=0; t.tier=0; t.route=pickRoute(t.k); t.routeAt=S.t; }
+  if(kind==='sawmill'){ if(t.terr!=='grass'||t.b) return; if(!reachable()[t.k]) return toast('够不着'); if(!pay(price('sawmill'))) return; t.b='sawmill'; t.logs=0; }
+  render(true);
+}
+function upgradeRoute(t){
+  if(t.b!=='camp' || t.tier>=3) return;
+  if(!S.up[TIER[t.tier+1].tech]) return toast('需要先研究'+UPG.find(u=>u.id===TIER[t.tier+1].tech).name);
+  const k='t'+(t.tier+1); if(!pay(price(k))) return;
+  t.tier++; toast(`路线升级为${TIER[t.tier].name}`); render(true);
+}
+function demolish(t){
+  if(t.b==='sawmill'){ if(count('sawmill')<=1) return toast('最后一座锯木厂不能拆'); S.planks+=refund('sawmill'); t.b=null; t.logs=0; }
+  else if(t.b==='camp'){ let r=refund('camp'); for(let i=t.tier;i>=1;i--) r+=refund('t'+i); S.planks+=r; t.b=null; t.logs=0; t.tier=0; t.route=null; }
+  render(true);
+}
+function buyUpgrade(up){
+  if(S.up[up.id] || S.cum < up.price/3) return;
+  if(!pay(up.price)) return;
+  S.up[up.id]=true;
+  if(up.id==='expedition'){ for(const k in RING4) if(!S.tiles[k]) S.tiles[k]=mkTile(k,RING4[k]); buildMap(); }
+  toast(up.name+' 已生效'); render(true);
+}
+function manualCarry(t){
+  if(t.b!=='camp'||t.logs<1) return false;
+  const p=t.route||pickRoute(t.k); if(!p) return false;
+  t.logs-=1; S.tiles[p[p.length-1]].logs+=1; return true;
+}
+function clickTile(t){ if(t.b==='camp') manualCarry(t); selKey=t.k; render(true); }
+// ---------- rendering ----------
+const svg=document.getElementById('map'); const el={};
+function buildMap(){
+  svg.innerHTML=''; for(const k in el) delete el[k];
+  const ts=hexes();
+  const minx=Math.min(...ts.map(cx))-R, maxx=Math.max(...ts.map(cx))+R, miny=Math.min(...ts.map(cy))-R, maxy=Math.max(...ts.map(cy))+R;
+  svg.setAttribute('viewBox',`${minx} ${miny} ${maxx-minx} ${maxy-miny}`);
+  const NS='http://www.w3.org/2000/svg';
+  const gT=document.createElementNS(NS,'g'), gR=document.createElementNS(NS,'g'), gX=document.createElementNS(NS,'g'), gU=document.createElementNS(NS,'g'); svg.append(gT,gR,gX,gU); el._dots=gU; el._routes=gR;
+  for(const t of ts){
+    const g=document.createElementNS(NS,'g'); g.style.cursor='pointer';
+    const pts=[]; for(let i=0;i<6;i++){ const a=Math.PI/180*(60*i-30); pts.push((cx(t)+(R-1.5)*Math.cos(a))+','+(cy(t)+(R-1.5)*Math.sin(a))); }
+    const poly=document.createElementNS(NS,'polygon'); poly.setAttribute('points',pts.join(' ')); poly.setAttribute('fill',TERRAIN[t.terr].c); poly.setAttribute('stroke','#f4efe3'); poly.setAttribute('stroke-width','3');
+    const sel=document.createElementNS(NS,'polygon'); sel.setAttribute('points',pts.join(' ')); sel.setAttribute('fill','none'); sel.setAttribute('stroke','#17212b'); sel.setAttribute('stroke-width','3'); sel.style.display='none';
+    const mk=(dy,fs,w,fill)=>{ const x=document.createElementNS(NS,'text'); x.setAttribute('x',cx(t)); x.setAttribute('y',cy(t)+dy); x.setAttribute('text-anchor','middle'); x.setAttribute('font-size',fs); x.setAttribute('font-weight',w||600); x.setAttribute('fill',fill||'#17212b'); x.style.pointerEvents='none'; return x; };
+    const icon=mk(4,18,800), l1=mk(20,10,800), l2=mk(-16,10,800), tag=mk(-26,9,800,'#b85d44');
+    g.append(poly,sel); g.addEventListener('click',()=>clickTile(t));
+    gT.append(g); gX.append(icon,l1,l2,tag); el[t.k]={poly,sel,icon,l1,l2,tag};
+  }
+}
+// dots are cosmetic: n dots ping-pong along the route, speed by tier
+function dotPositions(t){
+  const p=t.route; if(!p||p.length<2||t.flow<=0.01) return [];
+  const n = t.tier+1, steps=p.length-1, L=steps*2, sec=TIER[t.tier].dotSec;
+  const out=[]; for(let i=0;i<n;i++){
+    let u = ((S.t/sec) + i*L/n) % L; const fwd = u<steps; if(!fwd) u = L-u;
+    const a=S.tiles[p[Math.min(steps-1,Math.floor(u))]], b=S.tiles[p[Math.min(steps,Math.floor(u)+1)]], f=u-Math.floor(u);
+    out.push([cx(a)+(cx(b)-cx(a))*f, cy(a)+(cy(b)-cy(a))*f, fwd]);
+  }
+  return out;
+}
+function renderDots(){
+  const g=el._dots, NS='http://www.w3.org/2000/svg';
+  const all=[]; for(const t of hexes()) if(t.b==='camp') all.push(...dotPositions(t));
+  while(g.childNodes.length>all.length) g.lastChild.remove();
+  while(g.childNodes.length<all.length){ const c=document.createElementNS(NS,'circle'); c.setAttribute('r',4.5); c.setAttribute('stroke','#fff'); c.setAttribute('stroke-width',1.5); c.style.pointerEvents='none'; g.append(c); }
+  all.forEach((d,i)=>{ const c=g.childNodes[i]; c.setAttribute('cx',d[0]); c.setAttribute('cy',d[1]); c.setAttribute('fill',d[2]?'#7a4a1f':'#c49a6c'); });
+}
+function renderRoutes(){
+  const g=el._routes, NS='http://www.w3.org/2000/svg'; g.innerHTML='';
+  const sel = selKey && S.tiles[selKey];
+  const items=[];
+  for(const t of hexes()){
+    if(t.b==='camp'){ if(t.route&&t.route.length>1) items.push({t,p:t.route,live:true}); }
+    else if(sel===t && TERRAIN[t.terr].rate && !t.b){ const p=pickRoute(t.k); if(p&&p.length>1) items.push({t,p,live:false}); }
+  }
+  for(const it of items){
+    const pts=it.p.map(k=>S.tiles[k]).map(x=>cx(x)+','+cy(x)).join(' ');
+    const hi = sel===it.t;
+    const bg=document.createElementNS(NS,'polyline'); bg.setAttribute('points',pts); bg.setAttribute('class','route-bg'); bg.setAttribute('stroke-width',(it.live?[6,7,8,10][it.t.tier]:5)); g.append(bg);
+    const l=document.createElementNS(NS,'polyline'); l.setAttribute('points',pts); l.setAttribute('class','route '+(it.live?'t'+it.t.tier:'ghost')+(hi?' hi':'')); g.append(l);
+    if(hi){
+      const steps=it.p.length-1; const a=S.tiles[it.p[Math.floor(steps/2)]], b=S.tiles[it.p[Math.min(steps,Math.floor(steps/2)+1)]];
+      const vb=svg.getAttribute('viewBox').split(' ').map(Number); const mx=Math.max(vb[0]+66,Math.min(vb[0]+vb[2]-66,(cx(a)+cx(b))/2)), my=Math.max(vb[1]+12,(cy(a)+cy(b))/2-22);
+      const tier = it.live ? it.t.tier : 0;
+      const capv = TIER[tier].rate*routeMult()/steps;
+      const txt=`${TIER[tier].name} · ${steps} 格 · 运力 ${capv.toFixed(2)}/秒`;
+      const r=document.createElementNS(NS,'rect'); r.setAttribute('class','route-lbl-bg'); r.setAttribute('x',mx-62); r.setAttribute('y',my-9); r.setAttribute('width',124); r.setAttribute('height',18); r.setAttribute('rx',6); g.append(r);
+      const x=document.createElementNS(NS,'text'); x.setAttribute('class','route-lbl'); x.setAttribute('x',mx); x.setAttribute('y',my+4); x.setAttribute('text-anchor','middle'); x.textContent=txt; g.append(x);
+    }
+  }
+}
+function fmt(n){ return Math.floor(n).toLocaleString('en-US'); }
+function render(full){
+  const st=stats();
+  document.getElementById('planks').textContent=fmt(S.planks);
+  document.getElementById('rate').textContent='+'+S.rate.toFixed(1)+' / 秒';
+  document.getElementById('bottle').textContent=st.bn+`  (伐木 ${st.cut.toFixed(1)} · 运力 ${st.haul.toFixed(1)} · 锯木 ${st.saw.toFixed(1)})`;
+  const nx=UPG.find(u=>!S.up[u.id]);
+  document.getElementById('next').textContent = nx ? `${nx.name} ${fmt(nx.price)} · 已到 ${Math.min(100,Math.floor(S.planks/nx.price*100))}%` : '全部买完';
+  const m=Math.floor(S.t/60), s=Math.floor(S.t%60); document.getElementById('clock').textContent=m+':'+(s<10?'0':'')+s;
+  for(const t of hexes()){
+    const e=el[t.k]; if(!e) continue;
+    e.sel.style.display = t.k===selKey ? '' : 'none';
+    if(t.b==='camp'){
+      e.icon.textContent='⛺'; e.l1.textContent=Math.floor(t.logs)+'/'+CAP; e.l2.textContent=TIER[t.tier].icon+' '+TIER[t.tier].name;
+      e.tag.textContent = !t.route ? '无路' : t.logs>=CAP ? '爆仓' : '';
+    } else if(t.b==='sawmill'){
+      e.icon.textContent='🪚'; e.l1.textContent='原木 '+Math.floor(t.logs); e.l2.textContent='';
+      e.tag.textContent = t.logs>CAP ? '拥堵' : t.logs<1 ? '断料' : '';
+    } else {
+      e.icon.textContent=''; e.tag.textContent=''; e.l2.textContent='';
+      const tr=TERRAIN[t.terr]; e.l1.textContent = tr.rate ? tr.n+' '+tr.rate+'/s' : tr.n;
+      e.l1.setAttribute('fill',(t.terr==='big'||t.terr==='dense')?'#e9f3dd':'#2f4d1f');
+    }
+  }
+  renderRoutes(); renderDots();
+  if(full){ renderSel(); renderShop(); } else renderShopPrices();
+}
+function renderSel(){
+  const box=document.getElementById('sel'); const t=selKey&&S.tiles[selKey];
+  if(!t){ if(box.dataset.sig!=='none'){ box.dataset.sig='none'; box.innerHTML='<h3>点一个格子</h3><div class="st">林里的木头，没运回来就不存在。</div>'; } return; }
+  const tr=TERRAIN[t.terr]; let title=tr.n, st='', acts=[];
+  const btn=(label,fn,opt={})=>acts.push({label,fn,...opt});
+  if(t.b==='camp'){
+    title=`⛺ 伐木营 · ${tr.n} · ${TIER[t.tier].icon} ${TIER[t.tier].name}`; const s=stepsOf(t.route); const c=capacity(t);
+    st=`+${campRate(t)} 原木/秒 · 囤 ${Math.floor(t.logs)}/${CAP} · 路线 ${isFinite(s)?s+' 格':'无路'} · 运力 ${c.toFixed(2)}/秒 · 实际在运 ${t.flow.toFixed(2)}/秒 · 点营手搬 1 根`;
+    if(t.tier<3){ const k='t'+(t.tier+1); const next=TIER[t.tier+1]; const nc=isFinite(s)&&s>0?next.rate*routeMult()/s:0;
+      const techName = UPG.find(u=>u.id===next.tech).name;
+      if(S.up[next.tech]) btn(`${next.icon} 升级为${next.name} ${price(k)}（运力 → ${nc.toFixed(2)}/秒）`,()=>upgradeRoute(t),{dis:S.planks<price(k)});
+      else btn(`${next.icon} ${next.name} · 需要研究「${techName}」`,()=>{},{dis:true}); }
+    else btn('🚚 公路 · 已是最高等级',()=>{},{dis:true});
+    let r=refund('camp'); for(let i=t.tier;i>=1;i--) r+=refund('t'+i);
+    btn(`拆营 退 ${r}`,()=>demolish(t),{danger:true});
+  } else if(t.b==='sawmill'){
+    title='🪚 锯木厂'; st=`${sawRate()} 原木 → 木板/秒 · 门口原木 ${Math.floor(t.logs)} · 营会自动优先送不拥堵的锯木厂`;
+    btn(`拆 退 ${refund('sawmill')}（原木一起没了）`,()=>demolish(t),{danger:true,dis:count('sawmill')<=1});
+  } else if(t.terr==='mountain'){ st='绕着走。';
+  } else if(t.terr==='river'){ st = S.up.boat ? '可通行。' : '过不去。造船术之后可通行。';
+  } else if(tr.rate){
+    title=tr.n+'（'+tr.rate+' 原木/秒）'; const ok=canBuildCamp(t); const p=ok?pickRoute(t.k):null; const s=stepsOf(p);
+    st = ok ? `到锯木厂 ${s} 格。建营自带驴道，运力 ${(TIER[0].rate*routeMult()/s).toFixed(2)}/秒。` : (t.q+t.r>=3 ? '对岸。需要造船术。' : '够不着。');
+    btn(`⛺ 建伐木营 ${price('camp')}`,()=>build(t,'camp'),{dis:!ok||S.planks<price('camp')});
+  } else {
+    title='草地'; const ok=!!reachable()[t.k]; st = ok ? '可以建锯木厂。近处的营会自动改送这里。' : '够不着。';
+    btn(`🪚 建锯木厂 ${price('sawmill')}`,()=>build(t,'sawmill'),{dis:!ok||S.planks<price('sawmill')});
+  }
+  const sig=selKey+'|'+title+'|'+acts.length;
+  if(box.dataset.sig!==sig){ box.dataset.sig=sig; box.innerHTML=`<h3>${title}</h3><div class="st"></div><div class="acts"></div>`; const ac=box.querySelector('.acts'); for(const a of acts){ const b=document.createElement('button'); b.className='act'+(a.danger?' danger':''); ac.append(b); } }
+  box.querySelector('.st').textContent=st;
+  box.querySelectorAll('button.act').forEach((b,i)=>{ const a=acts[i]; if(b.textContent!==a.label) b.textContent=a.label; b.disabled=!!a.dis; b.onclick=a.fn; });
+}
+function renderShop(){
+  const L=document.getElementById('ladders'); L.innerHTML='';
+  for(const k in LADDER){ const d=LADDER[k]; if(d.tech && !S.up[d.tech]) continue; const row=document.createElement('div'); row.className='row'; row.dataset.k=k;
+    row.innerHTML=`<div>${d.icon}</div><div><div class="n">${d.name}<small>×<span class="c"></span></small></div><div class="e">${typeof d.eff==='function'?d.eff():d.eff}</div></div><div class="p"></div>`; L.append(row); }
+  const U=document.getElementById('upgrades'); U.innerHTML='';
+  for(const u of UPG){ const row=document.createElement('div'); row.className='row up'; row.dataset.k=u.id;
+    row.innerHTML=`<div>${u.icon}</div><div><div class="n">${u.name}</div><div class="e">${u.eff}</div></div><div class="p">${fmt(u.price)}</div>`; row.onclick=()=>buyUpgrade(u); U.append(row); }
+  renderShopPrices();
+}
+function renderShopPrices(){
+  document.querySelectorAll('#ladders .row').forEach(row=>{ const k=row.dataset.k, p=price(k); row.querySelector('.c').textContent=count(k); row.querySelector('.p').textContent=p; row.classList.toggle('ok',S.planks>=p); });
+  document.querySelectorAll('#upgrades .row').forEach(row=>{ const u=UPG.find(x=>x.id===row.dataset.k); const seen=S.up[u.id]||S.cum>=u.price/3;
+    row.classList.toggle('hidden',!seen); row.classList.toggle('bought',!!S.up[u.id]); row.classList.toggle('locked',!S.up[u.id]&&S.planks<u.price);
+    row.querySelector('.p').textContent = S.up[u.id]?'已买':(S.planks>=u.price?fmt(u.price):`${fmt(u.price)} · 还差 ${fmt(u.price-S.planks)}`); });
+}
+// ---------- save / loop ----------
+const SAVE='tnt-mvp-v4';
+function save(){ try{ localStorage.setItem(SAVE, JSON.stringify(S)); }catch(e){} }
+function load(){ try{ const j=JSON.parse(localStorage.getItem(SAVE)); if(j&&j.tiles){ S=j; return true; } }catch(e){} return false; }
+if(!load()) S=newState();
+buildMap(); render(true);
+let last=performance.now(), acc=0, uiAcc=0, saveAcc=0;
+function loop(){
+  const now=performance.now(); let dt=Math.min(.5,(now-last)/1000)*speed; last=now; acc+=dt;
+  while(acc>=.05){ step(.05); acc-=.05; }
+  uiAcc+=dt; saveAcc+=dt;
+  if(uiAcc>=.25){ uiAcc=0; render(false); renderSel(); } else renderDots();
+  if(saveAcc>=3){ saveAcc=0; save(); }
+}
+setInterval(loop,50);
+document.getElementById('spd1').onclick=()=>{speed=1;document.getElementById('spd1').classList.add('on');document.getElementById('spd5').classList.remove('on');};
+document.getElementById('spd5').onclick=()=>{speed=5;document.getElementById('spd5').classList.add('on');document.getElementById('spd1').classList.remove('on');};
+document.getElementById('reset').onclick=()=>{ if(confirm('重新开始？')){ localStorage.removeItem(SAVE); S=newState(); selKey=null; buildMap(); render(true);} };
+</script>
+</body>
+</html>
