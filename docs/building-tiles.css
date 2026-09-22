@@ -3,3 +3,6 @@
 .bt-interaction-demo{display:flex;flex-wrap:wrap;gap:16px;align-items:center}.bt-interaction-demo button{background:var(--surface-panel);color:var(--text-primary);border:1px solid var(--border-control);border-radius:8px;padding:12px;box-shadow:0 2px 5px #303e4320}.bt-interaction-demo svg{display:block;width:120px;height:64px;overflow:visible}.bt-interaction-demo button:active{transform:translateY(2px)}
 
 .bt-state-legend{display:flex;flex-wrap:wrap;gap:24px;margin:20px 0}.bt-state-legend>span{display:flex;align-items:center;gap:10px;font-size:13px}.bt-state-legend svg{flex-shrink:0}
+
+/* Curved road hit areas use the same centerline as the prototype. */
+.bt-road-demo .road,.bt-road-demo .road-hit{fill:none}.bt-road-demo .road-hit{stroke:transparent;stroke-width:18;pointer-events:stroke}.bt-road-demo .road-control:has(.road-hit:hover) .road,.bt-road-demo .road-control:has(.road-hit:focus-visible) .road{stroke:var(--action-primary)}

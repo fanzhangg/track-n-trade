@@ -1,4 +1,8 @@
 /* Document chrome matches design.html; palette tokens and samples stay intact. */
+.component-frame{display:block;width:100%;height:570px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--surface-map)}
+.component-heading{margin-top:28px}
+#components .reference-grid article,#semantics .reference-grid article{padding-top:20px}
+@media(max-width:740px){.component-frame{height:1450px}}
 html{scroll-padding-top:80px}
 body{background:var(--surface-canvas);color:var(--text-primary);font:16px/1.8 system-ui,"Microsoft YaHei",sans-serif}
 main{max-width:1100px;margin:0 auto;padding:0 24px}
@@ -25,3 +29,5 @@ footer p{font-size:13px}footer a{color:var(--action-primary)}
 @media(max-width:800px){main{padding:0 18px}.reference-grid,.hierarchy-demo,.goods-panel{grid-template-columns:1fr}}
 @media(max-width:600px){header{padding:32px 0 24px}.intro{font-size:18px}.title-row{display:block}.version{margin:0 0 18px}.section-heading{gap:12px}h2{font-size:25px}}
 @media print{body{background:white;font-size:11pt}main{margin:0;padding:0}.document-download{display:none}}
+
+.contrast-details{margin:24px 0;color:var(--text-secondary);font-size:13px}.contrast-details summary{cursor:pointer}.contrast-details .table-wrap{margin-top:12px}
