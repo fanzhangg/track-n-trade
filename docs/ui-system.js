@@ -86,6 +86,6 @@ document.getElementById('scene-secondary').addEventListener('click',()=>{
  else feedback.textContent='升级比较：石头路 12 件/回合；货运马车让当前道路运力 ×2。道路科技购买后全图生效。';
 });
 document.querySelector('.state-sample').addEventListener('click',()=>{const toast=document.getElementById('copy-status');toast.textContent='主操作示例：悬停、按下与键盘焦点使用同一钴蓝色系。';toast.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('visible'),4500);});
-const links=[...document.querySelectorAll('.sidebar nav a')];
+const links=[...document.querySelectorAll('.page-sections a')];
 const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){links.forEach(a=>{const selected=a.hash==='#'+entry.target.id;a.classList.toggle('active',selected);if(selected)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current');});}},{rootMargin:'-5% 0px -65% 0px'});
 links.forEach(a=>observer.observe(document.querySelector(a.hash)));drawMap('normal');

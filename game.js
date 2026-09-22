@@ -3,8 +3,8 @@ const E = TradeEngine;
 const $ = id => document.getElementById(id);
 const SAVE = 'tnt-mvp-v12';
 const names = Object.assign({town:'城镇'}, E.GOODS, E.TERRAIN_NAME, Object.fromEntries(Object.entries(E.RECIPES).map(([k, r]) => [k, r.name])));
-const colors = {forest:'#86d07e',grass:'#e2ebad',rock:'#e3e9ef',ore:'#e8b688',mountain:'#8b95a1',lake:'#7cc0ef',town:'#f7d47a',fog:'#c7ccd3',
- log:'#719d78',stone:'#8d9cad',board:'#cdab71',tool:'#a5773f',ore_good:'#b3785a',iron:'#5f6b7a'};
+const colors = {forest:'var(--terrain-forest)',grass:'var(--terrain-grass)',rock:'var(--terrain-rock)',ore:'var(--terrain-ore)',mountain:'var(--terrain-mountain)',lake:'var(--terrain-lake)',town:'var(--terrain-town)',fog:'var(--terrain-fog)',
+ log:'var(--goods-log)',stone:'var(--goods-stone)',board:'var(--goods-board)',tool:'var(--goods-tool)',ore_good:'var(--goods-ore)',iron:'var(--goods-iron)'};
 const goodColor = r => r === 'ore' ? colors.ore_good : colors[r];
 const icon = (name, cls='') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#icon-${name}"/></svg>`;
 const glyph = (name, x, y, size, fill) => `<use href="#icon-${name}" x="${x}" y="${y}" width="${size}" height="${size}" fill="${fill}"/>`;
