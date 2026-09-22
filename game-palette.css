@@ -19,8 +19,8 @@ button.danger{color:var(--bottleneck-1)}
 .progress span,.strip .progress span,.contract .progress span{background:var(--road-base)}
 .milestone-strip{background:var(--surface-panel);border-color:var(--border-subtle)}
 .milestone-strip>span{color:var(--text-secondary)}
-.toolbar button.active{background:var(--action-subtle)}
-.toolbar button.unaffordable small,.state.wait{color:var(--value-warning)}
+.toolbar button[data-build].active,.toolbar button[data-build].active:hover{background:var(--action-pressed);border-color:var(--action-pressed);color:var(--surface-panel);box-shadow:0 0 0 2px var(--action-subtle);opacity:1}
+.state.wait{color:var(--value-warning)}
 .toolbar button.research .icon,.tech-button .icon{color:var(--action-primary)}
 .toolbar button.research.owned,.node.owned{background:var(--surface-panel);color:var(--text-secondary);border-color:var(--border-subtle)}
 .tech-button.ready{background:var(--action-subtle);border-color:var(--action-primary)}
@@ -41,10 +41,10 @@ button.danger{color:var(--bottleneck-1)}
 #drag-label{background:var(--surface-panel);border-color:var(--action-primary);color:var(--action-primary)}
 #drag-label.bad{border-color:var(--bottleneck-1);color:var(--bottleneck-1)}
 #toast{background:var(--text-primary);color:var(--surface-panel)}
-.fog-hex,.fog-flower.affordable .fog-hex{fill:var(--terrain-fog);stroke:var(--terrain-fog)}
+.fog-hex{fill:var(--terrain-fog);stroke:var(--terrain-fog)}
 .fog-edge{stroke:var(--surface-map)}
 .fog-flower:hover .fog-hex,.fog-flower:focus-visible .fog-hex{fill:var(--action-subtle);stroke:var(--action-subtle)}
-.fog-label{fill:var(--text-primary)}.fog-price{fill:var(--action-primary)}.fog-flower:not(.affordable) .fog-price{fill:var(--text-disabled)}
+.fog-label,.fog-price{fill:var(--text-primary)}
 .flower-controls{border-color:var(--action-primary)}
 .node.kind-building{border-left-color:var(--terrain-detail)}.node.kind-road{border-left-color:var(--road-base)}.node.kind-waterway{border-left-color:var(--terrain-lake)}.node.kind-economy{border-left-color:var(--text-secondary)}
 .chain .b{fill:var(--terrain-detail)}.chain .b.locked{fill:var(--terrain-fog)}
@@ -54,3 +54,8 @@ button.danger{color:var(--bottleneck-1)}
 .chain .e{stroke:var(--text-secondary)}.chain .e.log{stroke:var(--road-base)}.chain .e.locked{stroke:var(--terrain-fog)}
 /* Keep the sandy dirt-road color without changing its original geometry. */
 .road:not(.water):not(.selected){stroke:var(--road-dirt)}
+
+/* 可负担三态 · 见 docs/ui-system.html */
+.fog-flower:not(.affordable) .fog-hex{fill:var(--terrain-fog-costly);stroke:var(--terrain-fog-costly)}
+
+
