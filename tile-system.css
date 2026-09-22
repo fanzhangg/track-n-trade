@@ -7,7 +7,7 @@
 .bt-state-base{fill:var(--bt-danger,#bc352d);stroke:var(--surface-panel);stroke-width:.6}
 .bt-state-ink{fill:none;stroke:var(--surface-panel);stroke-width:1.5;stroke-linecap:round}
 .bt-level-base{fill:var(--surface-panel);stroke:var(--border-control);stroke-width:.6}
-.bt-level-number{fill:var(--text-secondary);font:700 8px system-ui,"Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}
+.bt-level-number{fill:#858b85;font:700 8px system-ui,"Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}
 .bt-floating.has-alert .bt-float-bg{fill:var(--bt-danger-tint);stroke:var(--border-control)}
 .bt-full-bg{fill:var(--bt-danger-tint);stroke:none}
 .bt-offer.is-full .bt-price{fill:var(--bt-danger)}
