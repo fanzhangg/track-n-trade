@@ -23,11 +23,11 @@ main{position:relative;overflow:hidden}svg{width:100%;height:100%;display:block;
 <nav class="site-nav" aria-label="页面导航"><a class="site-brand" href="../index.html">Tracks &amp; Trade</a><div class="site-pages"><a href="../index.html">游戏原型</a><a href="rules.html">规则说明书</a><a href="design.html">玩法设计</a><a href="ui-system.html">UI Design System</a><a href="mapgen.html" aria-current="page">地图生成器</a></div></nav>
 <aside>
 <h1>地图生成器原型</h1>
-<p class="note">直接跑正式引擎 <code>engine.js</code>：起始花固定，前五块教学，之后按当前供需生成。解锁即放下，朝向由引擎选。机器人只负责解锁顺序，不建东西；有城镇的板块会按其收购价假装已有对应产能，供下一块生成时参考。</p>
+<p class="note">直接跑正式引擎 <code>engine.js</code>：起始花固定，之后每块都按当前供需和新鲜感生成。解锁即放下，朝向由引擎选。迷雾不透露内容。机器人只负责解锁顺序，不建东西；有城镇的板块会按其收购价假装已有对应产能，供下一块生成时参考。</p>
 <h2>局面</h2>
 <label>种子 <input id="seed" type="number" value="1"></label>
 <label>解锁块数 <input id="count" type="number" value="14" min="0" max="60"></label>
-<label>解锁顺序 <select id="policy"><option value="near">离起点近的优先</option><option value="town">先开城镇背面</option><option value="resource">先开资源背面</option><option value="random">随机（按种子）</option><option value="line">一直往一个方向走</option></select></label>
+<label>解锁顺序 <select id="policy"><option value="near">离起点近的优先</option><option value="random">随机（按种子）</option><option value="line">一直往一个方向走</option></select></label>
 <label>假装已解锁科技 <select id="tech"><option value="0">无</option><option value="1">采石场 + 锯木厂</option><option value="2" selected>到石匠铺 + 航道</option><option value="3">到矿山</option><option value="4">全部</option></select></label>
 <h2>生成旋钮（GEN）</h2>
 <label>城镇最小间距 townGap <input id="townGap" type="number" value="1" min="0" max="3"></label>
@@ -47,8 +47,10 @@ main{position:relative;overflow:hidden}svg{width:100%;height:100%;display:block;
 <label>湖蔓延权重 lake.grow <input id="lakeGrow" type="number" value="3.5" step="0.5" min="0"></label>
 <label>邻湖必带 2 格水概率 lake.spread <input id="lakeSpread" type="number" value="0.85" step="0.05" min="0" max="1"></label>
 <label>铁矿权重 raw.ore <input id="rawOre" type="number" value="0.15" step="0.05" min="0"></label>
+<label>板块价格每两块 × flowerGrowth <input id="flowerGrowth" type="number" value="2.2" step="0.1" min="1"></label>
+<label>几块没新东西就必出 novelEvery <input id="novelEvery" type="number" value="2" min="1" max="6"></label>
 <label>供需感知 demandAware <input id="demandAware" type="checkbox" checked></label>
-<label>原料可在城镇隔壁 nextDoor <input id="nextDoor" type="checkbox"></label>
+<label>新城镇可收隔壁已有原料的货 nextDoor <input id="nextDoor" type="checkbox"></label>
 <label>候选布局数 CANDIDATES <input id="cands" type="number" value="12" min="1" max="40"></label>
 <div class="row"><button class="primary" id="run">生成</button><button id="next">种子 +1</button><button id="more">再开 1 块</button></div>
 <h2>统计</h2>
@@ -64,16 +66,15 @@ const COLOR={grass:'var(--terrain-grass)',town:'var(--terrain-town)',forest:'var
 const S=26,pos=t=>[S*Math.sqrt(3)*(t.q+t.r/2),S*1.5*t.r];
 const hex=(x,y,s)=>Array.from({length:6},(_,i)=>{const a=(i*60-30)*Math.PI/180;return `${x+s*Math.cos(a)},${y+s*Math.sin(a)}`;}).join(' ');
 const WALL=['mountain','lake'];
-function knobs(){Object.assign(E.GEN,{townGap:+$('townGap').value,townEvery:+$('townEvery').value,townChance:+$('townChance').value,walls:[+$('wallMin').value,+$('wallMax').value],grass:+$('grass').value,townGrass:+$('townGrass').value,rawMax:+$('rawMax').value,raw:{forest:+$('rawForest').value,rock:+$('rawRock').value,ore:+$('rawOre').value},lake:{seed:+$('lakeSeed').value,grow:+$('lakeGrow').value,spread:+$('lakeSpread').value},river:{seed:+$('riverSeed').value,flow:+$('riverFlow').value,pool:+$('riverPool').value},demandAware:$('demandAware').checked,nextDoor:$('nextDoor').checked});}
+function knobs(){Object.assign(E.GEN,{townGap:+$('townGap').value,townEvery:+$('townEvery').value,townChance:+$('townChance').value,walls:[+$('wallMin').value,+$('wallMax').value],grass:+$('grass').value,townGrass:+$('townGrass').value,rawMax:+$('rawMax').value,raw:{forest:+$('rawForest').value,rock:+$('rawRock').value,ore:+$('rawOre').value},lake:{seed:+$('lakeSeed').value,grow:+$('lakeGrow').value,spread:+$('lakeSpread').value},river:{seed:+$('riverSeed').value,flow:+$('riverFlow').value,pool:+$('riverPool').value},demandAware:$('demandAware').checked,nextDoor:$('nextDoor').checked,novelEvery:+$('novelEvery').value,flowerGrowth:+$('flowerGrowth').value});}
 // Pretend the economy keeps up with the map: every town's goods get a producer-equivalent so `producible` and the
 // glut rule see a real world, and the chosen tech level opens the buildings the generator keys off.
-function pretend(w){const lvl=+$('tech').value;const techs=[[],['quarry','sawmill'],['quarry','sawmill','mason','waterway'],['quarry','sawmill','mason','waterway','mine'],['quarry','sawmill','mason','waterway','mine','smelter']][lvl];for(const k of techs)w.tech[k]=1;}
+function pretend(w){w.money=1e9;const lvl=+$('tech').value;const techs=[[],['quarry','sawmill'],['quarry','sawmill','mason','waterway'],['quarry','sawmill','mason','waterway','mine'],['quarry','sawmill','mason','waterway','mine','smelter']][lvl];for(const k of techs)w.tech[k]=1;}
 let world=null,fogPick=null;
 function fogs(w){return Object.values(w.flowers).filter(f=>f.state==='fog');}
 function pick(w,policy,rand){const fs=fogs(w);const near=(a,b)=>E.flowerDistance(a)-E.flowerDistance(b)||a.id.localeCompare(b.id);
  if(policy==='random')return fs[Math.floor(rand()*fs.length)];
  if(policy==='line'){return fs.sort((a,b)=>(b.a-a.a)||(a.b-b.b)||a.id.localeCompare(b.id))[0];}
- if(policy==='town'||policy==='resource'){const h=fs.filter(f=>E.fogHint(w,f)===policy).sort(near);if(h.length)return h[0];}
  return fs.sort(near)[0];}
 function unlock(w,f){w.money=1e9;E.command(w,{type:'explore',flower:f.id});}
 function build(){knobs();const seed=+$('seed').value,n=+$('count').value,policy=$('policy').value,rand=E.rng(seed*977+13);
@@ -92,9 +93,10 @@ function measure(w){const tiles=Object.values(w.tiles),placed=Object.values(w.fl
  const rseen=new Set();let longest=0,rivers=0,mixed=0;for(const t of tiles){if(kind(t)!=='river'||rseen.has(t.id))continue;let n=0,touchesLake=false;const st=[t];rseen.add(t.id);while(st.length){const x=st.pop();n++;for(const[dq,dr]of E.DIRS){const u=w.tiles[`${x.q+dq},${x.r+dr}`];if(!u)continue;if(kind(u)==='river'&&!rseen.has(u.id)){rseen.add(u.id);st.push(u);}if(kind(u)==='lake')touchesLake=true;}}rivers++;if(touchesLake)mixed++;longest=Math.max(longest,n);}
  const num=dist.filter(x=>x!=='∞');const avg=a=>a.length?(a.reduce((n,x)=>n+x,0)/a.length).toFixed(1):'-';
  const cnt=k=>tiles.filter(t=>t.terrain===k).length;let touching=0;for(const t of tiles)if(['rock','ore'].includes(t.terrain))for(const[dq,dr]of E.DIRS){const u=w.tiles[`${t.q+dq},${t.r+dr}`];if(u&&['forest','rock','ore'].includes(u.terrain))touching++;}
- return[['原料格 森林 / 岩地 / 铁矿',`${cnt('forest')} / ${cnt('rock')} / ${cnt('ore')}`],['岩地或铁矿贴着别的原料',String(touching)],['已放板块 / 沙盒板块',`${placed.length} / ${sandbox.length}`],['沙盒城镇（占沙盒比例）',`${towns.length}（${sandbox.length?Math.round(100*towns.length/sandbox.length):0}%）`],['墙占比',`${Math.round(100*walls/tiles.length)}%`],['每块空草地',(grass/placed.length).toFixed(1)],['城镇到最近原料 平均步数',avg(num)],['其中 ≥3 步',num.length?`${Math.round(100*num.filter(x=>x>=3).length/num.length)}%`:'-'],['买不到原料的需求',String(dist.filter(x=>x==='∞').length)],['相邻花之间的可走通道 均值',borders?(passes/borders).toFixed(1):'-'],['最大连片山/湖',String(biggest)],['水格数 / 最大一片湖',`${cnt('lake')} / ${biggestLake}`],['河的条数 / 最长一条 / 流进湖的',`${rivers} / ${longest} / ${mixed}`],['迷雾背面 城/资/未知',(()=>{const c={town:0,resource:0,unknown:0};for(const f of fogs(w))c[E.fogHint(w,f)]++;return `${c.town} / ${c.resource} / ${c.unknown}`;})()]];}
+ const goods=[...E.boughtGoods(w)],placedByOrder=placed.slice().sort((a,b)=>a.order-b.order);
+ return[['城镇在买的货',goods.map(g=>E.GOODS[g]).join('、')||'-'],['地图上的原料种类',['forest','rock','ore'].filter(t=>E.terrainsOn(w).has(t)).map(t=>E.TERRAIN_NAME[t]).join('、')||'-'],['原料格 森林 / 岩地 / 铁矿',`${cnt('forest')} / ${cnt('rock')} / ${cnt('ore')}`],['岩地或铁矿贴着别的原料',String(touching)],['已放板块 / 沙盒板块',`${placed.length} / ${sandbox.length}`],['沙盒城镇（占沙盒比例）',`${towns.length}（${sandbox.length?Math.round(100*towns.length/sandbox.length):0}%）`],['墙占比',`${Math.round(100*walls/tiles.length)}%`],['每块空草地',(grass/placed.length).toFixed(1)],['城镇到最近原料 平均步数',avg(num)],['其中 ≥3 步',num.length?`${Math.round(100*num.filter(x=>x>=3).length/num.length)}%`:'-'],['买不到原料的需求',String(dist.filter(x=>x==='∞').length)],['相邻花之间的可走通道 均值',borders?(passes/borders).toFixed(1):'-'],['最大连片山/湖',String(biggest)],['水格数 / 最大一片湖',`${cnt('lake')} / ${biggestLake}`],['河的条数 / 最长一条 / 流进湖的',`${rivers} / ${longest} / ${mixed}`],['迷雾背面 城/资/未知',(()=>{const c={town:0,resource:0,unknown:0};for(const f of fogs(w))c[E.fogHint(w,f)]++;return `${c.town} / ${c.resource} / ${c.unknown}`;})()]];}
 function draw(){const w=world,svg=$('map');let s='';
- for(const f of fogs(w)){const pts=E.flowerTiles(f).map(p=>pos(p));s+=pts.map(([x,y])=>`<polygon class="fog" points="${hex(x,y,S)}"/>`).join('');const[cx,cy]=pts[0];s+=`<text class="fogtext" x="${cx}" y="${cy+3}">${E.HINT_NAME[E.fogHint(w,f)]}</text>`;}
+ for(const f of fogs(w)){const pts=E.flowerTiles(f).map(p=>pos(p));s+=pts.map(([x,y])=>`<polygon class="fog" points="${hex(x,y,S)}"/>`).join('');const[cx,cy]=pts[0];s+=``;}
  for(const t of Object.values(w.tiles)){const[x,y]=pos(t);s+=`<polygon class="hex" points="${hex(x,y,S)}" fill="${COLOR[t.terrain]}"/>`;
   if(t.terrain==='town'){s+=`<text class="lab" x="${x}" y="${y-2}">城镇</text><text class="buy" x="${x}" y="${y+9}">${Object.entries(t.building.buys).map(([r,p])=>`${E.GOODS[r]}${p}`).join(' ')}</text>`;}
   else if(!['grass','mountain','lake'].includes(t.terrain))s+=`<text class="lab" x="${x}" y="${y+3}">${E.TERRAIN_NAME[t.terrain]}</text>`;
@@ -102,7 +104,7 @@ function draw(){const w=world,svg=$('map');let s='';
   else if(t.terrain==='lake'&&w.flowers[t.flower].design.water==='river')s+=`<text class="lab" x="${x}" y="${y+3}" fill="#1d4f7a">~</text>`;}
  for(const f of Object.values(w.flowers).filter(f=>f.state==='placed')){const tiles=E.flowerTiles(f),keys=new Set(tiles.map(p=>`${p.q},${p.r}`));let d='';
   for(const p of tiles){const[x,y]=pos(p);for(let i=0;i<6;i++){const[dq,dr]=[[1,0],[0,1],[-1,1],[-1,0],[0,-1],[1,-1]][i];if(keys.has(`${p.q+dq},${p.r+dr}`))continue;const a=(i*60-30)*Math.PI/180,b=((i+1)*60-30)*Math.PI/180;d+=`M${x+S*Math.cos(a)},${y+S*Math.sin(a)}L${x+S*Math.cos(b)},${y+S*Math.sin(b)}`;}}
-  const[cx,cy]=pos(f.center);s+=`<path class="flower" d="${d}"/><text class="order" x="${cx}" y="${cy-S+9}">${f.order||'起'}${f.hint&&f.order>E.TUTORIAL?'·'+E.HINT_NAME[f.hint][0]:''}</text>`;}
+  const[cx,cy]=pos(f.center);s+=`<path class="flower" d="${d}"/><text class="order" x="${cx}" y="${cy-S+9}">${f.order||'起'}</text>`;}
  svg.innerHTML=s;
  $('stats').innerHTML=measure(w).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
  $('legend').innerHTML=Object.entries(COLOR).map(([k,c])=>`<span><i style="background:${c}"></i>${E.TERRAIN_NAME[k]}</span>`).join('');}

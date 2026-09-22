@@ -1,4 +1,4 @@
-// Map generator sandbox: the greedy bot from fog-hint-sim plays the engine under different generator knob sets
+// Map generator sandbox: a greedy bot plays the engine under different generator knob sets
 // (E.GEN) and we compare what kind of map comes out: how far raw sits from the town that wants it, how much
 // spare grass there is, how many road segments a building needs, and whether the economy still grows.
 // 用法：node tools/mapgen-sim.cjs [seeds=20] [ticks=1500]
@@ -10,7 +10,7 @@ const intrinsic={supplyDist:[],sites:[]};
 function onPlaced(w,f){if(!f.design.buys||f.order<=E.TUTORIAL)return;const town=tiles(w).find(t=>t.flower===f.id&&t.terrain==='town');
  for(const r in f.design.buys){let best=null;for(const t of tiles(w)){if(!E.RAW[r].includes(t.terrain))continue;const rt=E.route(w,t.id,town.id);if(rt&&(best===null||rt.tiles.length-1<best))best=rt.tiles.length-1;}intrinsic.supplyDist.push(best===null?9:best);}
  let n=0;for(const t of tiles(w)){if(t.terrain!=='grass'||t.building)continue;const rt=E.route(w,t.id,town.id);if(rt&&rt.tiles.length-1<=3)n++;}intrinsic.sites.push(n);}
-const RESERVE=1500,CLICKS=2;
+const RESERVE=200,CLICKS=2;
 const tiles=w=>Object.values(w.tiles);
 const outOf=b=>E.RECIPES[b.type].out;
 const act=(w,c)=>{try{E.command(w,c);return true;}catch(e){return false;}};
@@ -57,9 +57,7 @@ function want(w){const{s,d}=balance(w);
  const glut=E.SELLABLE.some(r=>s[r]>d[r]&&producers(w,r).length);
  const starved=E.RES.some(r=>d[r]>s[r]&&producers(w,r).every(t=>t.building.workers.length>=E.MAX_WORKERS)&&!tiles(w).some(t=>!t.building&&E.RECIPES[typeFor(r)].fits.includes(t.terrain)));
  return glut?'town':starved?'resource':'unknown';}
-function pickFog(w){const h=want(w),order=[h,...['unknown','town','resource'].filter(x=>x!==h)];
- for(const h of order){const fs=fogs(w).filter(f=>E.fogHint(w,f)===h).sort((a,b)=>E.flowerDistance(a)-E.flowerDistance(b)||a.id.localeCompare(b.id));if(fs.length)return fs[0];}
- return fogs(w)[0];}
+function pickFog(w){return fogs(w).sort((a,b)=>E.flowerDistance(a)-E.flowerDistance(b)||a.id.localeCompare(b.id))[0];}
 // Flowers are laid down by the engine the moment they are unlocked; nothing to orient here.
 function place(w,f){onPlaced(w,f);}
 // What the finished map looks like.
@@ -96,10 +94,8 @@ function play(seed,ticks){const w=E.newWorld(seed);
 const STRATEGIES={
  S0_dense:{townGap:0,townEvery:2,townChance:.4,walls:[0,3],grass:3,townGrass:6,demandAware:false},
  S4_default:{},
- P15:{flowerPayback:15},
- P10:{flowerPayback:10},
- P10_tut:{flowerPayback:10,tutorialPrice:.5},
- P6_tut:{flowerPayback:6,tutorialPrice:.5},
+ G2:{flowerGrowth:2},
+ G25:{flowerGrowth:2.5},
  S1_townGap:{townGap:1,townEvery:3,townChance:.25},
  S2_walls:{townGap:1,townEvery:3,townChance:.25,walls:[2,3],grass:1.5},
  S3_townGrass:{townGap:1,townEvery:3,townChance:.25,walls:[2,3],grass:1.5,townGrass:3},
@@ -118,4 +114,4 @@ for(const[name,knobs]of Object.entries(STRATEGIES)){if(ONLY&&!ONLY.split(',').in
 console.table(rows);
 if(process.env.DEBUG){Object.assign(E.GEN,DEFAULT,STRATEGIES[process.env.DEBUG]);const w=E.newWorld(1);const save=play;/* replay one seed and list town flowers */
  const w2=(()=>{const w=E.newWorld(1);for(let i=0;i<+TICKS;i++){let n=0;for(const t of tiles(w)){if(n>=CLICKS)break;if(t.building&&t.building.type!=='town'&&act(w,{type:'click',tile:t.id}))n++;}for(let k=0;k<4&&(roads(w)||grow(w));k++);const f=w.unlocked<+MAXF?pickFog(w):null;if(f){const cost=E.flowerCost(w,f);if(w.money>=cost+(w.unlocked?RESERVE:0)&&act(w,{type:'explore',flower:f.id}))place(w,w.flowers[f.id]);}E.tick(w);}return w;})();
- for(const f of Object.values(w2.flowers).filter(f=>f.state==='placed').sort((a,b)=>a.order-b.order))console.log(f.order,f.id,f.hint,f.design.buys?JSON.stringify(f.design.buys):'-',[f.design.center,...f.design.ring].join(','));}
+ for(const f of Object.values(w2.flowers).filter(f=>f.state==='placed').sort((a,b)=>a.order-b.order))console.log(f.order,f.id,f.design.buys?JSON.stringify(f.design.buys):'-',[f.design.center,...f.design.ring].join(','));}

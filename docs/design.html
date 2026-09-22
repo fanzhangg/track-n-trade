@@ -84,7 +84,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="card"><h3>科技</h3><p>花金币买科技，科技解锁建筑和航道，建筑之间靠配方交织。参考桌游 Roads &amp; Boats 的生产链与运输工具阶梯。</p></div>
 </div>
 <div class="callout"><strong>金币是唯一的全局货币。</strong>货物只存在于生产地的堆场和路上，永远不进玩家的口袋；它们只是把物流转成金币的途径。科技、板块、建筑、工人、道路全部用金币买。</div>
-<div class="callout"><strong>没有死局。</strong>收入只来自这台经济引擎，没有任何绕过它的兜底。三条规则保证引擎永远转得起来（第一节原则的展开）：<br><strong>1. 第一条路一定修得起。</strong>开局 2 000 金币，解锁 F1 花 500，剩下 1 500 覆盖从 F0 伐木营到 F1 城镇的最坏最短路，测试穷举验证。收入为零时，预览里余额修不起到新城镇的最短路就不允许放下，提示再转转；有收入之后只警告不阻止。<br><strong>2. 拆什么都全额退款。</strong>建筑、道路、工人拆除或辞退都退实付全款，玩家永远可以把整台引擎拆掉重组，布局错了不是死局，只是重来一次。<br><strong>3. 花钱不会伤到引擎。</strong>科技、板块、扩建都不改变已有产线；板块价格指数增长、收入至少线性增长，引擎再慢，等足够久总能攒够下一件事。玩家优化的是等多久，不是能不能。<br>设计上可以狠：板块放下就不能再转，钱花掉就花掉了，但绝不会让玩家走进一个什么都做不了的局面。</div>
+<div class="callout"><strong>没有死局。</strong>收入只来自这台经济引擎，没有任何绕过它的兜底。三条规则保证引擎永远转得起来（第一节原则的展开）：<br><strong>1. 开局只有一件事能做，而且一定做得成。</strong>起始花自带一座收原木的城镇和一格森林，两者隔一格草地（城镇和它需要的原料永不相邻，起始花也不例外），开局 2 000 金币正好是一座伐木营（1 200）加两段路（森林 ×2 = 500，草地 250）。第一块板块要 2 000，买不起；最便宜的科技 1 200 买得起，但在第一条路开始赚钱之前，任何会让余额低于「伐木营 + 路」的购买都被守卫拒绝并提示先修路。所以唯一的开局就是核心循环本身，不存在死局。v0.13 曾有玩家解锁 F1 后先建了第二座伐木营和工人，剩 400 金币修不起 1 250 的路，这就是被堵上的那个洞。<br><strong>2. 拆什么都全额退款。</strong>建筑、道路、工人拆除或辞退都退实付全款，玩家永远可以把整台引擎拆掉重组，布局错了不是死局，只是重来一次。<br><strong>3. 花钱不会伤到引擎。</strong>科技、板块、扩建都不改变已有产线；板块价格指数增长、收入至少线性增长，引擎再慢，等足够久总能攒够下一件事。玩家优化的是等多久，不是能不能。<br>设计上可以狠：板块放下就不能再转，钱花掉就花掉了，但绝不会让玩家走进一个什么都做不了的局面。</div>
 </section>
 
 <section id="clock">
@@ -113,11 +113,11 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 </ul>
 <h3>迷雾与解锁</h3>
 <ul>
-<li>与已解锁区域相邻的任何迷雾花都可以解锁，方向任选。价格按<strong>解锁次序</strong>算：前五次固定；之后每块 <code>max(2500, 当前每回合收入 × 10)</code>，只有其他购买的三分之一：地图稀疏了，收益要靠不停开图才拿得到；和居民、工艺、时代一样按收入定价，所以攒下一块板块的时间恒定在 10 回合左右，不随阶段膨胀。</li>
+<li>与已解锁区域相邻的任何迷雾花都可以解锁，方向任选。价格按<strong>解锁次序</strong>算：前五次固定；第 n 块 <code>max(2000 × 2.2^⌊(n−1)/2⌋, 当前每回合收入 × 5)</code>，两块一档同价：价格跟着地图大小涨，不跟着收入涨，所以开图是主瓶颈，攒钱的办法是把现有地图的引擎做强；一档两块和"两块内必出新"对应，空板块不受罚。</li>
 <li><strong>解锁即放下，没有预览也不能旋转。</strong>v0.13 曾让玩家旋转六个朝向，实测结果是旋转把地形随机性抵消了：资源永远能转到离城镇最近的一侧，稀疏规则下城镇到最近原料反而只剩 2.8 步；交给引擎定朝向后是 4.7 步，九成城镇的原料在 3 步以外。</li>
 <li><strong>引擎怎么定朝向</strong>：从 12 个合法布局 × 6 个朝向里打分取最高。山接山、湖接湖加分（山脉跨板块延续）；与已有地图之间的可通行邻接控制在 2 格以内（山脉有山口，不是缺口）；至少一格可通行相接（永远接得上）；还没开始赚钱时，新城镇的首条路必须修得起（无死局规则）。地形即命运，路才是决定。</li>
 <li>生成器原型页 <a href="mapgen.html">docs/mapgen.html</a> 可以换种子、调旋钮、看统计，用来审核地图手感。</li>
-<li>迷雾花外观一致，看不出内容差别。</li>
+<li>迷雾花外观一致，不透露内容：曾试过在背面标"城镇 / 资源 / 未知"，被模拟和试玩否决，已删除。</li>
 </ul>
 </div>
 <div>
@@ -129,16 +129,16 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <tr><th>规则</th><th>内容</th><th>目的</th></tr>
 <tr><td>连通</td><td>新花里所有非山格连通；朝向由引擎选，至少一格与已有可通行格相接，可通行邻接尽量不超过两格</td><td>永远不会把玩家围死，同时山脉有山口</td></tr>
 <tr><td>空旷</td><td>每朵花 2 到 3 格山或湖，草地权重 1.5（原 3）；城镇花 = 城镇 + 至多 3 格草地 + 墙，不带任何原料</td><td>地少了，放哪、绕哪才成为问题</td></tr>
-<tr><td>城镇密度</td><td>沙盒城镇彼此不相邻（教学五镇例外）；未知背面的花在连续四次没有城镇后才补一座（否则 15% 概率），且只在有空位处</td><td>市场散开，城镇之间隔着资源花</td></tr>
-<tr><td>迷雾背面</td><td>每块迷雾出现时就定下背面：城镇 / 资源 / 未知。城镇背面必兑现，且不会出现在城镇隔壁</td><td>玩家知道往哪探，引擎守约</td></tr>
+<tr><td>城镇密度</td><td>沙盒城镇彼此不相邻（教学五镇例外）；连续四次没有城镇后补一座（否则 15% 概率），且只在有空位处；地图停滞且只剩新买家可出时立即补一座</td><td>市场散开，城镇之间隔着资源花</td></tr>
+<tr><td>新鲜感</td><td>城镇收什么按"买家越少越可能"抽，玩家还造不出的货也有小概率出现；连续两块板块没带来新货或新原料，下一块必须带：城镇花收阶梯上最低的没人买的货，资源花带地图上还没有的原料（铁矿在矿山科技前也会出现）</td><td>翻一两块就有新东西，不是已有板块的排列组合</td></tr>
 <tr><td>城镇收什么</td><td>优先从「玩家已能生产、但买家少于两个」的货里选；其次选下一级科技解锁的货；最多两种</td><td>新市场消化过剩产能，或者拉玩家往科技树上走</td></tr>
 <tr><td>价格</td><td>基础价 × (1 + 0.1 × 到 F0 的花距离)</td><td>越远越贵，探索本身值钱</td></tr>
-<tr><td>资源跟着经济走</td><td>城镇在买、而地图上已没有空闲对应原料地的货，其原料地形权重加倍（供需缺口）；地图上没有某种原料地时也加权。铁矿只出现在山旁边，每朵最多一格</td><td>地图回应玩家的局势，不是随机噪声</td></tr>
+<tr><td>供需链自动闭合（硬规则）</td><td>从配方推出每种货的原料和每种原料能变成的货，不写死。<strong>下游缺口</strong>：有城镇在买、地图上没有空闲对应原料地 → 下一朵资源花必带那种原料（可以在买家隔壁的花上，只是原料格不挨城镇格）。<strong>上游缺口</strong>：地图上有某种原料、却没有城镇收它能变成的任何货（比如出了铁矿没人收铁）→ 下一朵能放城镇的花必收其中最便宜的一种。缺口没闭合前不按节奏补城镇。铁矿只出现在山旁边，每朵最多一格</td><td>地图回应玩家的局势，不是随机噪声</td></tr>
 <tr><td>地形配比</td><td>山最多 3 且连片，水最多 3 且连片，外圈至少 4 格可走；森林一块至多 3 格且连片，岩地、铁矿每块至多 1 格且不贴任何别的原料</td><td>不出废板块，矿点孤立</td></tr>
 <tr><td>稀有度随价格</td><td>抽取权重 森林 2.2、岩地 0.55、铁矿 0.15（草地 1.5）；地图上没有某种原料地、或城镇在买而没人能产时加权</td><td>木头到处有，石头少，铁难找</td></tr>
 <tr><td>河与湖</td><td>河：起源 12%，两格一线或三格穿心一线；下游板块 90% 接着流、25% 汇成湖，否则断流。湖：邻板块有湖时抽水权重 3.5、85% 必带两格，湖接湖朝向加分最高，所以水连成片</td><td>河是长条，湖是一片，河会流进湖</td></tr>
 <tr><td>山脉与森林成片</td><td>朝向打分：山接山、森林接森林加分，岩地铁矿贴原料扣分</td><td>大块山脉、大片森林、孤立矿点</td></tr>
-<tr><td>没有捷径</td><td>城镇收的货所需的原料地形不出现在同一朵花</td><td>不存在「资源就在城镇旁边」</td></tr>
+<tr><td>没有捷径（硬规则）</td><td>城镇收的货所需的原料地形不出现在同一朵花，而且跨花也<strong>永不与城镇格相邻</strong>：新花的城镇不挨已有原料，新花的原料不挨已有城镇，朝向打分里是一票否决。起始花同样如此</td><td>不存在「资源就在城镇旁边」，至少一格路要修</td></tr>
 </table></div>
 <h3>地形</h3>
 <div class="table"><table>
@@ -160,8 +160,9 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 
 <section id="tutorial">
 <div class="eyebrow">五</div><h2>教学地图：前五朵花，每朵教一件事</h2>
-<p>每朵花引入一个新玩法，并和前面的花产生联动。教学不是独立关卡：玩家在这里的选择（往哪个方向探、板块朝向、路怎么修、先雇谁）直接留到沙盒里。开局 2 000 金币。<strong>方向不限</strong>：玩家可以点任何一朵与已解锁区域相邻的迷雾花，第 n 次解锁出现的一定是 Fn 的内容，所以 F3 可能贴着 F0，也可能挂在 F1 或 F2 外面的第二圈。<strong>障碍是软的</strong>：湖和山的位置由玩家旋转决定，玩家可以把 F4 的湖转到背面、从此不买航道。教学保证的是「机会一定出现」，不是「课一定上到」，核心还是鼓励自由探索。<strong>内容半随机</strong>：每朵教学花只固定必有的元素、不会出现的地形和每种地形的上限，其余格子从填充池随机抽，七格排列也随机。生成后检查三项，不通过就重抽：花内所有非山格连通（湖算可通）；城镇的六个邻格里至多两座山；湖和山各自连成片。随机种子存进存档。下面地图里的「重新生成」就是这个生成器。<strong>两条布局规则</strong>：一座城镇最多收两种货；城镇收的货所需的地形不出现在同一朵花里，所以每条卖货路线至少跨一朵花，不存在「资源就在城镇旁边」的捷径。城镇没有名字，界面上只按收的货区分。下面的地图里每朵花都可以旋转，看看不同朝向下山、湖、城镇和你路网的关系。</p>
-<figure class="figure">
+<p><strong>没有教学板块了，只有起始花。</strong>起始花固定：中心草地，外圈一格森林，隔一格草地是一座收原木 20 的城镇，其余草地和一格山。开局 2 000 金币只够在森林上建伐木营并修两段路到城镇，第一块板块 2 000 买不起，科技被守卫挡在第一条路之后。核心循环（建、连、点、雇）就在这一朵花上学完，且不可能卡死。</p>
+<p>从第一次解锁起，板块完全走沙盒生成器：稀疏城镇、山脉、河湖、按价格分布的原料、按供需补缺口，和第四节一样。解锁价格随地图大小按对几何增长（第 n 块 2 000 × 2.2^⌊(n−1)/2⌋），是整个游戏的主瓶颈：升级现有系统 → 攒够开下一块 → 新的供需和科技路线 → 再升级。不再规定每朵花教什么：城镇收什么货仍由"玩家能造却卖不掉的货、下一级科技的货"决定，科技阶梯自然被地图拉着走。旧版每朵花一课的规格（F2 森林、F4 湖、F5 山脉）已删除，原因是教学板块把资源和城镇贴在一起，没有空间规划可言。</p>
+<p>下面的教学地图沿用旧规格作示意，已不代表现在的开局。</p>
 <div class="flowerctl" id="flowerctl"></div>
 <svg id="tutmap" viewBox="0 0 900 640" role="img" aria-label="教学地图"></svg>
 <div class="legend"><span><i style="background:var(--t-grass)"></i>草地</span><span><i style="background:var(--t-forest)"></i>森林</span><span><i style="background:var(--t-rock)"></i>岩地</span><span><i style="background:var(--t-ore)"></i>铁矿</span><span><i style="background:var(--t-mountain)"></i>山</span><span><i style="background:var(--t-lake)"></i>湖</span><span><i style="background:var(--t-town)"></i>城镇</span><span><i style="background:var(--t-fog)"></i>迷雾</span><span>⛺ 起始伐木营</span></div>
@@ -170,8 +171,8 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 
 <div class="table"><table>
 <tr><th>花</th><th>价格</th><th>必有 · 随机填充 · 不会出现</th><th>学到</th><th>旋转的意义</th><th>联动</th></tr>
-<tr><td><b>F0</b> 起始</td><td class="num">—</td><td>中心草地；1 森林（伐木营）；2 岩地；1 草地；1 铁矿（贴着山）；1 山。没有城镇，没有路</td><td>点击伐木营出原木；堆场 20 件满了就点不动。目标条先写「点击伐木营」，堆场满了换成「原木卖不掉，探索周围看看」，六朵相邻的迷雾花全部标出 500，任选一朵揭开的都是 F1</td><td>固定朝向</td><td>两格岩地是给 F2 埋的伏笔；铁矿从第一分钟就看得见，到 F5 才知道是干什么的</td></tr>
-<tr><td><b>F1</b> 收原木</td><td class="num">500</td><td><b>必有</b> 1 城镇（只收原木 20）、至少 1 山<br><b>随机</b> 草地为主，山最多 2，岩地最多 1<br><b>不会出现</b> 森林、湖。原木只能从 F0 运来</td><td><strong>旋转</strong>，然后是第一条路、第一笔收入、第一名工人</td><td>城镇和山的相对位置：转得好两段路到城镇，转得差要绕四段。预览里叠画最短路和造价，修不起的朝向放不下</td><td>F0 的伐木营</td></tr>
+<tr><td><b>F0</b> 起始</td><td class="num">—</td><td>中心草地；1 森林，隔一格草地是 1 城镇（收原木 20）；3 草地；1 山。没有伐木营，没有路：这两样就是开局要做的事</td><td>点击伐木营出原木；堆场 20 件满了就点不动。目标条先写「点击伐木营」，堆场满了换成「原木卖不掉，探索周围看看」，六朵相邻的迷雾花全部标出 500，任选一朵揭开的都是 F1</td><td>固定朝向</td><td>两格岩地是给 F2 埋的伏笔；铁矿从第一分钟就看得见，到 F5 才知道是干什么的</td></tr>
+<tr><td><b>F1</b> 收原木</td><td class="num">500</td><td><b>必有</b> 1 城镇（只收原木 20）<br><b>随机</b> 草地为主，山最多 2，岩地最多 1<br><b>不会出现</b> 森林、湖。原木只能从 F0 运来</td><td><strong>旋转</strong>，然后是第一条路、第一笔收入、第一名工人</td><td>城镇和山的相对位置：转得好两段路到城镇，转得差要绕四段。预览里叠画最短路和造价，修不起的朝向放不下</td><td>F0 的伐木营</td></tr>
 <tr><td><b>F2</b> 收石头</td><td class="num">2 000</td><td><b>必有</b> 1 城镇（只收石头 30）、1 森林<br><b>随机</b> 草地为主，山最多 2<br><b>不会出现</b> 岩地、湖。石头只能从 F0 的岩地运来</td><td><strong>科技树</strong>。采石场是唯一亮着的节点；买完拖采石场，合法地形高亮，玩家发现只有 F0 的岩地能放</td><td>城镇朝向 F0 路就短，朝外就要绕 F2 自己的山（如果抽到）；森林是以后第二座伐木营的位置，它和城镇的相对位置随机</td><td>F0 的岩地；第二条产业链</td></tr>
 <tr><td><b>F3</b> 收木板</td><td class="num">5 000</td><td><b>必有</b> 1 城镇（只收木板 50）<br><b>随机</b> 草地为主，山最多 2，岩地最多 1<br><b>不会出现</b> 森林、湖</td><td><strong>加工链</strong>。伐木营 → 锯木厂 → 城镇两段式路线，第一次看到「缺原木」。原木不够，F2 的森林是第二座伐木营的位置，它离 F3 很远，所以锯木厂放哪很要紧</td><td>锯木厂放在哪块草地，让 F0 和 F2 两座伐木营到它都不太远；如果抽到山，别让它挡在城镇和锯木厂之间</td><td>原木第一次有两个去处</td></tr>
 <tr><td><b>F4</b> 湖与工具</td><td class="num">15 000</td><td><b>必有</b> 1 城镇（收石头工具 120、木板 30）、至少 2 格连片的湖<br><b>随机</b> 草地为主，湖可能 3 格，山最多 1<br><b>不会出现</b> 森林、岩地</td><td><strong>双输入配方</strong>与<strong>湖</strong>。石匠铺要原木和石头同时到；湖横在中间，绕路或买航道</td><td>最关键的一次：湖挡在城镇和路网之间，还是躺在旁边。预览写出买航道和绕路两种造价</td><td>采石场和伐木营的货第一次汇合到一座建筑</td></tr>
@@ -226,8 +227,8 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <h3>道路</h3>
 <ul>
 <li><strong>修路自由</strong>：起点是任意建筑，或路网已经碰到的任意一格；终点是任意可通行格，不必有建筑，也不看有没有货可运。路沿着六边形邻接边走，占边不占格；断头路合法，只是暂时不赚钱，拆除全额退款。</li>
-<li><strong>拐弯要加钱</strong>：一段路的价钱是 250 × (地形系数 + 转角系数)。直行 0，120° 弯 +0.5，60° 急弯 +1。直的干道最便宜，绕山是一个有标价的决定；只有新画出来的弯收费。</li>
-<li><strong>每段造价 <code>250 × (地形系数 + 转角系数)</code></strong>，地形系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3）。复用已有路段不再收费，也不再补收转角费。</li>
+<li><strong>没有转角费。</strong>曾试过按弯收费，但只对"这次铺的路"里的弯收，一段一段修就能绕过；按路口收又和驿站枢纽费重叠。路的形状交给地形和运力去定价。</li>
+<li><strong>每段造价 <code>250 × 地形系数</code></strong>，地形系数取两端较高者（草地城镇 1，森林岩地铁矿 2，湖 3）。复用已有路段不再收费，也不再补收转角费。</li>
 <li><strong>道路只负责连通，没有运力和等级。</strong>一件货每回合走一段，一段路同一回合能过任意多件。路的意义只有一个：谁和谁连着，连的代价是距离。产量和需求是仅有的两层上限，瓶颈不会出现在路上。</li>
 <li><strong>选路</strong>：段数最少的路，同长按路段编号取稳定的一条；已经上路的货不能掉头。玩家拆旧路可以改变拓扑。</li>
 <li>拆路立即禁止新货进入，已在路上的货走完再退款。</li>
@@ -261,9 +262,10 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 </section>
 
 <section id="economy">
-<div class="eyebrow">九</div><h2>经济模型：前一小时的收益预测</h2>
+<div class="eyebrow">九</div><h2>经济模型：前一小时的收益预测（新版道路）</h2>
 <p>下面的模型按一位<strong>一直做最优选择、从不闲置金币</strong>的玩家，逐回合模拟整个教学流程。每回合收入 = 每种货 <code>min(产量, 城镇需求) × 价格</code>，加工链取上游供给的最小值，原木优先喂加工厂。它是下界：真实玩家会转错板块、看地图、让钱闲一会儿，并且会切 2× / 5×，按经验放大 1.5 到 2 倍。</p>
 <p>所有数字都可以改，改完自动重算。「购买顺序」是这位玩家的行动脚本，价格那一列就是设计定价。</p>
+<div class="callout"><strong>新版道路在模型里的样子。</strong>一段路每回合每个方向只过一辆车，一辆车装 <code>cartSize</code> 件同种货；几条货流写同一个干线名就共用车位，满了的货留到下一回合，时间线里「最忙干线」到 100% 就是堵了，脚本里的对策是再修一条并行路。每件货每走一段付 <code>tollPerPiece × 时代</code> 金币的运费（按件不按价），卖出时扣；城镇按到最近<strong>原料地</strong>的路程（<code>far</code>，地图固有）加价 <code>farBonus</code>/段，运费按实际走的路（<code>hops</code>）算，所以远城镇是「价高、路长、运费高、运力紧」四笔账一起算。车容量 = <code>cartBase + 时代</code>，居民需求也随时代涨，所以需要的并行路数大致不变，只有工艺加产量时才要加路。路、建筑、驿站按当前收入定价（<code>road:段数:地形系数</code>、<code>bld:底价:第几座</code>、<code>relay:接几条路</code>），驿站第三条路起每多一条价格翻倍。</div>
 <h3>参数</h3>
 <div class="model-controls" id="params"></div>
 <h3>购买顺序与定价</h3>
@@ -276,13 +278,19 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <div class="table"><h3>其余定价</h3><table>
 <tr><th>项目</th><th>价格</th></tr>
 <tr><td>第一名工人：伐木营 / 采石场 / 矿山 / 锯木厂 / 石匠铺 / 铁厂</td><td>400 / 600 / 600 / 1 000 / 1 000 / 1 000，每多一名 ×1.3，最多 3 名</td></tr>
-<tr><td>道路每段</td><td>250 × (地形系数 1 / 2 / 3 + 转角 0 / 0.5 / 1)</td></tr>
+<tr><td>道路每段</td><td>max(250, 当前每回合收入 × 1) × 地形系数 1 / 2 / 3；两段草地路 ≈ 一座建筑</td></tr>
+<tr><td>建筑</td><td>max(底价, 当前每回合收入 × 2) × 1.3ⁿ⁻¹，n 为同类第几座</td></tr>
+<tr><td>驿站</td><td>max(300, 当前每回合收入 × 1)，接第 3 条路起每多一条 ×2（指数枢纽费）</td></tr>
+<tr><td>运力</td><td>每段路每回合每个方向一辆车，一辆车 2 + 时代等级 件同种货（农业时代 3 件）；没有道路等级，疏散靠多修路</td></tr>
+<tr><td>运费</td><td>每件货每段 1 金币 × 时代等级，按件不按价，卖出时扣</td></tr>
+<tr><td>城镇收购价</td><td>基础价 × (1 + 0.15 × 到最近能产这货的原料地的可通行路程)，生成时定下；按地形不按建筑，玩家操纵不了</td></tr>
 
 <tr><td>加居民</td><td>新增收入 × 30 回合 × 1.5ⁿ = 2 × 时代 × Σ收购价 × 30 × 1.5ⁿ：F1 城镇第 2 名 1 200、第 3 名 1 800。最多 3 名</td></tr>
 <tr><td>工艺 Lv n（按建筑类型）</td><td>新增产量 × 售价 × 30 回合 × 1.5ⁿ = 该类型当前工人数 × 产出价 × 30 × 1.5ⁿ，没有工人时按 1 名算。产出没有市场的货（铁矿石）按它加工成的货计价</td></tr>
 <tr><td>时代</td><td>全图新增收入 × 30 回合 × 1.5ᵉ = Σ(各城镇 居民数 × Σ收购价) × 2 × 30 × 1.5ᵉ，五级封顶</td></tr>
 <tr><td>金手指 Lv n（点击）</td><td>2 000 × 2ⁿ</td></tr>
-<tr><td>开局金币</td><td>2 000（= F1 解锁 500 + 最坏第一条路 1 500）</td></tr>
+<tr><td>开局金币</td><td>2 000（= 伐木营 1 200 + 森林到起始城镇的两段路 750 + 50 零头）。第一块板块 2 000、最便宜的科技 1 200 都被守卫挡在第一条路之后</td></tr>
+<tr><td>板块（第 n 块）</td><td>max(2 000 × 2.2^⌊(n−1)/2⌋, 当前每回合收入 × 5)，两块一档同价：第 1–2 块 2 000、3–4 块 4 400、5–6 块 9 700、7–8 块 21 000、9–10 块 47 000、11–12 块 103 000、15–16 块 500 000。价格随地图大小涨而不随收入涨，开图是主瓶颈；一档两块对应"两块内必出新"的保证，空板块是免费补抽</td></tr>
 <tr><td>板块 F5 之后</td><td>max(2 500, 当前每回合收入 × 10)。其他购买按 30 回合定价，板块只按 10 回合，鼓励往外走。收入取近 30 回合均值</td></tr>
 <tr><td>拆除 / 辞退退款</td><td>全额，见第二节无死局规则</td></tr>
 </table></div>
@@ -338,7 +346,7 @@ svg{max-width:100%;height:auto;display:block}.figure{background:var(--panel);bor
 <li><strong>世界</strong>：<code>w.flowers[fid] = {center, state:'fog'|'preview'|'placed', design, rotation}</code>，<code>w.tiles</code> 只包含已放下的花的格子。只有 F0 有预设内容。每放下一朵花，它周围还没有的位置补成迷雾。</li>
 <li><strong>生成器</strong> <code>generateFlower(w, n, seed)</code>：输入解锁次序、整个世界状态和种子，输出七格内容。n ≤ 5 用教学规格（必有 / 不会出现 / 上限 / 填充池），之后用沙盒规则。规格表和规则都是数据，测试直接跑它。</li>
 <li><strong>探索命令</strong>：<code>explore(fid)</code> 扣钱、生成内容、进入预览并暂停模拟；<code>rotate(fid, dir)</code>；<code>place(fid)</code> 生成格子、恢复模拟。预览期间其他命令一律拒绝。放下后没有任何命令能改朝向。</li>
-<li><strong>无死局守卫</strong>：<code>place</code> 在全图收入为零且余额不足以修到新城镇的最短路时拒绝。<code>REFUND = 1</code>，起始伐木营 <code>paid: 1200</code>，<code>START_MONEY = 2500</code>（要装得下第一朵花加通往它的路，含弯）。</li>
+<li><strong>无死局守卫</strong>：解锁时引擎只取首路修得起的朝向；在有路赚钱之前，<code>reserve</code> 拒绝任何会让余额低于 <code>firstRoad</code>（最便宜的工坊到城镇路）的购买。<code>REFUND = 1</code>，起始伐木营 <code>paid: 1200</code>，<code>START_MONEY = 2500</code>（要装得下第一朵花加通往它的路，含弯）。</li>
 <li><strong>地形</strong> <code>grass / town / forest / rock / ore / mountain / lake</code>，<code>TERRAIN_FACTOR = {grass:1, town:1, forest:2, rock:2, ore:2, lake:3}</code>。山不可进；湖只有 <code>w.tech.waterway</code> 为真时可进。<code>path()</code> 与 <code>validate()</code> 同步。</li>
 <li><strong>配方表</strong>：<code>{camp:{in:{},out:'log',fits:['forest']}, quarry:{in:{},out:'stone',fits:['rock']}, sawmill:{in:{log:1},out:'board',fits:['grass']}, mason:{in:{log:1,stone:1},out:'tool',fits:['grass']}, mine:{in:{},out:'ore',fits:['ore']}, smelter:{in:{ore:1,log:1},out:'iron',fits:['grass']}}</code>。生产量取 <code>min(工人产量, 每种输入库存, 输出堆场余量)</code>；点击同理。建筑命令先检查对应科技。</li>
 <li><strong>派货</strong>：每个需求带「下游价值」（城镇收购价，或加工产出可卖到的最高价，递归）。每回合按价值从高到低满足，价值相同的需求逐件轮流（持久轮转，存读档不重置），每一件都从最近的有货货源出发。</li>
@@ -446,7 +454,7 @@ function genFlower(spec,rand){
  throw Error('生成失败');
 }
 const FLOWERS=[
- {id:'F0',name:'起始',pos:[0,0],fixed:true,rot:0,center:'grass',ring:['forest','rock','grass','rock','ore','mountain'],marks:{1:'⛺'}},
+ {id:'F0',name:'起始',pos:[0,0],fixed:true,rot:0,center:'grass',ring:['forest','grass','town','grass','mountain','grass'],marks:{}},
  {id:'F1',name:'收原木 · 500',pos:[-3,1],rot:0,town:'原木 20'},
  {id:'F2',name:'收石头 · 2000',pos:[-1,-2],rot:0,town:'石头 30'},
  {id:'F3',name:'收木板 · 5000',pos:[1,2],rot:0,town:'木板 50'},
@@ -526,106 +534,138 @@ drawTutorial();
 })();
 
 /* ---------- 经济模型 ---------- */
+// 新版道路：一段路每回合每个方向通一辆车（cartSize 件同种货），每件货每走一段付 tollRate × 基础价的运费，
+// 远处城镇按到最近产地的路程加价 farBonus/段。路、建筑、驿站的价格跟着当前收入走（若干回合的收入），
+// 转弯按另一段地形算进系数里。运力用「干线」表示：几条货流写同一个 trunk 名就共用那条路的车位。
 const P0={log:20,stone:30,board:50,tool:120,iron:150};
-const PARAMS0={startMoney:2000,roundSec:2,clickPerSec:3,townRate:2,workerGrowth:1.3};
+const PARAMS0={startMoney:2000,roundSec:2,clickPerSec:3,townRate:2,workerGrowth:1.3,cartBase:2,tollPerPiece:1,farBonus:0.15,roadRounds:1,buildingRounds:2,buildingGrowth:1.3,relayRounds:1,hubGrowth:2,eraRounds:30,eraGrowth:1.5,flowerBase:2000,flowerGrowth:2.2,flowerPayback:5};
+const PLABEL={startMoney:'开局金币',roundSec:'一回合秒数（1×）',clickPerSec:'手点速度 件/秒',townRate:'城镇每级每回合收 件',workerGrowth:'同建筑每多一名工人 ×',cartBase:'车容量 = 这个数 + 时代（每段每回合一辆）',tollPerPiece:'运费 每件每段 金币 × 时代',farBonus:'远城镇加价（每段到原料地的路程）',roadRounds:'路每段 = 收入 × 回合',buildingRounds:'建筑 = 收入 × 回合',buildingGrowth:'同类第 n 座 ×',relayRounds:'驿站 = 收入 × 回合',hubGrowth:'驿站每多接一条路 ×（第 3 条起）',eraRounds:'时代 = 新增收入 × 回合',eraGrowth:'时代每级 ×',flowerBase:'第 1 块板块价',flowerGrowth:'每两块 ×（两块一档）',flowerPayback:'板块下限 = 收入 × 回合'};
+const GLABEL={log:'原木价',stone:'石头价',board:'木板价',tool:'石头工具价',iron:'铁价'};
+// 价格写法：数字 = 固定价；worker:底价:第几名；road:段数:系数（地形 + 转角）；bld:底价:同类第几座；relay:接几条路。
+// 效果写法：town.log=rate 城镇需求；sale.log={hops:2,far:2,trunk:'F1'} 卖货：hops 实际路程（运费、运力），far 到最近原料地的路程（加价），干线名；era=2 进入下一时代；
+// link.sawmill={hops:1,trunk:'saw'} 原料运到加工厂走的路；lanes.F1=2 某干线并行几条路；craft.camp=2 工艺倍率。
 const PLAN0=[
- ['解锁 F1（城镇收原木 20）',500,'town.log=rate'],
- ['修路 伐木营→F1 城镇 2 段',500,'road=1'],
+ ['建 伐木营（起始花的森林，开局唯一能做的事）',1200,'town.log=rate;sale.log={hops:2,far:2,trunk:"F1"}'],
+ ['修路 伐木营→起始城镇 2 段（森林 ×2 + 草地）','road:2:1.5','road=1'],
  ['伐木工 #1',400,'w.camp=1'],
  ['伐木工 #2','worker:400:2','w.camp=2'],
- ['解锁 F2（城镇收石头 30）',2000,'town.stone=rate'],
+ ['解锁第 1 块（沙盒：假设城镇收石头 30）','flower:1','town.stone=rate;sale.stone={hops:4,far:4,trunk:"F2"}'],
  ['科技 采石场',1200,''],
- ['建 采石场',1600,''],
- ['修路 F0 采石场→F2 城镇 4 段（岩地 ×2）',1500,''],
+ ['建 采石场','bld:1600:1',''],
+ ['修路 采石场→F2 城镇 4 段（岩地 ×2）','road:4:2',''],
  ['采石工 #1',600,'w.quarry=1'],
  ['伐木工 #3','worker:400:3','w.camp=3'],
  ['采石工 #2','worker:600:2','w.quarry=2'],
- ['解锁 F3（城镇收木板 50）',5000,'town.board=rate'],
+ ['解锁第 2 块（沙盒：假设城镇收木板 50，离森林 3 段 ×1.45）','flower:2','town.board=rate;sale.board={hops:3,far:3,trunk:"F3"}'],
  ['科技 锯木厂',3000,''],
- ['建 锯木厂',2400,''],
- ['修路 伐木营→锯木厂→F3 城镇 5 段',1500,''],
+ ['建 锯木厂（伐木营旁）','bld:2400:1','link.sawmill={hops:1,trunk:"F1"}'],
+ ['修路 锯木厂→F3 城镇 3 段','road:3:1',''],
  ['锯木工 #1',1000,'w.sawmill=1'],
- ['建 第二座伐木营（F2 的森林）',1200,''],
+ ['建 第二座伐木营（F2 的森林）','bld:1200:2',''],
  ['伐木工 #1（二营）',400,'w.camp2=1'],
  ['伐木工 #2（二营）','worker:400:2','w.camp2=2'],
  ['锯木工 #2','worker:1000:2','w.sawmill=2'],
- ['解锁 F4（湖，城镇收石头工具 120）',15000,'town.tool=rate'],
+ ['工艺 伐木营 Lv1（5 名伐木工 × 20 × 30）',3000,'craft.camp=2'],
+ ['↳ 干线 F1 满了：伐木营→F1 第二条路 3 段（绕山）','road:3:1','lanes.F1=2'],
+ ['解锁第 3 块（沙盒：假设湖对岸城镇收石头工具 120，离岩地 4 段 ×1.6）','flower:3','town.tool=rate;sale.tool={hops:4,far:4,trunk:"F4"}'],
  ['科技 石匠铺',8000,''],
- ['建 石匠铺',2000,''],
+ ['建 石匠铺（采石场旁）','bld:2000:1','link.mason={hops:1,trunk:"F2"}'],
  ['科技 航道',8000,''],
- ['修路 石匠铺→F4 城镇 过湖 4 段（湖 ×3）',2000,''],
+ ['修路 石匠铺→F4 城镇 过湖 4 段（湖 ×3 两段，草地两段）','road:4:2',''],
  ['石匠 #1',1000,'w.mason=1'],
  ['采石工 #3','worker:600:3','w.quarry=3'],
  ['石匠 #2','worker:1000:2','w.mason=2'],
  ['F1 城镇加第 2 名居民（2 × 20 × 30）',1200,'town.log=rate*2'],
- ['解锁 F5（山脉，城镇收铁 150）',40000,'town.iron=rate'],
+ ['解锁第 4 块（沙盒：假设山后城镇收铁 150，离铁矿 5 段 ×1.75）','flower:4','town.iron=rate;sale.iron={hops:5,far:5,trunk:"F5"}'],
  ['科技 矿山',5000,''],
- ['建 矿山',2000,''],
- ['修路 F0 矿山→铁厂 2 段（矿 ×2）',750,''],
+ ['建 矿山','bld:2000:1',''],
+ ['修路 矿山→铁厂 2 段（矿 ×2）','road:2:2','link.smelter={hops:2,trunk:"ore"}'],
  ['矿工 #1',600,'w.mine=1'],
  ['矿工 #2','worker:600:2','w.mine=2'],
  ['科技 铁厂',40000,''],
- ['建 铁厂',3000,''],
- ['修路 铁厂 ↔ 伐木营 / F5 城镇 5 段',2500,''],
+ ['建 铁厂','bld:3000:1',''],
+ ['驿站 山口（接 3 条路：伐木营、铁厂、F5）','relay:3',''],
+ ['修路 铁厂→山口驿站→F5 城镇 5 段','road:5:1',''],
  ['炼铁工 #1',1000,'w.smelter=1'],
  ['炼铁工 #2','worker:1000:2','w.smelter=2'],
  ['教学结束：进入沙盒',0,''],
+ ['解锁第 5 块：远城镇收木板，离森林 8 段 ×2.2','flower:5','town.board2=rate;sale.board2={hops:8,far:8,trunk:"F6"}'],
+ ['修路 锯木厂→F6 8 段（森林两段 ×2）','road:8:1.25',''],
+ ['锯木工 #3','worker:1000:3','w.sawmill=3'],
+ ['科技 时代：封建时代（车容量 4，居民需求 ×2，运费 ×2）','era:2','era=2'],
+ ['解锁第 6 块（假设城镇收铁 165，5 段外）','flower:6','town.iron2=rate;sale.iron2={hops:5,far:5,trunk:"F7"}'],
+ ['修路 铁厂→第 6 块城镇 5 段','road:5:1',''],
+ ['炼铁工 #3','worker:1000:3','w.smelter=3'],
+ ['解锁第 7 块','flower:7',''],
+ ['解锁第 8 块','flower:8',''],
+ ['↳ F1 干线又满：第三条路 4 段','road:4:1','lanes.F1=3'],
 ];
 let P={...P0},PARAMS={...PARAMS0},PLAN=PLAN0.map(r=>[...r]);
-const PLABEL={startMoney:'开局金币',roundSec:'一回合秒数（1×）',clickPerSec:'手点速度 件/秒',townRate:'城镇每级每回合收 件',workerGrowth:'同建筑每多一名工人 ×'};
-const GLABEL={log:'原木价',stone:'石头价',board:'木板价',tool:'石头工具价',iron:'铁价'};
-function costOf(c){if(typeof c==='number')return c;const m=/^worker:(\d+):(\d+)$/.exec(c);if(m)return Math.round(+m[1]*Math.pow(PARAMS.workerGrowth,+m[2]-1));return +c||0;}
-function applyFx(s,fx){if(!fx)return;const rate=PARAMS.townRate;for(const stmt of fx.split(';')){const [lhs,rhs]=stmt.split('=');const val=Function('rate','return ('+rhs+')')(rate);const path=lhs.trim().split('.');let o=s;for(let i=0;i<path.length-1;i++)o=o[path[i]];o[path[path.length-1]]=val;}}
-function income(s){
- if(!s.road)return 0;const cap=Infinity;
- let logs=s.w.camp+s.w.camp2,st=s.w.quarry,or=s.w.mine;
- const boards=Math.min(s.w.sawmill,logs,s.town.board||0,cap);logs-=boards;
- const tools=Math.min(s.w.mason,logs,st,s.town.tool||0,cap);logs-=tools;st-=tools;
- const iron=Math.min(s.w.smelter,logs,or,s.town.iron||0,cap);logs-=iron;or-=iron;
- const sl=Math.min(logs,s.town.log||0,cap),ss=Math.min(st,s.town.stone||0,cap);
- return boards*P.board+tools*P.tool+iron*P.iron+sl*P.log+ss*P.stone;
-}
+function costOf(c,inc){if(typeof c==='number')return c;let m;
+ if(m=/^worker:(\d+):(\d+)$/.exec(c))return Math.round(+m[1]*Math.pow(PARAMS.workerGrowth,+m[2]-1));
+ if(m=/^road:([\d.]+):([\d.]+)$/.exec(c))return Math.round(+m[1]*Math.max(250,inc*PARAMS.roadRounds)*+m[2]);
+ if(m=/^bld:(\d+):(\d+)$/.exec(c))return Math.round(Math.max(+m[1],inc*PARAMS.buildingRounds)*Math.pow(PARAMS.buildingGrowth,+m[2]-1));
+ if(m=/^relay:(\d+)$/.exec(c))return Math.round(Math.max(300,inc*PARAMS.relayRounds)*Math.pow(PARAMS.hubGrowth,Math.max(0,+m[1]-2)));
+ if(m=/^flower:(\d+)$/.exec(c))return Math.round(Math.max(PARAMS.flowerBase*Math.pow(PARAMS.flowerGrowth,Math.floor((+m[1]-1)/2)),inc*PARAMS.flowerPayback));
+ if(m=/^era:(\d+)$/.exec(c))return Math.round(Math.max(20,inc)*PARAMS.eraRounds*Math.pow(PARAMS.eraGrowth,+m[1]-2));
+ return +c||0;}
+function applyFx(s,fx){if(!fx)return;const rate=PARAMS.townRate;for(const stmt of fx.split(';')){const i=stmt.indexOf('=');const lhs=stmt.slice(0,i),rhs=stmt.slice(i+1);const val=Function('rate','return ('+rhs+')')(rate);const path=lhs.trim().split('.');let o=s;for(let k=0;k<path.length-1;k++)o=o[path[k]]=o[path[k]]||{};o[path[path.length-1]]=val;}}
+// 一回合的净收入：按价值从高到低派货，每条干线每回合只有 lanes × cartSize 个车位；卖价按路程加价，运费按路程扣。
+function income(s,detail){
+ if(!s.road)return 0;const era=s.era||1,K=PARAMS.cartBase+era,used={},lanes=t=>(s.lanes[t]||1)*K,demand=g=>(s.town[g]||0)*era;
+ const room=t=>t?Math.max(0,lanes(t)-(used[t]||0)):Infinity,take=(t,n)=>{if(t)used[t]=(used[t]||0)+n;return n;};
+ let logs=(s.w.camp+s.w.camp2)*(s.craft.camp||1),st=s.w.quarry*(s.craft.quarry||1),or=s.w.mine*(s.craft.mine||1);
+ let money=0,toll=0;
+ const move=(g,n,ch)=>{if(!ch||!n)return n;const k=take(ch.trunk,Math.min(n,room(ch.trunk)));toll+=k*ch.hops*PARAMS.tollPerPiece*era;return k;};
+ const sell=(g,n,key)=>{const ch=s.sale[key||g];if(!ch)return 0;const k=move(g,Math.min(n,demand(key||g)),ch);money+=k*P[g]*(1+PARAMS.farBonus*(ch.far??ch.hops));return k;};
+ // 木板：原木先运到锯木厂，再卖到收木板的城镇（近的先，远的后）
+ let toSaw=move('log',Math.min(logs,s.w.sawmill*(s.craft.sawmill||1)),s.link.sawmill);logs-=toSaw;
+ let boards=sell('board',toSaw);boards+=sell('board',toSaw-boards,'board2');logs+=toSaw-boards;
+ const toMason=Math.min(logs,st,s.w.mason*(s.craft.mason||1));const mL=move('log',toMason,s.link.mason),mS=move('stone',toMason,s.link.mason);const tools=sell('tool',Math.min(mL,mS));logs-=tools;st-=tools;
+ const toSm=Math.min(logs,or,s.w.smelter*(s.craft.smelter||1));const sO=move('ore',toSm,s.link.smelter);let iron=sell('iron',Math.min(sO,logs));iron+=sell('iron',Math.min(sO,logs)-iron,'iron2');logs-=iron;or-=iron;
+ const sl=sell('log',logs),ss=sell('stone',st);
+ if(detail){detail.toll=toll;detail.busiest=Object.entries(used).map(([t,u])=>[t,u/lanes(t)]).sort((a,b)=>b[1]-a[1])[0]||null;detail.sold={board:boards,tool:tools,iron,log:sl,stone:ss};}
+ return Math.round(money-toll);}
 function simulate(){
- const s={money:PARAMS.startMoney,road:0,town:{},w:{camp:0,camp2:0,quarry:0,sawmill:0,mason:0,mine:0,smelter:0}};
- let t=20/PARAMS.clickPerSec,yard=20;const rows=[],series=[[t,0]];let stuck=null;
- for(const [name,c,fx] of PLAN){const cost=costOf(c);let guard=0;
-  while(s.money<cost){let inc=income(s);if(inc===0&&s.road&&yard>0){inc=Math.min(PARAMS.townRate,yard)*P.log;yard-=Math.min(PARAMS.townRate,yard);}
-   if(inc===0||++guard>200000){stuck=name;break;}s.money+=inc;t+=PARAMS.roundSec;}
-  if(stuck)break;s.money-=cost;applyFx(s,fx);const inc=income(s);rows.push({name,cost,t,money:s.money,inc});series.push([t,inc]);}
- return {rows,series,total:t,stuck};
-}
+ const s={money:PARAMS.startMoney,road:0,era:1,town:{},sale:{},link:{},lanes:{},craft:{},w:{camp:0,camp2:0,quarry:0,sawmill:0,mason:0,mine:0,smelter:0}};
+ let t=20/PARAMS.clickPerSec,yard=20;const rows=[],series=[[t,0]];let stuck=null,tollAll=0;
+ for(const [name,c,fx] of PLAN){const inc0=income(s);const cost=costOf(c,inc0);let guard=0;
+  while(s.money<cost){let inc=income(s);if(inc===0&&s.road&&yard>0){inc=Math.min(PARAMS.townRate,yard)*P.log*(1+PARAMS.farBonus*2)-Math.min(PARAMS.townRate,yard)*2*PARAMS.tollPerPiece;yard-=Math.min(PARAMS.townRate,yard);}
+   if(inc<=0||++guard>200000){stuck=name;break;}s.money+=inc;t+=PARAMS.roundSec;}
+  if(stuck)break;s.money-=cost;applyFx(s,fx);const d={};const inc=income(s,d);rows.push({name,cost,t,money:s.money,inc,toll:d.toll||0,busiest:d.busiest});series.push([t,inc]);}
+ return {rows,series,total:t,stuck};}
 function fmtT(sec){const m=Math.floor(sec/60),s=Math.round(sec%60);return `${m} 分 ${String(s).padStart(2,'0')} 秒`;}
 function renderControls(){
  const pd=document.getElementById('params');pd.innerHTML='';
  for(const k in PARAMS){const l=document.createElement('label');l.innerHTML=`<span>${PLABEL[k]}</span>`;const i=document.createElement('input');i.type='number';i.step='any';i.value=PARAMS[k];i.oninput=()=>{PARAMS[k]=+i.value;run();};l.appendChild(i);pd.appendChild(l);}
  for(const k in P){const l=document.createElement('label');l.innerHTML=`<span>${GLABEL[k]}</span>`;const i=document.createElement('input');i.type='number';i.value=P[k];i.oninput=()=>{P[k]=+i.value;run();};l.appendChild(i);pd.appendChild(l);}
  const tb=document.getElementById('plan');tb.innerHTML='<tr><th>#</th><th>购买</th><th class="num">价格</th><th>模型里的效果</th></tr>';
- PLAN.forEach((r,idx)=>{const tr=document.createElement('tr');const isWorker=typeof r[1]==='string'&&r[1].startsWith('worker:');
+ PLAN.forEach((r,idx)=>{const tr=document.createElement('tr');const fixed=typeof r[1]==='number';
   tr.innerHTML=`<td>${idx+1}</td><td>${r[0]}</td><td class="num"></td><td><code>${r[2]||'—'}</code></td>`;
-  const td=tr.children[2];if(isWorker){td.textContent=costOf(r[1])+'（按第一名 × 增长）';}else{const i=document.createElement('input');i.type='number';i.value=r[1];i.oninput=()=>{r[1]=+i.value;run();};td.appendChild(i);}
+  const td=tr.children[2];if(!fixed){td.innerHTML=`<code>${r[1]}</code>`;}else{const i=document.createElement('input');i.type='number';i.value=r[1];i.oninput=()=>{r[1]=+i.value;run();};td.appendChild(i);}
   tb.appendChild(tr);});
 }
 function run(){
  const res=simulate();
- const tl=document.getElementById('timeline');tl.innerHTML='<tr><th>购买</th><th class="num">花费</th><th class="num">累计时间（1×）</th><th class="num">余额</th><th class="num">之后每回合收入</th></tr>';
- for(const r of res.rows){const tr=document.createElement('tr');tr.innerHTML=`<td>${r.name}</td><td class="num">${r.cost}</td><td class="num">${fmtT(r.t)}</td><td class="num">${Math.round(r.money)}</td><td class="num">${r.inc}</td>`;if(/解锁|科技|教学/.test(r.name))tr.style.fontWeight='700';tl.appendChild(tr);}
- if(res.stuck){const tr=document.createElement('tr');tr.innerHTML=`<td colspan="5" class="stuck">收入为 0，卡死在「${res.stuck}」：这位玩家买不起下一项。</td>`;tl.appendChild(tr);}
- const mins=res.total/60;const last=res.rows[res.rows.length-1];
- document.getElementById('summary').textContent=res.stuck?'模型卡死，见时间线':`最优玩家 ${Math.round(mins)} 分钟走完教学（1×）；按 1.5 到 2 倍估计真实玩家 ${Math.round(mins*1.5)} 到 ${Math.round(mins*2)} 分钟。`;
- const marks=res.rows.filter(r=>/^解锁 F\d/.test(r.name));
- const spend=res.rows.reduce((a,r)=>a+r.cost,0);
- document.getElementById('kpi').innerHTML=[[`${Math.round(mins)} 分`,'最优玩家总时长（1×）'],[`${last?last.inc:0}`,'教学结束时每回合收入'],[`${spend.toLocaleString()}`,'教学期间总花费'],...marks.map(m=>[fmtT(m.t).replace(' 秒',''),m.name.replace(/（.*/,'')])].map(([b,s])=>`<div><b>${b}</b><small>${s}</small></div>`).join('');
+ const tl=document.getElementById('timeline');tl.innerHTML='<tr><th>购买</th><th class="num">花费</th><th class="num">累计时间（1×）</th><th class="num">余额</th><th class="num">之后每回合净收入</th><th class="num">每回合运费</th><th>最忙干线</th></tr>';
+ for(const r of res.rows){const tr=document.createElement('tr');const b=r.busiest;const load=b?`${b[0]} ${Math.round(b[1]*100)}%`:'—';tr.innerHTML=`<td>${r.name}</td><td class="num">${r.cost}</td><td class="num">${fmtT(r.t)}</td><td class="num">${Math.round(r.money)}</td><td class="num">${r.inc}</td><td class="num">${Math.round(r.toll)}</td><td class="${b&&b[1]>=1?'stuck':''}">${load}</td>`;if(/解锁|科技|教学/.test(r.name))tr.style.fontWeight='700';tl.appendChild(tr);}
+ if(res.stuck){const tr=document.createElement('tr');tr.innerHTML=`<td colspan="7" class="stuck">收入为 0，卡死在「${res.stuck}」：这位玩家买不起下一项。</td>`;tl.appendChild(tr);}
+ const mins=res.total/60;const last=res.rows[res.rows.length-1];const endTut=res.rows.find(r=>/教学结束/.test(r.name));
+ document.getElementById('summary').textContent=res.stuck?'模型卡死，见时间线':`最优玩家 ${Math.round((endTut?endTut.t:res.total)/60)} 分钟走完教学（1×），整个脚本 ${Math.round(mins)} 分钟；按 1.5 到 2 倍估计真实玩家。`;
+ const marks=res.rows.filter(r=>/^解锁/.test(r.name));
+ const spend=res.rows.reduce((a,r)=>a+r.cost,0),roadSpend=res.rows.filter(r=>/^修路|驿站|↳/.test(r.name)).reduce((a,r)=>a+r.cost,0),jam=res.rows.filter(r=>r.busiest&&r.busiest[1]>=1).length;
+ document.getElementById('kpi').innerHTML=[[`${Math.round(mins)} 分`,'最优玩家总时长（1×）'],[`${last?last.inc:0}`,'脚本结束时每回合净收入'],[`${Math.round(last?last.toll:0)}`,'脚本结束时每回合运费'],[`${roadSpend.toLocaleString()} / ${spend.toLocaleString()}`,'路与驿站花费 / 总花费'],[`${jam} / ${res.rows.length}`,'干线满载的步数'],...marks.map(m=>[fmtT(m.t).replace(' 秒',''),m.name.replace(/（.*$/,'')])].map(([v,l])=>`<div><b>${v}</b><span>${l}</span></div>`).join('');
  // 图
  const svg=document.getElementById('chart');svg.innerHTML='';const W=900,H=320,L=60,R=20,T=20,B=40;
  const maxT=Math.max(res.total,60),maxI=Math.max(...res.series.map(p=>p[1]),50);
  const X=t=>L+(W-L-R)*t/maxT,Y=v=>H-B-(H-T-B)*v/maxI;
  for(let m=0;m<=maxT/60;m+=5){svg.appendChild(svgEl('line',{x1:X(m*60),x2:X(m*60),y1:T,y2:H-B,stroke:'#e2dccd'}));svg.appendChild(svgEl('text',{x:X(m*60),y:H-B+16,"text-anchor":'middle',"font-size":11,fill:'#57656a'},m+' 分'));}
- for(let v=0;v<=maxI;v+=100){svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:'#e2dccd'}));svgEl('text',{});svg.appendChild(svgEl('text',{x:L-6,y:Y(v)+4,"text-anchor":'end',"font-size":11,fill:'#57656a'},v));}
- let d='';let prev=null;for(const [t,v] of res.series){if(prev){d+=` L${X(t)},${Y(prev)}`;}d+=(prev?' L':'M')+`${X(t)},${Y(v)}`;prev=v;}
+ const step=maxI>1000?500:100;for(let v=0;v<=maxI;v+=step){svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:'#e2dccd'}));svg.appendChild(svgEl('text',{x:L-6,y:Y(v)+4,"text-anchor":'end',"font-size":11,fill:'#57656a'},v));}
+ let d='';let prev=null;for(const [t,v] of res.series){if(prev!==null){d+=` L${X(t)},${Y(prev)}`;}d+=(prev!==null?' L':'M')+`${X(t)},${Y(v)}`;prev=v;}
  d+=` L${X(res.total)},${Y(prev||0)}`;
  svg.appendChild(svgEl('path',{d,fill:'none',stroke:'#486b3a',"stroke-width":2.5}));
- for(const m of marks){svg.appendChild(svgEl('line',{x1:X(m.t),x2:X(m.t),y1:T,y2:H-B,stroke:'#bd8726',"stroke-dasharray":'4 3'}));svg.appendChild(svgEl('text',{x:X(m.t)+4,y:T+12,"font-size":11,fill:'#bd8726',"font-weight":700},m.name.slice(3,5)));}
- svg.appendChild(svgEl('text',{x:L,y:12,"font-size":11,fill:'#57656a'},'每回合收入（金币）'));
+ for(const m of marks){svg.appendChild(svgEl('line',{x1:X(m.t),x2:X(m.t),y1:T,y2:H-B,stroke:'#bd8726',"stroke-dasharray":'4 3'}));svg.appendChild(svgEl('text',{x:X(m.t)+4,y:T+12,"font-size":11,fill:'#bd8726',"font-weight":700},m.name.replace(/^解锁(沙盒)?\s*/,'').slice(0,2)));}
+ svg.appendChild(svgEl('text',{x:L,y:12,"font-size":11,fill:'#57656a'},'每回合净收入（金币，已扣运费）'));
 }
 document.getElementById('run').onclick=run;
 document.getElementById('reset').onclick=()=>{P={...P0};PARAMS={...PARAMS0};PLAN=PLAN0.map(r=>[...r]);renderControls();run();};

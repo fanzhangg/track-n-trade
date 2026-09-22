@@ -148,7 +148,7 @@ function pop(key, n, r) {
 
 function windowStats() {
  const S = world.stats;
- const empty = {span:0, rate:() => 0, flow:() => 0, inflow:() => 0, outflow:() => 0, income:0, sales:() => 0};
+ const empty = {span:0, rate:() => 0, flow:() => 0, goodFlow:() => 0, inflow:() => 0, outflow:() => 0, income:0, sales:() => 0};
  if (!S.length) return empty;
  const span = world.tick - S[0].tick + 1;
  const out = E.zero(), edges = {}, inflow = {}, outflow = {}, sales = {};
@@ -566,7 +566,7 @@ function townPanel(t) {
 function flowerPanel(f) {
  if (f.state === 'fog') {
   const cost=E.flowerCost(world), n=world.unlocked+1;
-  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块${n>E.TUTORIAL?` · 价格 = 每回合收入 × ${E.GEN.flowerPayback} 回合`:''}</p></div><div class="actions">${button(`解锁这块板块<small>${coins(cost)}</small>`,{type:'explore',flower:f.id},true,!afford(cost))}</div>`;
+  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块 · ${n%E.FLOWER_PAIR?`下一块同价`:`下一块 ×${E.GEN.flowerGrowth}`}，两块一档，每档涨 ${E.GEN.flowerGrowth} 倍</p></div><div class="actions">${button(`解锁这块板块<small>${coins(cost)}</small>`,{type:'explore',flower:f.id},true,!afford(cost))}</div>`;
  }
 }
 function renderSelection() {
@@ -762,7 +762,7 @@ function preview(event) {
    const preview=RoadTiles.layout(world.tiles,[...edges.values()],position);
    $('preview').innerHTML=ids.map(id=>`<path d="${preview.roads.get(id).d}" class="preview ${afford(route.cost)?'':'invalid'}"/>`).join('');
    const rough=route.segments.filter(s=>s.factor===2).length;
-   $('drag-label').textContent=route.segments.length?`${afford(route.cost)?'松开修路':'金币不足'} · ${route.segments.length} 段 ${coins(route.cost)}${route.turns?` · ${route.turns} 个弯`:''}${route.lakes?` · ${route.lakes} 段航线 ×3`:''}${rough?` · ${rough} 段林地/岩地 ×2`:''}`:'已有道路相连';
+   $('drag-label').textContent=route.segments.length?`${afford(route.cost)?'松开修路':'金币不足'} · ${route.segments.length} 段 ${coins(route.cost)}${route.lakes?` · ${route.lakes} 段航线 ×3`:''}${rough?` · ${rough} 段林地/岩地 ×2`:''}`:'已有道路相连';
    if(!afford(route.cost))$('drag-label').classList.add('bad');
   }catch(error){$('preview').innerHTML='';$('drag-label').textContent=error.message;$('drag-label').classList.add('bad');}
  }else{
