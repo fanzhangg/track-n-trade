@@ -9,6 +9,8 @@
   {id:'mine',name:'矿山',group:'building',file:'mine',cue:'矿洞、短轨与装矿小车',use:'铁矿地形上的铁矿石生产点'},
   {id:'smelter',name:'铁厂',group:'building',file:'smelter',cue:'炉膛、浇铸槽与成品铁锭',use:'铁矿石 + 原木 → 铁'},
   {id:'town',name:'城镇',group:'building',file:'town',cue:'蓝白棚顶、交易柜台与货箱',use:'收购货物的目的地'},
+  {id:'worker',name:'工人',group:'people',file:'worker',cue:'蓝灰三切面 meeple 棋子',use:'放在生产建筑板块上的自动生产单位'},
+  {id:'resident',name:'居民',group:'people',file:'resident',cue:'陶土三切面 meeple 棋子',use:'放在城镇板块上的收购人口'},
   {id:'log',name:'原木',group:'goods',file:'log',cue:'圆形端面、单根原木',use:'三条加工链的共同输入'},
   {id:'board',name:'木板',group:'goods',file:'board',cue:'平直边缘、三层板材',use:'与圆截面的原木区分'},
   {id:'stone',name:'石头',group:'goods',file:'stone',cue:'浅灰、宽底、钝角岩块',use:'与尖锐的铁矿石区分'},
@@ -30,7 +32,7 @@
  function metadata(id){const meta=root.TradeIconSources?.assets.find(a=>a.id===id);if(!meta)throw new Error('Missing icon source: '+id);return meta;}
  function artwork(id,base){
   const meta=metadata(id),b=meta.bounds,s=.82/Math.max(b.width,b.height);
-  return `<img src="${escape(base+meta.file+'?v=redrawn1')}" alt="" draggable="false" style="width:${meta.width*s*100}%;height:${meta.height*s*100}%;left:${(.5-(b.x+b.width/2)*s)*100}%;top:${(.5-(b.y+b.height/2)*s)*100}%">`;
+  return `<img src="${escape(base+meta.file+'?v=redrawn2')}" alt="" draggable="false" style="width:${meta.width*s*100}%;height:${meta.height*s*100}%;left:${(.5-(b.x+b.width/2)*s)*100}%;top:${(.5-(b.y+b.height/2)*s)*100}%">`;
  }
  function icon(id,{base='../assets/icons/v1/',size=64,decorative=false}={}){
   const item=lookup[id];if(!item)throw new Error('Unknown icon: '+id);
@@ -40,7 +42,7 @@
  function svgIcon(id,{base='assets/icons/v1/',x=0,y=0,size=48}={}){
   if(!lookup[id])throw new Error('Unknown icon: '+id);
   const meta=metadata(id),b=meta.bounds,s=52.48/Math.max(b.width,b.height);
-  return `<g class="tt-map-icon" aria-hidden="true" pointer-events="none" transform="translate(${Number(x)} ${Number(y)}) scale(${Number(size)/64})"><image href="${escape(base+meta.file+'?v=redrawn1')}" x="${32-(b.x+b.width/2)*s}" y="${32-(b.y+b.height/2)*s}" width="${meta.width*s}" height="${meta.height*s}"/></g>`;
+  return `<g class="tt-map-icon" aria-hidden="true" pointer-events="none" transform="translate(${Number(x)} ${Number(y)}) scale(${Number(size)/64})"><image href="${escape(base+meta.file+'?v=redrawn2')}" x="${32-(b.x+b.width/2)*s}" y="${32-(b.y+b.height/2)*s}" width="${meta.width*s}" height="${meta.height*s}"/></g>`;
  }
  root.TradeIcons={catalog,icon,svgIcon};
 })(window);

@@ -1,5 +1,6 @@
 /* Restrained tabletop accents; no cards, labels or decorative frames. */
 .bt-miniature{filter:none}
+.bt-site{fill:var(--road-dirt);stroke:none}
 .bt-quantity{font:650 11px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums;paint-order:stroke;stroke:var(--surface-panel);stroke-width:1.2px;stroke-opacity:.5}
 .bt-price{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums}
 .building-tile-ui{--bt-danger:#bc352d;--bt-danger-tint:#fff0e9}
@@ -9,18 +10,37 @@
 .bt-floating.has-alert .bt-float-bg{fill:var(--bt-danger-tint);stroke:var(--border-control)}
 .bt-full-bg{fill:var(--bt-danger-tint);stroke:none}
 .bt-offer.is-full .bt-price{fill:var(--bt-danger)}
-.road-bed{stroke:#8b7052;stroke-width:7;stroke-linecap:round;pointer-events:none;filter:drop-shadow(0 1px .5px #51433135)}
-.road-sheen{stroke:#f1d5a2;stroke-width:1;stroke-linecap:round;opacity:.6;pointer-events:none}
-.road-control:hover .road,.road-control:focus-within .road{stroke:var(--action-primary)!important;stroke-width:5}
-.road-hit:focus-visible{outline:none;stroke:var(--action-primary);stroke-width:1;stroke-dasharray:3 2;fill:var(--action-subtle);fill-opacity:.15}
-.road-control:has(.water) .road-bed,.road-control:has(.water) .road-sheen{display:none}
-.road-control:has(.removing) .road-bed,.road-control:has(.removing) .road-sheen{opacity:.2}
+/* One flat material, with no raised edge, highlight or rail texture. */
+.road,.road.flowing,.road.selected,.road.expanded{fill:none;stroke:var(--road-dirt);stroke-width:10;stroke-linecap:round;stroke-linejoin:round;filter:none}
+.road.water{stroke:#69969e;stroke-width:5;stroke-dasharray:7 7}
+.road.removing{stroke-dasharray:none;opacity:.4}
+.road-control .road-hit{fill:none;stroke:transparent;stroke-width:19;stroke-linecap:butt;pointer-events:stroke;cursor:pointer}
+.road-control:hover .road,.road-control:focus-within .road,.road.selected{stroke:#ae8656!important}
+.road-control .road-hit:focus-visible{outline:none;stroke:var(--action-primary);stroke-width:2;stroke-dasharray:3 3}
+#preview .preview{stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;opacity:.55}
 
-.bt-floating,.bt-people{filter:drop-shadow(0 1.2px 1px #303e4330)}
+.bt-floating{filter:drop-shadow(0 1.2px 1px #303e4330)}
 .bt-float-bg{fill:var(--surface-panel);stroke:var(--border-control);stroke-width:.6;fill-opacity:.96}
-.bt-person-beat{animation:bt-person-beat var(--beat,1s) cubic-bezier(.3,0,.4,1) infinite;transform-box:fill-box;transform-origin:center}
-.bt-people.is-idle .bt-person-beat,.bt-person-beat.is-idle{animation:none;opacity:.65}
+.bt-person-shadow{fill:#303e43;opacity:.2;transform-box:fill-box;transform-origin:center;animation:bt-shadow-beat var(--beat,1s) cubic-bezier(.3,0,.4,1) infinite}
+.bt-person-beat{animation:bt-person-beat var(--beat,1s) cubic-bezier(.3,0,.4,1) infinite;transform-box:fill-box;transform-origin:center bottom}
+.bt-people.is-idle{filter:saturate(.35);opacity:.72}
+.bt-people.is-idle .bt-person-beat,.bt-people.is-idle .bt-person-shadow,.bt-person-beat.is-idle{animation:none}
 @keyframes bt-person-beat{0%,24%,100%{transform:translateY(0)}10%{transform:translateY(-3px)}}
+@keyframes bt-shadow-beat{0%,24%,100%{transform:scaleX(1);opacity:.2}10%{transform:scaleX(.72);opacity:.12}}
 .bt-tap{animation:bt-tap .22s ease-out}
 @keyframes bt-tap{50%{transform:translateY(2px)}}
-@media(prefers-reduced-motion:reduce){.bt-person-beat,.bt-tap{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.bt-person-beat,.bt-person-shadow,.bt-tap{animation:none!important}}
+
+/* Idle land reuses the same bitmap materials as its related building family. */
+.ground{stroke:#303e4338;stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+/* Outline only the fog flower; its matching fill/stroke hides internal hex seams. */
+.fog-edge{stroke:#303e4338;stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.ambient-tile{pointer-events:none;filter:drop-shadow(0 1px 1px #303e4328)}
+.ambient-art{image-rendering:auto}
+.ambient-tile.is-preview{opacity:.78}
+.hex.has-building .ground{filter:saturate(.82) brightness(.98)}
+.terrain-association{display:flex;align-items:center;gap:8px;margin:12px 0 4px;padding:9px 10px;border-radius:8px;background:var(--surface-inset);color:var(--text-secondary);font-size:12px}
+.terrain-association .icon{width:22px;height:22px}
+.terrain-association b{color:var(--text-primary);font-weight:650}
+.terrain-association .assoc-arrow{color:var(--text-disabled)}
+.road-junction{fill:var(--road-dirt);stroke:none;pointer-events:none}

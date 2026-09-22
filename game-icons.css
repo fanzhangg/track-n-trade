@@ -1,4 +1,4 @@
-/* Shared Kenney icon system; preserve map gestures and worker cursor animation. */
+/* Shared project icon system; people are tabletop meeple pieces, not cursors. */
 .tt-icon{pointer-events:none;vertical-align:middle}
 .tt-map-icon,.tt-map-icon image{image-rendering:auto;pointer-events:none}
 .money-hud>.tt-icon{align-self:center}
