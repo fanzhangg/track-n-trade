@@ -554,8 +554,11 @@ function renderMap() {
   hit.onclick=select;hit.onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();select();}};
  }
 }
+function purchaseLabel(title, cost, description='') {
+ return `<span class="action-copy"><strong class="action-title">${title}</strong>${description?`<small class="action-description">${description}</small>`:''}</span><span class="action-cost">${coins(cost)}</span>`;
+}
 function button(label, command, primary=false, disabled=false, cls='') {
- return `<button data-command='${JSON.stringify(command)}' class="${primary?'primary':''} ${cls}" ${disabled?'disabled':''}>${label}</button>`;
+ return `<button data-command='${JSON.stringify(command)}' class="${primary?'primary':''} ${label.includes('action-cost')?'purchase-action':''} ${cls}" ${disabled?'disabled':''}>${label}</button>`;
 }
 function townPanel(t) {
  const st=windowStats(), key=t.id, buys=E.buys(world,key), linked=connectedTowns().includes(key), b=t.building;
@@ -563,13 +566,13 @@ function townPanel(t) {
  let html=`<h2>${icon('town','town-c')}城镇</h2><div class="subtitle">${E.ERAS[world.tech.era]} · 每种货每回合收 ${rate} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${coins(earning)}</b><small>/ 回合</small></div>`;
  html+=`<div class="crew"><div class="crew-top"><span>居民 ${b.residents}</span><b>${b.residents} × ${E.TOWN_RATE*era} = ${rate} 件/回合</b></div><div class="slots residents">${Array.from({length:b.residents},(_,i)=>`<span class="resident bt-person-beat ${world.paused||!Object.values(world.stats.at(-1)?.sales[key]||{}).some(n=>n>0)?'is-idle':''}" style="--beat:${Math.max(.25,E.DT/speed)}s;animation-delay:-${i*.15}s">${icon('resident')}</span>`).join('')}</div></div>`;
  html+=townFlowSection(t,st);
- html+=`<div class="actions">${full?'':button(`加第 ${b.residents+1} 名居民<small>${coins(next)} · 每种货每回合多收 ${E.TOWN_RATE*era} 件</small>`,{type:'resident',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon('town','')}手工收购 每种货 ${E.clickPower(world,t)} 件<small>点城镇加需求，货会立刻派来</small></button></div>`;
+ html+=`<div class="actions">${full?'':button(purchaseLabel(`加第 ${b.residents+1} 名居民`,next,`每种货每回合多收 ${E.TOWN_RATE*era} 件`),{type:'resident',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon('town','')}手工收购 每种货 ${E.clickPower(world,t)} 件<small>点城镇加需求，货会立刻派来</small></button></div>`;
  return html;
 }
 function flowerPanel(f) {
  if (f.state === 'fog') {
   const cost=E.flowerCost(world), n=world.unlocked+1;
-  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块 · ${n%E.FLOWER_PAIR?`下一块同价`:`下一块 ×${E.GEN.flowerGrowth}`}，两块一档，每档涨 ${E.GEN.flowerGrowth} 倍</p></div><div class="actions">${button(`解锁这块板块<small>${coins(cost)}</small>`,{type:'explore',flower:f.id},true,!afford(cost),costly(cost))}</div>`;
+  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>第 ${n} 块 · ${n%E.FLOWER_PAIR?`下一块同价`:`下一块 ×${E.GEN.flowerGrowth}`}，两块一档，每档涨 ${E.GEN.flowerGrowth} 倍</p></div><div class="actions">${button(purchaseLabel(`解锁这块板块`,cost),{type:'explore',flower:f.id},true,!afford(cost),costly(cost))}</div>`;
  }
 }
 function renderSelection() {
@@ -591,7 +594,7 @@ function renderSelection() {
   const c=crew(t), full=n>=E.MAX_WORKERS;
   const dots=Array.from({length:c.n},(_,i)=>`<span class="wmeeple" style="${beatStyle(c,i)}">${icon('worker')}</span>`).join('');
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:names[r];
-  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div><div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(`雇第 ${n+1} 名工人<small>${coins(next)} · 每回合自动多 ${E.workerPower(world,b.type)} 件</small>`,{type:'worker',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
+  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div><div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(purchaseLabel(`雇第 ${n+1} 名工人`,next,`每回合自动多 ${E.workerPower(world,b.type)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
   html=html.replace('<h3>近 30 回合每回合</h3>',flowSection(t,st)+'<h3>近 30 回合每回合</h3>');
   html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">从这里修路</button>${n?button(`辞退一名工人<small>退回 ${coins(b.workers[n-1].paid)}</small>`,{type:'fireWorker',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
  } else if (t) {
@@ -602,7 +605,7 @@ function renderSelection() {
   if(related.length)html+=`<div class="terrain-association"><span>${names[t.terrain]}</span><span class="assoc-arrow">→</span>${related.map(b=>`${icon(b)}<b>${names[b]}</b>`).join('<span>、</span>')}</div>`;
   else if(t.terrain==='mountain')html+='<div class="terrain-association"><b>不可建造</b><span>道路也无法通过</span></div>';
   else if(t.terrain==='lake')html+=`<div class="terrain-association">${icon('waterway')}<b>${world.tech.waterway?'航道已开放':'需要航道科技'}</b><span>可通行，不可建造</span></div>`;
-  if(fits.length)html+=`<div class="actions">${fits.map(b=>button(`建造${names[b]}<small>${coins(E.buildingCost(world,b))}</small>`,{type:'build',tile:t.id,buildType:b},true,!afford(E.buildingCost(world,b)),costly(E.buildingCost(world,b)))).join('')}</div>`;
+  if(fits.length)html+=`<div class="actions">${fits.map(b=>button(purchaseLabel(`建造${names[b]}`,E.buildingCost(world,b)),{type:'build',tile:t.id,buildType:b},true,!afford(E.buildingCost(world,b)),costly(E.buildingCost(world,b)))).join('')}</div>`;
   if(locked.length)html+=`<p class="tip">未解锁：${locked.map(b=>names[b]).join('、')}</p>`;
  } else html='<div class="empty-state"><h2>详情</h2><p>点地图上的建筑、城镇或道路查看详情。目标在右侧「目标」面板里。</p></div>';
  box.innerHTML=html;
@@ -679,11 +682,11 @@ function renderTech() {
    const avail=E.techAvailable(world,c.unlock), cost=E.techCost(world,c.unlock);
    const missing=E.TECH[c.unlock].requires.filter(r=>!world.tech[r]).map(r=>E.TECH[r].name);
    cls=!avail?'locked':afford(cost)?'ready':'costly';
-   body=!avail?`<div class="locked-note">${icon('ui-locked')}需要先解锁${missing.join('、')}</div>`:button(`解锁<small>${coins(cost)}</small>`,{type:'tech',key:c.unlock},true,!afford(cost),costly(cost));
+   body=!avail?`<div class="locked-note">${icon('ui-locked')}需要先解锁${missing.join('、')}</div>`:button(purchaseLabel(`解锁`,cost),{type:'tech',key:c.unlock},true,!afford(cost),costly(cost));
   } else if (c.craft) {
    const cost=E.techCost(world,c.craft), maxed=E.techMaxed(world,c.craft);
    cls=maxed?'owned':afford(cost)?'owned ready':'owned costly';
-   body=`<div class="craft-now">${c.per(level+1)}</div>`+(maxed?`<div class="owned-mark">${icon('check')}已是最高</div>`:button(`${c.next?c.next(level+1):`升级到 Lv.${level+2}`}<small>${coins(cost)} · ${c.per(level+2)}</small>`,{type:'tech',key:c.craft},true,!afford(cost),`upgrade ${costly(cost)}`));
+   body=`<div class="craft-now">${c.per(level+1)}</div>`+(maxed?`<div class="owned-mark">${icon('check')}已是最高</div>`:button(purchaseLabel(`${c.next?c.next(level+1):`升级到 Lv.${level+2}`}`,cost,`${c.per(level+2)}`),{type:'tech',key:c.craft},true,!afford(cost),`upgrade ${costly(cost)}`));
   } else {
    cls='owned'; body=`<div class="owned-mark">${icon('check')}已开通</div>`;
   }
@@ -749,7 +752,7 @@ function renderToolbar() {
  const want=unlockedBuildings().join(',');
  if (bar.dataset.key!==want) {
   bar.dataset.key=want;
-  bar.innerHTML=unlockedBuildings().map(b=>`<button data-build="${b}">${icon(b)}<span>${names[b]}<small></small></span></button>`).join('');
+  bar.innerHTML=unlockedBuildings().map(b=>`<button data-build="${b}">${icon(b)}<span class="action-copy"><strong class="action-title">${names[b]}</strong></span><span class="action-cost"></span></button>`).join('');
   for(const button of bar.querySelectorAll('[data-build]')){
    button.onpointerdown=event=>{if(event.button!==0)return;gesture={kind:'build',type:button.dataset.build,x:event.clientX,y:event.clientY,moved:false,pointerId:event.pointerId};button.setPointerCapture(event.pointerId);};
    button.onclick=()=>{if(suppressClick){suppressClick=false;return;}buildType=buildType===button.dataset.build?null:button.dataset.build;connectFrom=null;render();};
@@ -758,7 +761,7 @@ function renderToolbar() {
  for(const b of bar.querySelectorAll('[data-build]')){
   b.classList.toggle('active',b.dataset.build===buildType);
   b.setAttribute('aria-pressed',b.dataset.build===buildType?'true':'false');
-  b.querySelector('small').textContent=coins(E.buildingCost(world,b.dataset.build));
+  b.querySelector('.action-cost').textContent=coins(E.buildingCost(world,b.dataset.build));
   const ok=afford(E.buildingCost(world,b.dataset.build));
   b.classList.toggle('primary',ok);b.classList.toggle('costly',!ok);
  }

@@ -60,3 +60,15 @@
 .node.costly{box-shadow:none}
 .fog-flower:not(.affordable) .fog-hex{fill:#dcdad4;stroke:#dcdad4}
 
+
+/* Shared action hierarchy: title and supporting copy left, price right. */
+button{font-weight:700}
+button small{font-weight:400}
+button.purchase-action{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0;text-align:left;padding:12px}
+.action-copy{display:block;flex:1;min-width:0}
+.action-title{display:block;font-size:14px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+button .action-description{display:block;font-size:12px;font-weight:400;line-height:1.5;margin-top:4px}
+button .action-cost{flex:none;margin-left:auto;font-size:18px;font-weight:750;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.toolbar button[data-build] .action-cost{font-size:16px}
+.toolbar button[data-build]{flex-wrap:nowrap;max-width:100%}
+@media(max-width:740px){.actions{grid-template-columns:1fr}.toolbar button[data-build]{flex:1 1 160px}.action-title{font-size:14px}}

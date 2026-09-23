@@ -69,3 +69,7 @@ button.danger{color:var(--bottleneck-1)}
 .fog-flower:not(.affordable) .fog-hex{fill:var(--terrain-fog-costly);stroke:var(--terrain-fog-costly)}
 
 
+
+button .action-description{color:var(--text-secondary)}
+button.primary .action-description,button.upgrade .action-description,button.active .action-description{color:color-mix(in srgb,currentColor 76%,transparent)}
+button .action-cost{color:inherit}
