@@ -4,8 +4,8 @@ test('planner states distinguish unlock, repeatable craft, affordability and com
  const w=E.newWorld(1);w.money=1e6;
  assert.equal(G.status(E,w,'quarry').kind,'unlock');assert.equal(G.status(E,w,'sawmill').kind,'locked');
  assert.equal(G.status(E,w,'camp').level,'工艺 I');assert.equal(G.status(E,w,'camp').kind,'upgrade');
- E.command(w,{type:'tech',key:'quarry'});assert.equal(G.status(E,w,'quarry').key,'quarryCraft');assert.equal(G.status(E,w,'quarry').kind,'upgrade');
- E.command(w,{type:'tech',key:'campCraft'});assert.equal(G.status(E,w,'camp').current,2);assert.equal(G.status(E,w,'camp').max,null);
+ E.command(w,{type:'tech',key:'quarry'});assert.equal(G.status(E,w,'quarry').kind,'researching');while(E.techProgress(w,'quarry'))E.tick(w);assert.equal(G.status(E,w,'quarry').key,'quarryCraft');assert.equal(G.status(E,w,'quarry').kind,'upgrade');
+ E.command(w,{type:'tech',key:'campCraft'});assert.equal(G.status(E,w,'camp').kind,'researching');while(E.techProgress(w,'campCraft'))E.tick(w);assert.equal(G.status(E,w,'camp').current,2);assert.equal(G.status(E,w,'camp').max,null);
  w.money=0;assert.equal(G.status(E,w,'camp').kind,'poor');assert.equal(G.status(E,w,'sawmill').kind,'poor');assert.equal(G.status(E,w,'era').kind,'locked');
  w.tech.era=4;assert.equal(G.status(E,w,'era').kind,'maxed');assert.equal(G.status(E,w,'era').level,'V / V');
  w.tech.waterway=1;assert.equal(G.status(E,w,'waterway').kind,'maxed');assert.equal(G.status(E,w,'waterway').level,'已完成');

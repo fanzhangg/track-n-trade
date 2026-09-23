@@ -263,6 +263,11 @@ function newWorld(seed=1){const w={schemaVersion:25,seed:seed>>>0,tick:0,serial:
  w.initial=totals(w);return w;}
 
 /* ---------- prices ---------- */
+const projectDuration=cost=>8*(2+Math.ceil(Math.sqrt(cost/100)));
+function projectProgress(w,p){if(!p)return null;const done=Math.min(p.duration,Math.max(0,w.tick-p.started));return {...p,done,remaining:p.duration-done,percent:Math.floor(done/p.duration*100)};}
+const buildingProgress=(w,t)=>projectProgress(w,t?.building?.construction);
+const techProgress=(w,k)=>projectProgress(w,w.research?.[k]);
+function projects(w){return [...Object.values(w.tiles).filter(t=>t.building?.construction).map(t=>({...buildingProgress(w,t),name:RECIPES[t.building.type].name,kind:'建造',tile:t.id})),...Object.entries(w.research||{}).map(([k,p])=>({...projectProgress(w,p),name:TECH[k].name,kind:'研究',key:k}))];}
 function buildingCost(w,type){const n=Object.values(w.tiles).filter(t=>t.building?.type===type).length;return Math.round(PRICE[type]*BUILDING_GROWTH**n);}
 function workerCost(w,t){const b=t.building;return Math.round(WORKER[b.type]*WORKER_GROWTH**b.workers.length);}
 // What one more piece of a good is worth at best: its town price, or the price of what it turns into.
@@ -298,7 +303,7 @@ function buys(w,tile){const b=w.tiles[tile].building,out={};for(const[r,base]of 
 // makes a malformed future cycle inactive instead of recursing forever.
 function productionState(w,t,memo=new Map(),visiting=new Set()){
  if(memo.has(t.id))return memo.get(t.id);
- if(!workshop(t.building)||visiting.has(t.id))return {active:false,missing:[],sources:{}};
+ if(t.building?.construction||!workshop(t.building)||visiting.has(t.id))return {active:false,missing:[],sources:{}};
  const branch=new Set(visiting).add(t.id),sources={},missing=[];
  for(const r of Object.keys(RECIPES[t.building.type].in)){
   const source=Object.values(w.tiles).find(u=>u.id!==t.id&&workshop(u.building)&&RECIPES[u.building.type].out===r&&path(w,u.id,t.id)&&productionState(w,u,memo,branch).active);
@@ -424,14 +429,14 @@ function previewRoute(w,f){const temp=copy(w);temp.serial+=1000;materialize(temp
 /* ---------- commands ---------- */
 function command(w,c){const t=w.tiles[c.tile],b=t?.building;const fail=m=>{throw Error(m);};
  if(c.type==='build'){if(!RECIPES[c.buildType])fail('未知建筑');if(c.buildType!=='camp'&&!w.tech[c.buildType])fail(`先在科技树里解锁${RECIPES[c.buildType].name}`);if(!t||t.building)fail('这里已有建筑');if(!RECIPES[c.buildType].fits.includes(t.terrain))fail('这种建筑不适合这块地');const cost=buildingCost(w,c.buildType);
-  pay(w,cost);t.building={id:id(w),type:c.buildType,paid:cost,workers:[]};
- }else if(c.type==='click'){if(!b)fail('点击工坊才能生产');
+  pay(w,cost);t.building={id:id(w),type:c.buildType,paid:cost,workers:[],construction:{started:w.tick,duration:projectDuration(cost)}};
+ }else if(c.type==='click'){if(b?.construction)fail('建筑施工中');if(!b)fail('点击工坊才能生产');
   if(b.type==='town')fail('城镇自动收购，点击只查看详情');
   const state=productionState(w,t);if(state.missing.length)fail('请连接'+state.missing.map(r=>GOODS[r]).join('、')+'的运行中上游');
   const rc=RECIPES[b.type],n=clickPower(w,t);t.loose[rc.out]+=n;w.production[rc.out]+=n;w.manual.out[rc.out]+=n;w.manual.tiles[t.id]=(w.manual.tiles[t.id]||0)+n;w.clicks++;
- }else if(c.type==='worker'){if(!workshop(b))fail('先选择一座已建工坊');if(b.workers.length>=MAX_WORKERS)fail(`每座建筑最多 ${MAX_WORKERS} 名工人，产能要靠新建筑和对应工艺`);const cost=workerCost(w,t);pay(w,cost);b.workers.push({id:id(w),paid:cost});
+ }else if(c.type==='worker'){if(b?.construction)fail('建筑施工中');if(!workshop(b))fail('先选择一座已建工坊');if(b.workers.length>=MAX_WORKERS)fail(`每座建筑最多 ${MAX_WORKERS} 名工人，产能要靠新建筑和对应工艺`);const cost=workerCost(w,t);pay(w,cost);b.workers.push({id:id(w),paid:cost});
  }else if(c.type==='fireWorker'){if(!workshop(b))fail('请选择工坊');if(!b.workers.length)fail('这里没有工人');refund(w,b.workers.pop().paid);
- }else if(c.type==='tech'){const u=TECH[c.key];if(!u)fail('未知科技');if(techOwned(w,c.key))fail('已经买过这项科技');if(techMaxed(w,c.key))fail('已经是最高等级');if(!techPrerequisitesMet(w,c.key))fail(`先解锁${u.requires.filter(r=>!w.tech[r]).map(r=>TECH[r].name).join('和')}`);if(techDiscoveryReason(w,c.key))fail(techDiscoveryReason(w,c.key));pay(w,techCost(w,c.key));w.tech[c.key]++;
+ }else if(c.type==='tech'){const u=TECH[c.key];if(!u)fail('未知科技');if(techProgress(w,c.key))fail('科技研究中');if(techOwned(w,c.key))fail('已经买过这项科技');if(techMaxed(w,c.key))fail('已经是最高等级');if(!techPrerequisitesMet(w,c.key))fail(`先解锁${u.requires.filter(r=>!w.tech[r]).map(r=>TECH[r].name).join('和')}`);if(techDiscoveryReason(w,c.key))fail(techDiscoveryReason(w,c.key));const cost=techCost(w,c.key);pay(w,cost);(w.research||={})[c.key]={started:w.tick,duration:projectDuration(cost)};
  }else if(c.type==='connect'){const r=connection(w,c.from,c.to);pay(w,r.cost);for(const s of r.segments){const base=edgeId(s.a,s.b),road=edgeId(c.from,c.to),k=w.edges[base]?base+'#'+road:base;w.edges[k]={id:k,a:s.a,b:s.b,road,removing:false,readyAt:w.tick,paid:s.cost};}pathCache.delete(w);
  }else if(c.type==='demolish'){if(!b||b.type==='town')fail('请选择工坊');refund(w,b.paid+b.workers.reduce((n,m)=>n+m.paid,0));t.building=null;
  }else if(c.type==='removeRoad'){const group=roadComponent(w,c.edge);if(!group.length)fail('请选择道路');for(const e of group)e.removing=true;pathCache.delete(w);
@@ -490,6 +495,8 @@ function buildingBottleneck(){return null;}
 function warning(){return null;}
 function tick(w){
  w.tick++;
+ for(const t of Object.values(w.tiles))if(t.building?.construction&&!buildingProgress(w,t).remaining)delete t.building.construction;
+ for(const k of Object.keys(w.research||{}))if(!techProgress(w,k).remaining){w.tech[k]++;delete w.research[k];}
  const sample={tick:w.tick,out:zero(),tiles:{...w.manual.tiles},manualTiles:{...w.manual.tiles},capacities:{},edges:{},received:{},dispatched:{},income:0,gross:w.manual.gross,sales:{},revenue:{},traffic:[]};
  add(sample.out,w.manual.out);for(const[k,v]of Object.entries(w.manual.sales))add(sample.sales[k]||(sample.sales[k]=zero()),v);
  w.manual={out:zero(),tiles:{},sales:{},gross:0};
@@ -526,6 +533,10 @@ function tick(w){
 function totals(w){const sum=zero();for(const t of Object.values(w.tiles))add(sum,t.loose);for(const s of w.shipments)sum[s.r]++;return sum;}
 function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
  if(w?.schemaVersion!==25||!w.tiles||!w.flowers||!Array.isArray(w.shipments)||!Array.isArray(w.stats)||!w.scheduler||!w.goals||!w.tech||!w.manual||!w.sold||!w.flags||!int(w.tick)||!int(w.serial)||!int(w.money)||!int(w.earned)||!int(w.spent)||!int(w.clicks)||!int(w.seed)||!int(w.unlocked)||!int(w.lastTownUnlock)||!int(w.lastNovel))throw Error('存档格式不兼容');
+ const checkProject=p=>{if(!p||!int(p.started)||p.started>w.tick||!int(p.duration)||p.duration<1||p.started+p.duration<=w.tick)throw Error('进度无效');};
+ if(w.research!==undefined&&(!w.research||typeof w.research!=='object'||Array.isArray(w.research)))throw Error('研究进度无效');
+ for(const [k,p]of Object.entries(w.research||{})){if(!TECH[k]||techOwned(w,k)||techMaxed(w,k)||!techPrerequisitesMet(w,k))throw Error('研究进度无效');checkProject(p);}
+ for(const t of Object.values(w.tiles))if(t.building?.construction)checkProject(t.building.construction);
  for(const g of GOALS)if(!Number.isSafeInteger(w.goals[g.id])||w.goals[g.id]<1)throw Error('目标等级无效');
  for(const k of Object.keys(w.goals))if(!GOALS.some(g=>g.id===k))throw Error('目标等级无效');
  for(const k of Object.keys(TECH))if(!int(w.tech[k])||(!TECH[k].repeat&&w.tech[k]>1)||(TECH[k].max!=null&&w.tech[k]>TECH[k].max))throw Error('科技无效');
@@ -590,7 +601,7 @@ function load(saved){const next=copy(saved);if(next&&next.lastNovel==null)next.l
   delete next.flags.yardFull;
  }
  validate(next);return next;}
-const api={roadEndpoints,techDiscoveryReason,techPrerequisitesMet,DISCOVERY_MARKET,productionState,NEW_GOODS,NEW_BUILDINGS,RESEARCH,productionBonuses,researchStatus,processing,nearWater,WARNING_ROUNDS,buildingBottleneck,warning,formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,FAR_BONUS,BUILDING_GROWTH,CRAFT_BASE,CRAFT_GROWTH,ERA_BASE,townCap,steady,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,discovery,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
+const api={projectDuration,projectProgress,buildingProgress,techProgress,projects,roadEndpoints,techDiscoveryReason,techPrerequisitesMet,DISCOVERY_MARKET,productionState,NEW_GOODS,NEW_BUILDINGS,RESEARCH,productionBonuses,researchStatus,processing,nearWater,WARNING_ROUNDS,buildingBottleneck,warning,formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,FAR_BONUS,BUILDING_GROWTH,CRAFT_BASE,CRAFT_GROWTH,ERA_BASE,townCap,steady,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,discovery,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
  copy,zero,add,workshop,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,roadComponent,command,tick,totals,validate,apply,load,buildingCost,workerCost,techCost,techOwned,techAvailable,techMaxed,workerPower,clickPower,eraPower,goodValue,workersOf,craftCost,eraCost,edgeCost,segmentCost,anchored,residentCost,townRate,income,buys,recentSales,terrainFactor,passable,rate,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -11,10 +11,11 @@
   const max=t.repeat?(t.max==null?null:t.max+1):1;
   const complete=E.techOwned(w,key)||E.techMaxed(w,key),available=E.techAvailable(w,key);
   const cost=complete?0:E.techCost(w,key),isUpgrade=t.repeat&&(owned||!building);
-  const kind=complete?'maxed':!available?'locked':w.money<cost?'poor':isUpgrade?'upgrade':'unlock';
-  const label={maxed:'已满级',locked:'前置未满足',poor:'金币不足',upgrade:'可升级',unlock:'可解锁'}[kind];
+  const pending=E.techProgress(w,key);
+  const kind=pending?'researching':complete?'maxed':!available?'locked':w.money<cost?'poor':isUpgrade?'upgrade':'unlock';
+  const label={researching:'研究中',maxed:'已满级',locked:'前置未满足',poor:'金币不足',upgrade:'可升级',unlock:'可解锁'}[kind];
   const level=building?(owned?`工艺 ${roman(current)}`:'工艺未开启'):t.repeat?`${roman(current)} / ${roman(max)}`:(current?'已完成':'未研究');
-  return {key,current,max,complete,available,cost,kind,label,level,isUpgrade,owned,building,
+  return {pending,key,current,max,complete,available,cost,kind,label,level,isUpgrade,owned,building,
    next:building&&!owned?'I':t.repeat?`${roman(current+1)}${max?' / '+roman(max):''}`:'已完成',
    reason:E.techDiscoveryReason(w,key),hint:building&&owned?'可持续升级':id==='era'?E.ERAS[w.tech.era]:'一次性解锁'};
  }
@@ -27,13 +28,13 @@
    else for(const dep of E.TECH[id]?.requires||[]){const from=E.TECH[dep].building||dep;if(ids.includes(from))edges.push({from,to:id,label:E.TECH[dep].building?'工艺 II':''});}
   }
   const levels=new Map(),depth=id=>{if(levels.has(id))return levels.get(id);const parents=edges.filter(e=>e.to===id);const n=parents.length?1+Math.max(...parents.map(e=>depth(e.from))):0;levels.set(id,n);return n;};
-  const rows=new Map(),nodes=ids.map(id=>{const col=depth(id),row=rows.get(col)||0;rows.set(col,row+1);return {id,discovered:!w||id==='camp'||w.tech[id]>0||E.techAvailable(w,id),x:24+col*294,y:24+row*190};});
-  return {nodes,edges,width:Math.max(...nodes.map(n=>n.x))+244,height:Math.max(...nodes.map(n=>n.y))+180,columns:Math.max(...levels.values())+1};
+  const rows=new Map(),nodes=ids.map(id=>{const col=depth(id),row=rows.get(col)||0;rows.set(col,row+1);return {id,discovered:!w||id==='camp'||w.tech[id]>0||E.techAvailable(w,id),x:24+col*294,y:24+row*134};});
+  return {nodes,edges,width:Math.max(...nodes.map(n=>n.x))+244,height:Math.max(...nodes.map(n=>n.y))+116,columns:Math.max(...levels.values())+1};
  }
  function markup(E,w,mode,selected,base='assets/icons/v1/'){
   const graph=layout(E,mode,w),at=Object.fromEntries(graph.nodes.map(n=>[n.id,n]));
   const ico=(id,size=24)=>root.TradeIcons.icon(id,{base,size,decorative:true});
-  const arrows=graph.edges.map((e,i)=>{const a=at[e.from],b=at[e.to],x=a.x+220,y=a.y+76,tx=b.x,ty=b.y+76,active=e.from===selected||e.to===selected;
+  const arrows=graph.edges.map((e,i)=>{const a=at[e.from],b=at[e.to],x=a.x+220,y=a.y+46,tx=b.x,ty=b.y+46,active=e.from===selected||e.to===selected;
    // Skip-level dependencies travel above the cards, never through an unrelated node.
    const skip=b.x-a.x>294,lane=14-i%3*3;
    const d=skip?`M${x} ${y} H${x+24} V${lane} H${tx-24} V${ty} H${tx}`:`M${x} ${y} C${x+38} ${y} ${tx-38} ${ty} ${tx} ${ty}`;
@@ -42,10 +43,7 @@
   const nodes=graph.nodes.map(n=>{
    if(!n.discovered)return `<button type="button" class="planner-node undiscovered" style="left:${n.x}px;top:${n.y}px" disabled tabindex="-1" aria-label="${mode==='production'?'未发现产业':'未发现科技'}">${ico("ui-locked",28)}<span>${mode==='production'?'未发现产业':'未发现科技'}</span></button>`;
    const rc=E.RECIPES[n.id],t=E.TECH[n.id],state=status(E,w,n.id);
-   const ins=rc?Object.keys(rc.in):[],recipe=rc?`${ins.length?ins.map(r=>E.GOODS[r]).join(' + '):rc.fits.map(f=>E.TERRAIN_NAME[f]).join('/')} → ${E.GOODS[rc.out]}`:n.id==='era'?`当前全图基础售价 +${w.tech.era*25}%`:({waterway:'湖上开放道路',roadEngineering:'新路费用 −20%',navigation:'湖路系数 ×3 → ×2',waterPower:'邻湖工坊：每工人 +1 件',mountainPass:'山地开放道路 · 系数 ×4',specialization:'满员加工工坊：+3 件',deepMining:'矿工 +2 铁矿石 · 铁厂工人 +1 铁'})[n.id]||t.desc;
-   const title=rc?.name||t.name,icon=rc?n.id:n.id==='era'?'town':t.icon||'waterway';
-   const symbol={unlock:'ui-plus',upgrade:'ui-gear',maxed:'ui-checkmark',poor:'coin',locked:'ui-locked'}[state.kind];
-   return `<button class="planner-node state-${state.kind} ${state.owned?'unlocked':'available'} ${n.id===selected?'selected':''}" data-industry="${n.id}" style="left:${n.x}px;top:${n.y}px" aria-pressed="${n.id===selected}" aria-label="${title}，${state.level}，${state.label}，${state.complete?'':E.formatMoney(state.cost)+'，'}${recipe}"><span class="planner-node-title">${ico(icon,40)}<b>${title}</b></span><span class="planner-level"><b>${state.level}</b></span><span class="planner-recipe">${escape(recipe)}</span><span class="planner-node-state"><span class="tech-status ${state.kind}">${ico(symbol,12)}${state.label}</span><span class="planner-node-price">${state.complete?'':ico('coin',20)+escape(E.formatMoney(state.cost))}</span></span></button>`;
+   return IndustryButtons.tech(E,w,state.key,{name:rc?.name||t.name,inspect:true,selected:n.id===selected,base,className:'planner-node state-'+state.kind,attributes:'data-industry="'+n.id+'" data-x="'+n.x+'" data-y="'+n.y+'"'}).replace('style="','style="left:'+n.x+'px;top:'+n.y+'px;');
   }).join('');
   return {...graph,html:`<svg class="planner-lines ${mode}" width="${graph.width}" height="${graph.height}" aria-hidden="true"><defs><marker id="planner-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 8 4 0 8Z"/></marker></defs>${arrows}</svg>${nodes}`};
  }

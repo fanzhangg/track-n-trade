@@ -1,13 +1,18 @@
 /* Minimal tabletop composition: miniature, loose goods, exceptional state only. */
 (function(root){
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function ambient({terrain,preview=false},base='assets/icons/v1/terrain/'){
+ function attentionRing(kind='building',label='待连接产业',seed=''){
+  const phase=[...String(seed)].reduce((n,c)=>n+c.charCodeAt(0),0)%48/10;
+  return `<g class="map-attention map-attention-${kind}" style="animation-delay:-${phase}s" role="img" aria-label="${esc(label)}"><title>${esc(label)}</title><ellipse cx="0" cy="10" rx="31" ry="13"/><path d="M31 6l4 4-4 4-4-4Z"/></g>`;
+ }
+ function ambient({terrain,preview=false,id="lake",attention=false},base='assets/icons/v1/terrain/'){
   if(!['grass','forest','rock','ore','mountain','lake'].includes(terrain))return '';
+  if(terrain==='lake'){const phase=[...id].reduce((n,c)=>n+c.charCodeAt(0),0)%13/3;return '<g class="ambient-tile ambient-lake" aria-hidden="true">'+[-12,0,12].map((y,i)=>`<path class="water-ripple" style="animation-delay:-${phase+i*1.3}s" d="M${-23+i*3} ${y} q7 -3 14 0 t14 0"/><path class="water-glint" style="animation-delay:-${phase+i*.8}s" d="M${14-i*14} ${y+5}h5"/>`).join('')+'</g>';}
   const size={grass:62,forest:68,rock:62,ore:64,mountain:72,lake:66}[terrain];
   const foot=terrain==='lake'?22:16;
   // Low scenery has transparent vertical padding; align its visible base with the ground.
   const inset={grass:13,forest:0,rock:12,ore:0,mountain:0,lake:17}[terrain];
-  return `<g class="ambient-tile ambient-${esc(terrain)}${preview?' is-preview':''}" aria-hidden="true"><image class="env-object ambient-art" href="${base}${esc(terrain)}.png?v=terrain2" x="${-size/2}" y="${foot-size+inset}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/></g>`;
+  return `<g class="ambient-tile ambient-${esc(terrain)}${preview?' is-preview':''}" aria-hidden="true">${attention?attentionRing('resource','可开发资源',id):''}<image class="env-object ambient-art" href="${base}${esc(terrain)}.png?v=terrain2" x="${-size/2}" y="${foot-size+inset}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/></g>`;
  }
  function marker(kind,x,y,label){
   const shape='<circle class="bt-state-base" r="6"/><path class="bt-state-ink" d="M0-3v3.5m0 2v.2"/>';
@@ -49,7 +54,7 @@
  // made:[{id,n}], used:[{id,n}] (buildings); offers:[{id,used,income}] (towns); starved:[input ids] (expanded only);
  // store:[{id,count,cap,role:'in'|'out'|'buy'}]
  const WAREHOUSE='<path d="M.5 4.6 5 .8l4.5 3.8V9.5H.5Z" fill="#8c7a62"/><path d="M1.6 4.9 5 2l3.4 2.9" fill="none" stroke="#c9b58f" stroke-width=".8"/><rect x="3.1" y="5.6" width="3.8" height="3.9" fill="#f3ead8"/><path d="M3.1 6.9h3.8M3.1 8.2h3.8" stroke="#8c7a62" stroke-width=".5"/>';
- function pillTile({type,name,made=[],used=[],offers=[],starved=[],store=[],status='',expanded=false,undeveloped=false},base){
+ function pillTile({type,name,made=[],used=[],offers=[],starved=[],store=[],status='',expanded=false,undeveloped=false,attention=false,attentionLabel='待连接产业',attentionSeed=''},base){
   expanded=false; // Selection highlights relationships; numerical detail lives in the side panel.
   const icon=(id,x,y,size)=>id==='warehouse'?`<g transform="translate(${x} ${y}) scale(${size/10})">${WAREHOUSE}</g>`:root.TradeIcons.svgIcon(id,{base,x,y,size});
   const town=type==='town',w10=t=>labelWidth(t)*10/12,w8=t=>labelWidth(t)*8/12,ICON=10,GAP=2,PAD=5,H=expanded?20:16;
@@ -102,7 +107,7 @@
    prodBad=false;
   }
   const tip=[status,...(town?offers.map(o=>undeveloped?`收购单价 ${num(o.price)}/件`:`每回合 +${num(o.income)}`):made.map(m=>`本回合产出 ${num(m.n)}`)),...store.map(s=>`仓库 ${s.count}/${s.cap}`)].filter(Boolean).join('，');
-  let html=`<g class="building-tile-ui ${expanded?'is-expanded':''}" pointer-events="none"><title>${esc(name)}${tip?' · '+esc(tip):''}</title><ellipse class="bt-site" cx="0" cy="7" rx="24" ry="9"/><g class="bt-miniature">${icon(type,-27,-39,54)}</g>`;
+  let html=`<g class="building-tile-ui ${expanded?'is-expanded':''}" pointer-events="none"><title>${esc(name)}${tip?' · '+esc(tip):''}</title><ellipse class="bt-site" cx="0" cy="7" rx="24" ry="9"/>${attention?attentionRing('building',attentionLabel,attentionSeed):''}<g class="bt-miniature">${icon(type,-27,-39,54)}</g>`;
   if(town){
    const rows=offers.map(o=>[{icon:o.id},ARROW,undeveloped?{icon:'coin',text:num(o.price),cap:'/件'}:{pre:'+',icon:'coin',text:num(o.income)}]);
    if(rows.length)html+=pill([],12,!undeveloped&&prodBad,undeveloped?'收购资源与单价':'每回合收入',undeveloped,rows);
@@ -141,6 +146,8 @@
   const label={shortage:'缺料',supply:'缺货',capacity:'亏空',backlog:'积压'}[notice.kind];
   return label?`<g class="pop tick warning-pop" transform="translate(${x},${y})" role="img" aria-label="${label}"><text text-anchor="middle" class="pop-text warning-pop-text">${label}</text></g>`:'';
  }
- root.BuildingTiles={render,people,marker,levelBadge,formatLevel,warningPop};
+ let constructionSequence=0;
+ function constructionMeter(p){const percent=Math.floor(p.done/p.duration*100),clip='construction-clip-'+(++constructionSequence);return '<g class="construction-meter bt-floating bt-pill" transform="translate(-35,12)" role="img" aria-label="建造 '+percent+'%"><rect class="bt-float-bg" width="70" height="16" rx="8"/><defs><clipPath id="'+clip+'"><rect width="70" height="16" rx="8"/></clipPath></defs><rect class="construction-fill" width="'+70*percent/100+'" height="16" clip-path="url(#'+clip+')"/><text x="35" y="8" dominant-baseline="central" text-anchor="middle" class="construction-label">建造 · '+percent+'%</text></g>';}
+ root.BuildingTiles={constructionMeter,render,people,marker,levelBadge,formatLevel,warningPop};
  root.AmbientTiles={render:ambient};
 })(window);

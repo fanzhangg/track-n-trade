@@ -86,3 +86,14 @@
 .bt-pill.is-undeveloped .bt-cap{fill:#ffffffd9}
 .bt-pill.is-undeveloped .bt-arrow{stroke:#ffffffc7}
 .bt-pill.is-undeveloped .bt-pill-sep{stroke:#ffffff55}
+
+.map-attention{color:#b77b35;opacity:.65;animation:attention-breathe 4.8s ease-in-out infinite;pointer-events:none}
+.map-attention-resource{color:var(--action-primary,#466775)}
+.map-attention ellipse{fill:none;stroke:currentColor;stroke-width:1.8}
+.map-attention path{fill:currentColor;stroke:var(--surface-panel,#fffaf0);stroke-width:.8}
+@keyframes attention-breathe{0%,100%{opacity:.3}50%{opacity:.8}}
+.water-ripple,.water-glint{fill:none;stroke:#e4f5ed;stroke-width:1.3;stroke-linecap:round;opacity:.3;animation:water-shimmer 12s ease-in-out infinite}
+.water-glint{stroke-width:1.6;animation-duration:16s}
+@keyframes water-shimmer{0%,100%{opacity:.24}50%{opacity:.36}}
+@media(prefers-reduced-motion:reduce){.map-attention,.water-ripple,.water-glint{animation:none!important}}
+.construction-meter .construction-fill{fill:var(--action-primary);opacity:.22}.construction-meter .construction-label{font:600 10px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary)}
