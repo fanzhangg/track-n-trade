@@ -504,11 +504,11 @@ function renderMap() {
    const earning=Object.entries(E.buys(world,t.id)).reduce((n,[r,d])=>n+st.sales(t.id,r)*d.price,0);
    const linked=connectedTowns().includes(t.id);
    const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,backlog:backlog(t.id,id),full:backlog(t.id,id)>0,income:linked?st.sales(t.id,id)*d.price:null}));
-   content=BuildingTiles.render({type:'town',name:'城镇',level:E.eraPower(world),residents:b.residents,offers,status:linked?`+${coins(earning)}/回合`:'未连路',alert:!linked});
+   content=BuildingTiles.render({type:'town',name:'城镇',level:E.eraPower(world),residents:b.residents,offers,notice:E.warning(world,t),status:linked?`+${coins(earning)}/回合`:'未连路',alert:!linked});
   } else if (b) {
    const rc=E.RECIPES[b.type],stall=stallOf(t),count=t.loose[rc.out];
    const status=stall||(count>=E.YARD?'满仓 · 待运出':!b.workers.length?'点击生产':'生产中');
-   content=BuildingTiles.render({type:b.type,name:names[b.type],level:E.workerPower(world,b.type),output:rc.out,count,capacity:E.YARD,status,alert:!!stall||count>=E.YARD});
+   content=BuildingTiles.render({type:b.type,name:names[b.type],level:E.workerPower(world,b.type),output:rc.out,count,capacity:E.YARD,status,notice:E.warning(world,t),alert:!!stall||count>=E.YARD});
    g.setAttribute('aria-label',`${names[b.type]}，${names[rc.out]}库存 ${count}，${status} (${t.id})`);
   } else if (!['grass','lake'].includes(t.terrain)||!roadLayout.ports.has(t.id)) {
    // Resource land and mountains keep their scenery whatever runs across them. Empty grass and open water keep
@@ -547,6 +547,7 @@ function renderMap() {
  if (world.tick!==popTick) {
   popTick=world.tick;const lastS=world.stats[world.stats.length-1];
   for(const old of $('pops').querySelectorAll('.pop.tick'))old.remove();
+  if(lastS)for(const tile of Object.values(world.tiles)){const notice=E.warning(world,tile);if(!notice)continue;const[x,y]=position(tile);$('pops').insertAdjacentHTML('beforeend',BuildingTiles.warningPop(notice,x,y+20));}
   if(lastS)for(const[k,n]of Object.entries(lastS.tiles)){const tile=world.tiles[k],b=tile?.building;if(!b||b.type==='town'||!b.workers.length)continue;const shown=Math.min(n,E.rate(world,tile));if(shown<1)continue;const[x,y]=position(tile);$('pops').insertAdjacentHTML('beforeend',`<g class="pop tick" transform="translate(${x+14},${y-28})"><text text-anchor="middle" class="pop-text" fill="${goodColor(E.RECIPES[b.type].out)}">+${shown}</text></g>`);}
  }
  for (const hit of $('roads').querySelectorAll('[data-edge]')) {

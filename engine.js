@@ -470,6 +470,39 @@ function advanceGoals(w,sample){const reward=goalReward(w);
   if(!levels)continue;
   const paid=levels*reward;w.money+=paid;w.earned+=paid;
   (sample.goals||(sample.goals={}))[g.id]={levels,reward:paid,tier:w.goals[g.id]};}}
+// Only completed simulation rounds advance a persistent warning streak.
+const WARNING_ROUNDS=5;
+function townBacklog(w,t){return Object.keys(t.building.buys).reduce((total,r)=>total+Math.max(0,Object.values(w.tiles).reduce((n,u)=>workshop(u.building)&&RECIPES[u.building.type].out===r&&path(w,u.id,t.id)?n+u.loose[r]:n,0)-t.building.demand[r]),0);}
+// Diagnose completed-round flow, not an empty yard alone. The renderer and streak
+// accumulator share this classifier so recovery cannot leave a stale warning.
+function buildingBottleneck(w,t,sample=w.stats.at(-1)){
+ const b=t.building;if(!b||!sample)return null;
+ const made=u=>sample.tiles[u.id]||0;
+ const supplied=(u,r)=>u.building.type==='town'?(sample.sales[u.id]?.[r]||0):made(u);
+ const consumers=r=>Object.values(w.tiles).filter(u=>u.id!==t.id&&u.building&&(u.building.type==='town'?u.building.buys[r]:RECIPES[u.building.type].in[r])&&path(w,t.id,u.id));
+ const need=(u,r)=>u.building.type==='town'?buys(w,u.id)[r].rate:rate(w,u);
+ if(b.type==='town'){
+  const count=townBacklog(w,t);if(count>0)return {kind:'backlog',count,good:'件货物'};
+  for(const [r,d] of Object.entries(buys(w,t.id)))if(supplied(t,r)<d.rate&&t.loose[r]<d.rate)return {kind:'supply'};
+  return null;
+ }
+ const rc=RECIPES[b.type],count=t.loose[rc.out],output=made(t)+(w.manual.tiles[t.id]||0);
+ if(count>=YARD)return {kind:'backlog',count,good:GOODS[rc.out]};
+ if(b.workers.length&&output<rate(w,t))for(const r of Object.keys(rc.in))if(t.loose[r]<rate(w,t)-output)return {kind:'shortage'};
+ // Zero stock is healthy when buyers are satisfied. Warn only when a connected
+ // buyer is underfed and this building cannot provide more automatic output.
+ if(count===0&&(!b.workers.length||output>=rate(w,t))&&consumers(rc.out).some(u=>supplied(u,rc.out)<need(u,rc.out)&&u.loose[rc.out]<need(u,rc.out)))return {kind:'capacity'};
+ return null;
+}
+function warning(w,t){
+ const a=t.building?.warning;if(!a||a.rounds<WARNING_ROUNDS)return null;
+ const current=buildingBottleneck(w,t);return current?.kind===a.kind?{...current,rounds:a.rounds}:null;
+}
+function updateWarnings(w,sample){
+ for(const t of Object.values(w.tiles)){const b=t.building;if(!b)continue;const issue=buildingBottleneck(w,t,sample);
+ b.warning=issue?{kind:issue.kind,rounds:b.warning?.kind===issue.kind?(b.warning.rounds||0)+1:1}:null;
+ }
+}
 function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{},income:0,sales:{}};const oldEdges=new Set(Object.keys(w.edges));
  add(sample.out,w.manual.out);Object.assign(sample.tiles,w.manual.tiles);w.manual={out:zero(),tiles:{}};
  for(const s of w.shipments)if(s.edge){s.remaining--;if(s.remaining<=0){s.node=s.to;s.edge=null;s.remaining=0;}}
@@ -503,6 +536,7 @@ function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{}
  const groups=new Map();for(const d of ds){const g=d.r+'@'+d.value;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(d);}
  const source=d=>Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:openPath(t.id,d.tile,d.r)})).filter(x=>x.p&&x.p.length).sort((a,b)=>a.p.length-b.p.length||a.t.id.localeCompare(b.t.id))[0];
  for(const[scope,group]of groups)for(;;){const d=choose(w,scope,group,d=>d.target-d.local-allocated(w,d.key)>0&&source(d));if(!d)break;const x=source(d);x.t.loose[d.r]--;const s={id:id(w),key:d.key,r:d.r,node:x.t.id,destination:d.tile};w.shipments.push(s);send(s,x.p[0]);}
+ updateWarnings(w,sample);
  w.stats.push(sample);while(w.stats.length&&w.stats[0].tick<=w.tick-WINDOW)w.stats.shift();
  advanceGoals(w,sample);
 }
@@ -535,7 +569,7 @@ function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
  qty(w.initial);qty(w.production);qty(w.consumption);const total=totals(w);for(const r of RES)if(total[r]!==w.initial[r]+w.production[r]-w.consumption[r])throw Error('资源账本不守恒');return true;}
 function apply(w,c){const next=copy(w);command(next,c);validate(next);return next;}
 function load(saved){const next=copy(saved);if(next&&next.tollDue==null)next.tollDue=0;if(next&&next.tollPaid==null)next.tollPaid=0;if(next&&next.lastNovel==null)next.lastNovel=0;validate(next);return next;}
-const api={formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,CART_BASE,TOLL,FAR_BONUS,ROAD_ROUNDS,BUILDING_ROUNDS,BUILDING_GROWTH,cartSize,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
+const api={WARNING_ROUNDS,buildingBottleneck,warning,formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,CART_BASE,TOLL,FAR_BONUS,ROAD_ROUNDS,BUILDING_ROUNDS,BUILDING_GROWTH,cartSize,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
  copy,zero,add,workshop,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,command,tick,totals,validate,apply,load,demands,allocated,buffer,transit,pipeline,available,buildingCost,workerCost,firstRoad,techCost,techOwned,techAvailable,techMaxed,workerPower,clickPower,eraPower,goodValue,workersOf,craftCost,eraCost,edgeCost,segmentCost,anchored,residentCost,townRate,income,buys,recentSales,terrainFactor,passable,rate,value,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
