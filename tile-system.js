@@ -74,7 +74,7 @@
   const rowW=items=>items.reduce((n,c)=>n+itemW(c)+(c.sep?GAP*2:0),0)+GAP*Math.max(0,items.length-1);
   const pill=(items,y,bad,aria,price=false,rows=[items])=>{
    const width=Math.max(...rows.map(row=>rowW(row)))+PAD*2,left=-width/2,height=rows.length*H+(rows.length-1)*2;
-   let h=`<g class="bt-floating bt-pill ${bad?'is-bad':''}${price?' is-undeveloped':''}" role="img" aria-label="${aria}"><rect class="bt-float-bg" x="${left}" y="${y}" width="${width}" height="${height}" rx="${H/2}"/>`;
+   let h=`<g class="bt-floating bt-pill ${price?'is-undeveloped':''}" role="img" aria-label="${aria}"><rect class="bt-float-bg" x="${left}" y="${y}" width="${width}" height="${height}" rx="${H/2}"/>`;
    for(const [i,row] of rows.entries()){
    const cy=y+i*(H+2)+H/2;let x=-rowW(row)/2;
    for(const c of row){
@@ -82,7 +82,7 @@
     if(c.sep){x+=GAP;h+=`<path class="bt-pill-sep" d="M${x} ${cy-3}v6"/>`;x+=1+GAP*2;continue;}
     if(c.arrow){h+=`<path class="bt-arrow" transform="translate(${x+.5} ${cy})" d="M0 -2.5 2.5 0 0 2.5" aria-hidden="true"/>`;x+=itemW(c)+GAP;continue;}
     if(c.label){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="bt-row-label">${c.label}</text>`;x+=itemW(c)+GAP;continue;}
-    const cls=`bt-flow-num ${c.bad?'bt-bad':''}`;
+    const cls='bt-flow-num';
     if(c.pre){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="${cls}">${c.pre}</text>`;x+=w10(c.pre);}
     if(c.icon){h+=icon(c.icon,x,cy-ICON/2,ICON);x+=ICON+(c.text?1:0);}
     if(c.text){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="${cls}">${esc(c.text)}</text>`;x+=w10(c.text);}
@@ -90,43 +90,14 @@
     x+=GAP;}
    }
    return h+'</g>';};
-  const join=groups=>groups.flatMap((g,i)=>i?[SEP,...g]:g);
-  const ins=store.filter(s=>s.role==='in'),outs=store.filter(s=>s.role!=='in');
-  const slot=s=>({icon:s.id,text:num(s.count),cap:'/'+num(s.cap),bad:expanded&&(s.role==='in'?s.count<=0:s.count>=s.cap)});
-  const idle=town?offers.every(o=>o.income<=0):made.every(m=>m.n<=0);
-  let prod,stock,prodBad=false,stockBad=outs.some(s=>s.count>0&&s.count>=s.cap);
-  if(!expanded){
-   // A town: each good, an arrow, what it earns; goods sit apart with a wider gap, no divider between them.
-   prod=town?offers.flatMap((o,i)=>[...(i?[SPACE]:[]),{icon:o.id},ARROW,{pre:'+',icon:'coin',text:num(o.income)}])
-    :made.map(m=>({pre:'+',icon:m.id,text:num(m.n)}));
-   prodBad=idle;
-   // The map shows only what the tile holds for others: its product, or a town's goods. Inputs stay in the details.
-   const ho=outs.filter(s=>s.count>0);
-   if(stockBad){
-    stock=[{icon:'warehouse'},SEP,...join(ho.map(s=>[slot(s)]))];
-    stockBad=ho.some(s=>s.count>=s.cap);
-   }
-  }else{
-   prod=[{label:'本回合'},SEP,...(town?join(offers.map(o=>[{icon:o.id,text:num(o.used),bad:o.used<=0},ARROW,{pre:'+',icon:'coin',text:num(o.income),bad:o.income<=0}]))
-    :[...used.map(u=>({icon:u.id,text:num(u.n),bad:u.n<=0&&starved.includes(u.id)})),...(used.length?[ARROW]:[]),...made.map(m=>({pre:'+',icon:m.id,text:num(m.n),bad:m.n<=0}))])];
-   stock=[{icon:'warehouse'},SEP,...join(ins.map(s=>[slot(s)])),...(ins.length&&outs.length?[ARROW]:[]),...join(outs.map(s=>[slot(s)]))];
-  }
-  if(town&&undeveloped){
-   prod=join(offers.map(o=>[{icon:o.id},ARROW,{icon:'coin',text:num(o.price),cap:'/件'}]));
-   prodBad=false;
-  }
-  const tip=[status,...(town?offers.map(o=>undeveloped?`收购单价 ${num(o.price)}/件`:`每回合 +${num(o.income)}`):made.map(m=>`本回合产出 ${num(m.n)}`)),...store.map(s=>`仓库 ${s.count}/${s.cap}`)].filter(Boolean).join('，');
+  const idle=town&&offers.every(o=>o.income<=0);
+  const tip=[status,...(town?offers.map(o=>undeveloped?`收购单价 ${num(o.price)}/件`:`每回合 +${num(o.income)}`):[])].filter(Boolean).join('，');
   let html=`<g class="building-tile-ui ${expanded?'is-expanded':''}" pointer-events="none"><title>${esc(name)}${tip?' · '+esc(tip):''}</title><ellipse class="bt-site" cx="0" cy="7" rx="24" ry="9"/><g class="bt-miniature ${attention?'needs-attention':''}" style="${attentionStyle(attentionSeed)}"><title>${attention?esc(attentionLabel):''}</title>${icon(type,-27,-39,54)}</g>`;
   if(town){
    const rows=offers.map(o=>[{icon:o.id},ARROW,undeveloped?{icon:'coin',text:num(o.price),cap:'/件'}:{pre:'+',icon:'coin',text:num(o.income)}]);
-   if(rows.length)html+=pill([],12,!undeveloped&&prodBad,undeveloped?'收购资源与单价':'每回合收入',undeveloped,rows);
-   if(inactive)html+=pill([{text:'未工作'}],12+rows.length*(H+2),false,'未工作',true);
-   const stockRows=outs.filter(s=>s.count>0&&s.count>=s.cap).map(s=>[{icon:'warehouse'},SEP,slot(s)]);
-   if(stockRows.length)html+=pill([],12+rows.length*(H+2),true,'仓库',false,stockRows);
+   if(rows.length)html+=pill([],12,false,undeveloped?'收购资源与单价':'每回合收入',undeveloped||inactive||idle,rows);
   }else{
    if(inactive)html+=pill([{text:'未工作'}],12,false,'未工作',true);
-   else if(expanded)html+=pill(prod,15,prodBad,'本回合产出');
-   if(stock&&stockBad)html+=pill(stock,expanded?15+H+2:12,true,'仓库');
   }
   return html+'</g>';
  }
@@ -140,7 +111,7 @@
   const levelWidth=roman?Math.max(12,labelWidth(roman)*2/3+6):0;
   const dataWidth=Math.max(25,...rows.map(r=>14+3+(town?12:0)+labelWidth(r.value)*11/12));
   const width=levelWidth+dataWidth+12,height=22+Math.max(0,rows.length-1)*18,left=-width/2,top=25;
-  let html=`<g class="building-tile-ui" pointer-events="none"><title>${esc(name)}${status?' · '+esc(status):''} · ${esc(rows.map(r=>r.hint+' '+r.value).join('，'))}</title><ellipse class="bt-site" cx="0" cy="14" rx="28" ry="11"/><g class="bt-miniature">${icon(type,-24,-24,48)}</g><g class="bt-floating bt-capsule ${notice?'has-alert':''}"><rect class="bt-float-bg" x="${left}" y="${top}" width="${width}" height="${height}" rx="${height/2}"/>`;
+  let html=`<g class="building-tile-ui" pointer-events="none"><title>${esc(name)}${status?' · '+esc(status):''} · ${esc(rows.map(r=>r.hint+' '+r.value).join('，'))}</title><ellipse class="bt-site" cx="0" cy="14" rx="28" ry="11"/><g class="bt-miniature">${icon(type,-24,-24,48)}</g><g class="bt-floating bt-capsule "><rect class="bt-float-bg" x="${left}" y="${top}" width="${width}" height="${height}" rx="${height/2}"/>`;
   if(roman)html+=`<g class="bt-level bt-level-inline" role="img" aria-label="当前等级 ${roman}"><title>当前等级 ${roman}</title><text x="${left+levelWidth/2+2}" y="${top+height/2}" dominant-baseline="central" text-anchor="middle" class="bt-level-number">${roman}</text><path class="bt-level-divider" d="M${left+levelWidth+2} ${top+6}v${height-12}"/></g>`;
   rows.forEach((r,i)=>{const x=left+levelWidth+5,y=top+11+i*18;html+=`<g class="bt-label-content ${town?'bt-offer':''}" role="img" aria-label="${esc(r.hint+' '+r.value)}"><title>${esc(r.hint)}</title>${icon(r.id,x,y-7,14)}${town?`<text class="bt-conversion-arrow" x="${x+17}" y="${y}" dominant-baseline="central">→</text>`:''}<text x="${x+17+(town?12:0)}" y="${y}" dominant-baseline="central" class="${town?'bt-price':'bt-quantity'}">${esc(r.value)}</text></g>`;});
   return html+'</g></g>';
@@ -153,12 +124,8 @@
   const mirror=hash%2?-1:1;
   return `<g class="bt-people bt-people-${kind} ${!active||paused?'is-idle':''}">${Array.from({length:count},(_,i)=>{const spot=spots[i%spots.length],x=spot[0]*mirror+((hash >>> (i*3))%3-1),y=spot[1]+((hash >>> (i*3+2))%3-1);return `<g class="bt-person"><ellipse class="bt-person-shadow" cx="${x}" cy="${y+6.5}" rx="5.5" ry="2"/><g class="bt-person-beat" style="--beat:${beat}s;animation-delay:-${(clock+i*beat/count)%beat}s">${root.TradeIcons.svgIcon(kind,{base,x:x-8,y:y-8,size:16})}</g></g>`;}).join('')}</g>`;
  }
- function warningPop(notice,x=0,y=0){
-  const label={shortage:'缺料',supply:'缺货',capacity:'亏空',backlog:'积压'}[notice.kind];
-  return label?`<g class="pop tick warning-pop" transform="translate(${x},${y})" role="img" aria-label="${label}"><text text-anchor="middle" class="pop-text warning-pop-text">${label}</text></g>`:'';
- }
  let constructionSequence=0;
  function constructionMeter(p){const percent=Math.floor(p.done/p.duration*100),clip='construction-clip-'+(++constructionSequence);return '<g class="construction-meter bt-floating bt-pill" transform="translate(-35,12)" role="img" aria-label="建造 '+percent+'%"><rect class="bt-float-bg" width="70" height="16" rx="8"/><defs><clipPath id="'+clip+'"><rect width="70" height="16" rx="8"/></clipPath></defs><rect class="construction-fill" width="'+70*percent/100+'" height="16" clip-path="url(#'+clip+')"/><text x="35" y="8" dominant-baseline="central" text-anchor="middle" class="construction-label">建造 · '+percent+'%</text></g>';}
- root.BuildingTiles={productionPop,constructionMeter,render,people,marker,levelBadge,formatLevel,warningPop};
+ root.BuildingTiles={productionPop,constructionMeter,render,people,marker,levelBadge,formatLevel};
  root.AmbientTiles={render:ambient};
 })(window);
