@@ -249,6 +249,11 @@ function applyView() {
 function centerOn(x, y, scale = view.scale) {
  view.scale = Math.min(ZOOM[1], Math.max(ZOOM[0], scale));
  view.x = x - svg.clientWidth / 2 / view.scale; view.y = y - svg.clientHeight / 2 / view.scale;
+ if(matchMedia('(max-width:740px)').matches){
+  const mapRect=svg.getBoundingClientRect(),top=document.querySelector('.industry-launch').getBoundingClientRect().bottom;
+  const bottom=document.querySelector('.mobile-stack-wrap').getBoundingClientRect().top;
+  if(bottom>top)view.y=y-((top+bottom)/2-mapRect.top)/view.scale;
+ }
  applyView();
 }
 function mapBounds() {
@@ -820,11 +825,35 @@ document.addEventListener('click',event=>{
  event.preventDefault();event.stopPropagation();cancelGesture();
 },true);
 document.addEventListener('pointerup',()=>{setTimeout(()=>{interacting=false;},0);},true);
+// Track touch contacts before the single-pointer pan handler. A pinch never commits a map action.
+const mapTouches=new Map();let pinch=null;
+function touchPair(){const [a,b]=[...mapTouches.values()];return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,d:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))};}
+svg.addEventListener('pointerdown',event=>{
+ if(event.pointerType!=='touch')return;
+ mapTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+ if(mapTouches.size>=2){gesture=null;svg.classList.remove('panning');pinch=touchPair();suppressClick=true;event.preventDefault();event.stopImmediatePropagation();}
+},{capture:true});
+document.addEventListener('pointermove',event=>{
+ if(!mapTouches.has(event.pointerId))return;
+ mapTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+ if(!pinch)return;
+ event.preventDefault();event.stopImmediatePropagation();suppressClick=true;
+ if(mapTouches.size<2)return;
+ const next=touchPair();zoomAt(pinch.x,pinch.y,next.d/pinch.d);
+ view.x-=(next.x-pinch.x)/view.scale;view.y-=(next.y-pinch.y)/view.scale;applyView();pinch=next;
+},{capture:true,passive:false});
+function finishMapTouch(event){
+ if(!mapTouches.delete(event.pointerId))return;
+ if(pinch){suppressClick=true;gesture=null;event.stopImmediatePropagation();interacting=false;if(!mapTouches.size)pinch=null;}
+}
+document.addEventListener('pointerup',finishMapTouch,true);
+document.addEventListener('pointercancel',finishMapTouch,true);
+window.addEventListener('blur',()=>{mapTouches.clear();pinch=null;});
 svg.addEventListener('pointerdown',event=>{
  if(event.button!==0||gesture)return;
  // Map drags pan. Road building starts explicitly from a building detail action.
  const tile=event.target.closest('[data-tile]')?.dataset.tile||tileAt(event.clientX,event.clientY);
- if(buildType||event.target.closest('[data-road-price]'))return;
+ if(event.target.closest('[data-road-price]'))return;
  const edge=event.target.closest('[data-edge]')?.dataset.edge;
  gesture={kind:'pan',x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,pointerId:event.pointerId};
 });
@@ -936,6 +965,7 @@ let folded={};try{folded=JSON.parse(localStorage.getItem(PANELS)||'{}');}catch{}
 const isMobileStack=()=>window.matchMedia('(max-width:740px)').matches;
 for(const panel of document.querySelectorAll('.panel')){
  if(panel.id in folded)panel.classList.toggle('collapsed',!!folded[panel.id]);
+ else if(isMobileStack()&&panel.id==='goals-panel')panel.classList.add('collapsed');
  const head=panel.querySelector('.panel-head');
  head.setAttribute('role','button');head.tabIndex=0;head.setAttribute('aria-expanded',String(!panel.classList.contains('collapsed')));
  head.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();head.click();}});
@@ -953,7 +983,7 @@ if(isMobileStack()){
 render();fitAll();requestAnimationFrame(()=>{if(!fitted)fitAll();});if(welcome)toast(welcome);if(!storageBlocked)save();
 setInterval(()=>{
  const now=performance.now(),elapsed=Math.min(.5,(now-last)/1000);last=now;
- if(!document.hidden&&!world.paused&&!$('industry-dialog').open){
+ if(!document.hidden&&!world.paused&&!$('industry-dialog').open&&!$('mobile-advice').open){
   accumulator+=elapsed*speed;
   let ticked=false;
   const cleared={};
@@ -979,3 +1009,11 @@ function animateTravelers(now){
 }
 reducedTravelMotion.addEventListener('change',()=>{if(decorativeRoads)$('freight').innerHTML=RoadTiles.travelers(decorativeTraffic,travelClock,{reduced:reducedTravelMotion.matches});});
 requestAnimationFrame(animateTravelers);
+
+// Advice is session-only and independent of saved player progress.
+const mobileAdvice=$('mobile-advice');
+mobileAdvice.addEventListener('close',()=>{accumulator=0;last=performance.now();try{sessionStorage.setItem('tnt-mobile-advice','dismissed');}catch{}$('industry-open').focus();});
+let adviceDismissed=false;try{adviceDismissed=sessionStorage.getItem('tnt-mobile-advice')==='dismissed';}catch{}
+if(!adviceDismissed&&(matchMedia('(max-width:740px)').matches||(matchMedia('(pointer:coarse)').matches&&Math.min(innerWidth,innerHeight)<=740)))mobileAdvice.showModal();
+for(const [id,factor] of [['map-plus',1.25],['map-minus',.8]])$(id).onclick=()=>{const r=svg.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,factor);};
+$('map-home').onclick=()=>{const [x,y]=position(world.tiles[E.START_TILE]);centerOn(x,y,INITIAL_MAP_SCALE);};
