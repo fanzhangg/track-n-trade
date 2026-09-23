@@ -25,7 +25,7 @@ const signed = n => (n < 0 ? '−' : '+') + coins(Math.abs(n));
 // The engine's steady income (E.steady) is a shadow run; recompute only when something was bought or every 50 rounds.
 let steadyCache = {key:null, value:0};
 function steadyIncome() {
- const key = `${world.spent}:${Math.floor(world.tick / 50)}:${Object.keys(world.edges).length}`;
+ const key = `${world.spent}:${world.tech.fleet}:${Math.floor(world.tick / 50)}:${Object.keys(world.edges).length}`;
  if (steadyCache.key !== key) steadyCache = {key, value:E.steady(world)};
  return steadyCache.value;
 }
@@ -669,6 +669,7 @@ function renderLegend() {
 // starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
 function techCards() {
  const cards = [{id:'finger', name:'金手指', icon:'worker', tier:1, kind:'economy', desc:'手工点击：点工坊出货，点城镇加需求。每次至少这么多，工人和居民多了还会跟着涨', craft:'tools', per:n=>`每次点击至少 ${n} 件`},
+  {id:'fleet', name:'车队', icon:'road', tier:1, kind:'economy', desc:'每段路每回合每个方向能过的件数。货在段首排队就是运力不够', craft:'fleet', per:n=>`每段路每回合每方向 ${E.CART_BASE+n-1} 件`},
   {id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
  for (const b of E.BUILDINGS) {
   const t = E.TECH[b], rc = E.RECIPES[b];

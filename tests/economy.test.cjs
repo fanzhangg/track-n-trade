@@ -210,7 +210,7 @@ test('a click on a town adds half a round of demand for every good it buys, capp
  // Clicking the town drains a full yard that the residents alone could not: the goods are dispatched at once.
  w.tiles[town].building.demand.log=0;w=click(w,CAMP,20);const before=w.money;for(let i=0;i<10;i++)w=E.apply(w,{type:'click',tile:town});run(w,20);assert.ok(w.money>before,'the clicked-for logs sold');});
 
-test('a long road delays freight but never caps it: the pipeline target adds one round of output per round of travel and the far mill runs at full rate',()=>{
+test('a long road delays freight and one road carries one cart a round: the pipeline target adds one round of output per round of travel, output is capped at cartSize',()=>{
  let w=rich(fresh());w.tech.sawmill=1;w.tech.campCraft=1;w.tech.sawmillCraft=1;w=hire(w,CAMP,3);
  let town;[w,town]=secondTown(w,{board:50});const f=w.flowers[w.tiles[town].flower];
  const far=E.flowerTiles(f).map(p=>`${p.q},${p.r}`).filter(k=>w.tiles[k].terrain==='grass').map(k=>({k,d:E.hexDist(w.tiles[k],w.tiles[CAMP])})).sort((a,b)=>b.d-a.d)[0].k;
@@ -218,8 +218,9 @@ test('a long road delays freight but never caps it: the pipeline target adds one
  w=E.apply(w,{type:'resident',tile:town});w=E.apply(w,{type:'resident',tile:town});
  const t=w.tiles[far],hops=E.transit(w,t,'log');assert.ok(hops>=2,`far enough: ${hops} segments`);
  assert.equal(E.pipeline(w,t,'log'),E.buffer(w,t)+E.rate(w,t)*hops);
- run(w,90);const S=w.stats,out=S.reduce((n,s)=>n+(s.tiles[far]||0),0)/S.length,logs=E.rate(w,w.tiles[CAMP]),cap=Math.min(E.rate(w,t),logs);
- assert.ok(out>=cap*.95,`sawmill runs at min(its rate, the camp's logs) over a ${hops}-segment road: ${out.toFixed(2)} of ${cap}`);});
+ run(w,90);const S=w.stats,out=S.reduce((n,s)=>n+(s.tiles[far]||0),0)/S.length;
+ assert.ok(E.rate(w,t)>E.cartSize(w),'the mill could make more than a cart');
+ assert.ok(out>=E.cartSize(w)*.95&&out<=E.cartSize(w)+.01,`sawmill is capped by one cart over a ${hops}-segment road: ${out.toFixed(2)} of ${E.rate(w,t)}`);});
 
 // ---------- sparse map generation (GEN) ----------
 // Play the generator forward by unlocking fog in a fixed order with plenty of money, so every sandbox flower is
@@ -290,14 +291,22 @@ test('rarity follows price: over many sandbox flowers forest outnumbers rock, ro
 });
 
 // ---------- freight capacity, tolls, pricing ----------
-test('no capacity: every piece moves one segment a round however many share it, so one road carries a whole chain',()=>{
+test('capacity: a segment moves cartSize pieces per direction per round, goods mixed; the rest wait and go next round; the fleet tech adds one',()=>{
  let {w,town}=started(1);w=rich(w);w=hire(w,CAMP,3);w=tech(w,'campCraft','campCraft');// 3 workers x 3 = 9 logs a round
  w=E.apply(w,{type:'resident',tile:town});w=E.apply(w,{type:'resident',tile:town});
- assert.equal(E.TECH.fleet,undefined,'the fleet tech is gone');
- const want=E.buys(w,town).log.rate;assert.ok(want>3,`the town takes more than the old cart: ${want}`);
- run(w,40);const st=E.recentSales(w,town,'log');assert.ok(st>=want*.95,`sales per round ${st} reach the town's ${want}`);
- const busiest=Math.max(...w.stats.flatMap(s=>Object.values(s.edges).map(e=>Object.values(e.flows).reduce((a,b)=>a+b,0))));
- assert.ok(busiest>3,`a segment carried ${busiest} pieces in one round`);
+ assert.equal(E.cartSize(w),3);assert.equal(E.cartSize(tech(E.copy(w),'fleet')),4,'fleet level 1 is a four-piece cart');
+ assert.equal(E.techCost(w,'fleet'),E.FLEET_BASE);assert.equal(E.techCost(tech(E.copy(w),'fleet'),'fleet'),Math.round(E.FLEET_BASE*E.FLEET_GROWTH),'a fixed ladder, whatever the income');
+ run(w,1);const first=w.stats.at(-1);const moved=Object.values(first.edges).reduce((n,e)=>n+Object.values(e.flows).reduce((a,b)=>a+b,0),0);
+ assert.ok(moved<=3*Object.keys(first.edges).length,'no segment moves more than a cart a round');
+ run(w,30);const st=E.recentSales(w,town,'log');assert.ok(st<=3.01&&st>=2.5,`sales per round ${st} bounded by one cart`);
+ // A second, parallel road doubles what gets through.
+ // A second road that shares no segment with the first: laid through a free neighbour of the camp whose route to
+ // the town touches none of the first road's tiles. Not every start flower allows one; skip the check when none does.
+ const used=new Set(Object.values(w.edges).flatMap(e=>[e.a,e.b]));const camp=w.tiles[CAMP];
+ const mid=Object.values(w.tiles).find(x=>!x.building&&E.passable(w,x)&&E.adjacent(x,camp)&&!used.has(x.id)&&(()=>{const r=E.route(w,x.id,town);return r&&r.tiles.slice(0,-1).every(k=>!used.has(k));})());
+ if(mid){w=E.apply(w,{type:'connect',from:CAMP,to:mid.id});w=E.apply(w,{type:'connect',from:mid.id,to:town});
+  const before=w.sold[town].log;run(w,40);const per=(w.sold[town].log-before)/40;
+  assert.ok(per>3.3,`a disjoint second road adds a cart: ${per.toFixed(2)} a round`);}
  E.validate(w);
 });
 test('spending happens where it is caused: a wage per piece made, a toll per segment entered; income is sales less both',()=>{
