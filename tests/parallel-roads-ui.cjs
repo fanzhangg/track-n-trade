@@ -33,7 +33,13 @@ test('each parallel lane can be hovered, selected and removed independently',asy
   assert.ok(await page.evaluate(()=>Object.values(world.edges).filter(e=>e.road==='A').every(e=>!e.removing)));
   await page.goto(pathToFileURL(path.resolve('docs/ui-system.html')).href);
   const demo=page.locator('.parallel-road-demo');await demo.scrollIntoViewIfNeeded();
+  const demoHit=demo.locator('[data-parallel="B"] .road-hit').nth(2);
+  const demoPoint=await demoHit.evaluate(el=>{const p=el.getPointAtLength(el.getTotalLength()/2).matrixTransform(el.getScreenCTM());return{x:p.x,y:p.y};});
+  await page.mouse.click(demoPoint.x,demoPoint.y);
+  assert.equal(await page.evaluate(()=>document.activeElement.classList.contains('road-hit')),true);
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.activeElement).outlineStyle),'none','mouse focus has no browser rectangle');
   await demo.locator('[data-parallel="A"] .road-hit').first().focus();
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.activeElement).outlineStyle),'none','keyboard focus uses road highlighting');
   assert.equal(await demo.locator('.road.hovered').count(),5);
   await page.keyboard.press('Enter');assert.equal(await demo.locator('.road.selected').count(),5);
   await page.screenshot({path:path.join(require('node:os').tmpdir(),`parallel-roads-${width}.png`)});
