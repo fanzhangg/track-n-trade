@@ -6,3 +6,11 @@
 
 /* Curved road hit areas use the same centerline as the prototype. */
 .bt-road-demo .road,.bt-road-demo .road-hit{fill:none}.bt-road-demo .road-hit{stroke:transparent;stroke-width:18;pointer-events:stroke}.bt-road-demo .road-control:has(.road-hit:hover) .road,.bt-road-demo .road-control:has(.road-hit:focus-visible) .road{stroke:var(--action-primary)}
+
+/* Chain cases: a row of tiles per case, the reading note under it. */
+.bt-chain-cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:12px}.bt-chain-cases article{padding:12px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--surface-map)}.bt-chain-cases svg{display:block;width:100%;max-width:calc(320px * var(--bt-scale));margin:0 auto 8px}.bt-chain-cases b{font-size:13px}.bt-chain-cases p{margin:4px 0 0;font-size:13px;color:var(--text-secondary)}
+.bt-samples article[role=button]{cursor:pointer}.bt-samples article.is-open{outline:2px solid var(--action-primary);outline-offset:-2px}
+
+.bt-samples.bt-wide{grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))}.bt-samples.bt-wide svg{width:calc(160px * var(--bt-scale))}
+
+.idle-samples,.idle-states{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:16px 0 24px}.idle-samples article,.idle-states button{text-align:center;padding:14px;border:1px solid var(--border-subtle);border-radius:12px;background:var(--surface-map);color:var(--text-primary);font:inherit}.idle-samples svg,.idle-states svg{display:block;width:159px;max-width:100%;margin:auto}.idle-outline{fill:none;pointer-events:none;stroke-linejoin:round}.idle-outline.hover{stroke:#ffffffcc;stroke-width:3}.idle-outline.selected{stroke:var(--action-primary);stroke-width:3.5}.idle-outline.legal{stroke:var(--action-primary);stroke-width:2.5;stroke-dasharray:5 4}.idle-states button:hover .ground{stroke:var(--action-primary)}.idle-states button:focus-visible{outline:3px solid var(--action-primary);outline-offset:2px}

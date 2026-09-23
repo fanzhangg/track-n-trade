@@ -24,7 +24,7 @@ function build(w,type){w=rich(w);if(type!=='camp')w=need(w,type);const t=tilesOf
 // Unlock until a second town exists, then make it buy exactly `buys`: tests that need a buyer of some good no
 // longer depend on what the sandbox generator happens to draw.
 function secondTown(w,buys){let k=null;w=rich(w);w.tech.waterway=1;for(let i=0;i<20&&!k;i++){k=townTiles(w).find(t=>t!==TOWN&&E.route(w,E.START_TILE,t));if(!k)w=unlock(w,fogs(w)[0]);}
- if(!k)throw Error('no reachable second town in 20 unlocks');const b=w.tiles[k].building;b.buys=E.copy(buys);w.flowers[w.tiles[k].flower].design.buys=E.copy(buys);for(const r of E.RES)if(!buys[r])b.demand[r]=0;return[w,k];}
+ if(!k)throw Error('no reachable second town in 20 unlocks');const b=w.tiles[k].building;b.buys=E.copy(buys);w.flowers[w.tiles[k].flower].design.buys=E.copy(buys);return[w,k];}
 // The start flower has no rock or ore: turn one of its free grass tiles into the wanted terrain (map and design
 // together, so the save stays consistent) for tests that only care about building rules.
 function terraform(w,terrain){const onRoad=new Set(Object.values(w.edges).flatMap(e=>[e.a,e.b]));const t=tilesOf(w,x=>x.terrain==='grass'&&!x.building&&x.flower==='0,0'&&!onRoad.has(x.id))[0];assert.ok(t,'a free grass tile on the start flower');
@@ -49,11 +49,11 @@ test('unlock prices climb in pairs: flowers 2k-1 and 2k cost 2000 x 2.2^(k-1) wh
  assert.equal(E.flowerCost(w,null,1),E.flowerCost(w,null,2));assert.equal(E.flowerCost(w,null,3),Math.round(2000*2.2));
  run(w,10);for(const s of w.stats)s.income=40000;assert.equal(E.flowerCost(w),Math.round(2000*2.2**Math.floor(w.unlocked/2)),'income never moves the unlock price');
 });
-test("the projection's first steps reproduce in the engine: 20 clicks sell for 400 less wages and tolls, then one worker feeds the town",()=>{
- let {w,town}=started();const after=w.money,hops=E.path(w,CAMP,town).length;w=click(w,CAMP,20);
+test("the projection's first steps reproduce in the engine: 20 clicks sell for 400 less upkeep, then one worker feeds the town",()=>{
+ let {w,town}=started();const after=w.money;w=click(w,CAMP,20);
  run(w,20);const sold=w.sold[town].log;assert.ok(sold>=20,'all twenty logs sold within a few rounds');
- assert.ok(w.money>=after+400-20*hops*E.TOLL-20*E.WAGE.camp,'twenty logs sell for 400, less wage and toll');
- w=hire(w,CAMP,1);run(w,30);const net=20-hops*E.TOLL-E.WAGE.camp;assert.ok(E.income(w)>=net-2&&E.income(w)<=net+2,`one worker feeds a level-0 town at ${net}/round net: `+E.income(w));
+ assert.ok(w.money>=after+400-w.upkeep,'twenty logs sell for 400, less the camp upkeep');assert.equal(w.upkeep,20*E.upkeep(w.tiles[CAMP].building));
+ w=hire(w,CAMP,1);run(w,30);const net=20-E.upkeep(w.tiles[CAMP].building);assert.ok(Math.abs(E.income(w)-net)<=2,`one worker feeds a level-0 town at ${net}/round net: `+E.income(w));
 });
 test('clicks make pieces up to a full yard; a click on a workshop needs every input',()=>{
  let w=click(fresh(),CAMP,20);assert.equal(w.tiles[CAMP].loose.log,20);
@@ -165,7 +165,7 @@ test('residents are priced by what they add: 2 x sum of prices x 30 rounds, x1.5
  const extra=townTiles(w).reduce((n,k)=>n+w.tiles[k].building.residents*Object.values(w.tiles[k].building.buys).reduce((a,p)=>a+p,0),0);
  assert.equal(E.techCost(w,'era'),Math.round(extra*2*30),'an era costs 30 rounds of what it adds');
  w=tech(w,'era');assert.equal(E.buys(w,town).log.rate,12,'3 residents x 2 x era 2');assert.equal(E.residentCost(w,toolTown),Math.round(2*2*(120+30)*30));
- const b=w.tiles[toolTown].building;run(w,60);assert.equal(b.demand.tool,E.buys(w,toolTown).tool.pool,'pool capped');E.validate(w);
+ assert.equal(E.buys(w,town).log.cap,24,'the warehouse holds two rounds of what the town eats (12 a round)');run(w,60);E.validate(w);
  for(let i=w.tech.era;i<E.ERAS.length-1;i++)w=tech(w,'era');assert.throws(()=>E.apply(w,{type:'tech',key:'era'}),/最高/);
 });
 test('full refunds: demolishing, firing and removing roads return exactly what was paid, so the engine can always be rebuilt',()=>{
@@ -176,12 +176,11 @@ test('full refunds: demolishing, firing and removing roads return exactly what w
  w=E.apply(w,{type:'demolish',tile:CAMP});assert.equal(w.money,m0+roadPaid+1200,'the start camp refunds its nominal price');
  assert.ok(w.money>=1200+500,'enough to rebuild a camp and a road');E.validate(w);
 });
-test('money = start - spending + refunds + goal rewards + pieces x price - wages - tolls; every stored number stays an integer',()=>{
+test('money = start - spending + refunds + goal rewards + pieces x price - upkeep; every stored number stays an integer',()=>{
  let {w,town}=started(2);w=click(w,CAMP,20);run(w,15);w=hire(w,CAMP,1);w=click(w,CAMP,6);run(w,80);
- const bonus=w.money-(E.START_MONEY-w.spent+w.sold[town].log*20-w.tollPaid-w.wages);
+ const bonus=w.money-(E.START_MONEY-w.spent+w.sold[town].log*20-w.upkeep);
  assert.ok(bonus>0,'some goal tiers cleared and paid out');
- assert.equal(w.money,E.START_MONEY-w.spent+bonus+w.sold[town].log*20-w.tollPaid-w.wages);assert.ok(w.tollPaid>0&&w.wages>0);
- assert.equal(w.wages,w.production.log*E.WAGE.camp,'every log made, by hand or by a worker, paid its wage');
+ assert.equal(w.money,E.START_MONEY-w.spent+bonus+w.sold[town].log*20-w.upkeep);assert.ok(w.upkeep>0);
  assert.equal(w.earned,w.sold[town].log*20+bonus,'earned is gross sales plus goal rewards');
  const walk=(v,p)=>{if(typeof v==='number')assert.ok(isInt(v),`non-integer at ${p}: ${v}`);else if(v&&typeof v==='object')for(const[k,x]of Object.entries(v))walk(x,p+'.'+k);};
  walk(w,'w');E.validate(w);
@@ -200,17 +199,16 @@ test('a click scales with the economy: never below 1 + tools, otherwise half a r
  w.tech.tools=7;assert.equal(E.clickPower(w,w.tiles[CAMP]),8,'the golden finger is a floor');
  w=click(w,CAMP);assert.equal(w.tiles[CAMP].loose.log,8);});
 
-test('a click on a town adds half a round of demand for every good it buys, capped by the pool',()=>{
- let {w,town}=started(1);const b=()=>w.tiles[town].building;const pool=E.buys(w,town).log.pool;
- w.tiles[town].building.demand.log=0;assert.equal(E.clickPower(w,w.tiles[town]),1,'one resident takes 2 a round, half is 1');
- w=E.apply(w,{type:'click',tile:town});assert.equal(b().demand.log,1);assert.equal(w.clicks,1);
- w=rich(w);w=E.apply(w,{type:'resident',tile:town});w=E.apply(w,{type:'resident',tile:town});assert.equal(E.clickPower(w,w.tiles[town]),3);
- w.tiles[town].building.demand.log=E.buys(w,town).log.pool;assert.throws(()=>E.apply(w,{type:'click',tile:town}),/需求还没用完/);
- w.tiles[town].building.demand.log=E.buys(w,town).log.pool-1;w=E.apply(w,{type:'click',tile:town});assert.equal(b().demand.log,E.buys(w,town).log.pool,'clipped at the pool');
- // Clicking the town drains a full yard that the residents alone could not: the goods are dispatched at once.
- w.tiles[town].building.demand.log=0;w=click(w,CAMP,20);const before=w.money;for(let i=0;i<10;i++)w=E.apply(w,{type:'click',tile:town});run(w,20);assert.ok(w.money>before,'the clicked-for logs sold');});
+test('a town is a warehouse: it eats exactly its rate of a good when that many are in stock, else nothing; a click sells half a round more from stock',()=>{
+ let {w,town}=started(1);const t=()=>w.tiles[town];const d=E.buys(w,town).log;assert.equal(d.rate,2);assert.equal(d.cap,E.YARD);
+ t().loose.log=1;w.initial.log+=1;const sold=w.sold[town].log;E.tick(w);assert.equal(w.sold[town].log,sold,'one log in stock is less than the rate: nothing eaten');
+ t().loose.log=5;w.initial.log+=4;E.tick(w);assert.equal(w.sold[town].log,sold+2,'five in stock: exactly the rate is eaten');assert.equal(t().loose.log,3);
+ const before=w.money;w=E.apply(w,{type:'click',tile:town});assert.equal(w.money,before+20,'a click sells one log (half a round) at once');assert.equal(w.clicks,1);
+ w.initial.log-=w.tiles[town].loose.log;w.tiles[town].loose.log=0;assert.throws(()=>E.apply(w,{type:'click',tile:town}),/没有货/);
+ // The warehouse fills to the cap and no further.
+ w=rich(w);w=hire(w,CAMP,3);w=tech(w,'campCraft','campCraft');run(w,40);assert.ok(w.tiles[town].loose.log<=E.buys(w,town).log.cap);E.validate(w);});
 
-test('a long road delays freight and one road carries one cart a round: the pipeline target adds one round of output per round of travel, output is capped at cartSize',()=>{
+test('a long road delays freight but never caps it: the pipeline target adds one round of output per round of travel',()=>{
  let w=rich(fresh());w.tech.sawmill=1;w.tech.campCraft=1;w.tech.sawmillCraft=1;w=hire(w,CAMP,3);
  let town;[w,town]=secondTown(w,{board:50});const f=w.flowers[w.tiles[town].flower];
  const far=E.flowerTiles(f).map(p=>`${p.q},${p.r}`).filter(k=>w.tiles[k].terrain==='grass').map(k=>({k,d:E.hexDist(w.tiles[k],w.tiles[CAMP])})).sort((a,b)=>b.d-a.d)[0].k;
@@ -219,8 +217,7 @@ test('a long road delays freight and one road carries one cart a round: the pipe
  const t=w.tiles[far],hops=E.transit(w,t,'log');assert.ok(hops>=2,`far enough: ${hops} segments`);
  assert.equal(E.pipeline(w,t,'log'),E.buffer(w,t)+E.rate(w,t)*hops);
  run(w,90);const S=w.stats,out=S.reduce((n,s)=>n+(s.tiles[far]||0),0)/S.length;
- assert.ok(E.rate(w,t)>E.cartSize(w),'the mill could make more than a cart');
- assert.ok(out>=E.cartSize(w)*.95&&out<=E.cartSize(w)+.01,`sawmill is capped by one cart over a ${hops}-segment road: ${out.toFixed(2)} of ${E.rate(w,t)}`);});
+ assert.ok(out>=E.rate(w,t)*.95,`sawmill runs at full rate over a ${hops}-segment road: ${out.toFixed(2)} of ${E.rate(w,t)}`);});
 
 // ---------- sparse map generation (GEN) ----------
 // Play the generator forward by unlocking fog in a fixed order with plenty of money, so every sandbox flower is
@@ -290,40 +287,22 @@ test('rarity follows price: over many sandbox flowers forest outnumbers rock, ro
  assert.ok(touching<=8,`rock/ore touching other raw across flowers: ${touching}`);
 });
 
-// ---------- freight capacity, tolls, pricing ----------
-test('capacity: a segment moves cartSize pieces per direction per round, goods mixed; the rest wait and go next round; the fleet tech adds one',()=>{
- let {w,town}=started(1);w=rich(w);w=hire(w,CAMP,3);w=tech(w,'campCraft','campCraft');// 3 workers x 3 = 9 logs a round
- w=E.apply(w,{type:'resident',tile:town});w=E.apply(w,{type:'resident',tile:town});
- assert.equal(E.cartSize(w),3);assert.equal(E.cartSize(tech(E.copy(w),'fleet')),4,'fleet level 1 is a four-piece cart');
- assert.equal(E.techCost(w,'fleet'),E.FLEET_BASE);assert.equal(E.techCost(tech(E.copy(w),'fleet'),'fleet'),Math.round(E.FLEET_BASE*E.FLEET_GROWTH),'a fixed ladder, whatever the income');
- run(w,1);const first=w.stats.at(-1);const moved=Object.values(first.edges).reduce((n,e)=>n+Object.values(e.flows).reduce((a,b)=>a+b,0),0);
- assert.ok(moved<=3*Object.keys(first.edges).length,'no segment moves more than a cart a round');
- run(w,30);const st=E.recentSales(w,town,'log');assert.ok(st<=3.01&&st>=2.5,`sales per round ${st} bounded by one cart`);
- // A second, parallel road doubles what gets through.
- // A second road that shares no segment with the first: laid through a free neighbour of the camp whose route to
- // the town touches none of the first road's tiles. Not every start flower allows one; skip the check when none does.
- const used=new Set(Object.values(w.edges).flatMap(e=>[e.a,e.b]));const camp=w.tiles[CAMP];
- const mid=Object.values(w.tiles).find(x=>!x.building&&E.passable(w,x)&&E.adjacent(x,camp)&&!used.has(x.id)&&(()=>{const r=E.route(w,x.id,town);return r&&r.tiles.slice(0,-1).every(k=>!used.has(k));})());
- if(mid){w=E.apply(w,{type:'connect',from:CAMP,to:mid.id});w=E.apply(w,{type:'connect',from:mid.id,to:town});
-  const before=w.sold[town].log;run(w,40);const per=(w.sold[town].log-before)/40;
-  assert.ok(per>3.3,`a disjoint second road adds a cart: ${per.toFixed(2)} a round`);}
- E.validate(w);
+// ---------- upkeep, pricing ----------
+test('upkeep is fixed per round: a base per building plus more per worker, paid whether it produces or not; income is sales less upkeep',()=>{
+ let {w,town}=started(1);w=rich(w);const b=()=>w.tiles[CAMP].building;
+ assert.equal(E.upkeep(b()),E.UPKEEP.camp[0]);w=hire(w,CAMP,2);assert.equal(E.upkeep(b()),E.UPKEEP.camp[0]+2*E.UPKEEP.camp[1]);
+ run(w,40);const S=w.stats.at(-1);assert.equal(S.upkeep,E.upkeep(b()));assert.equal(S.income,S.gross-S.upkeep);
+ // Cut the road to the town: nothing sells, the upkeep still runs.
+ const k=E.copy(w);for(const e of Object.values(k.tiles))if(e.building?.type==='town')e.building.buys={stone:30};
+ const m=k.money;run(k,5);assert.ok(k.stats.at(-1).gross===0&&k.money<=m,'no sales, upkeep keeps charging');E.validate(w);
 });
-test('spending happens where it is caused: a wage per piece made, a toll per segment entered; income is sales less both',()=>{
- let {w,town}=started(1);w=rich(w);w=hire(w,CAMP,1);const hops=E.path(w,CAMP,town).length;
- run(w,40);const sold=w.sold[town].log;assert.ok(sold>0);
- assert.equal(w.wages,w.production.log*E.WAGE.camp);assert.ok(w.tollPaid>=sold*hops*E.TOLL,'every delivered piece paid its segments on the way');
- const S=w.stats.at(-1);assert.equal(S.income,S.gross-S.wages-S.toll);assert.ok(E.income(w)<20&&E.income(w)>0,'income is net: '+E.income(w));E.validate(w);
+test('nothing is charged before the first building can reach a buyer, so the start cannot bleed into a dead end',()=>{
+ let w=fresh();const m=w.money;run(w,50);assert.equal(w.money,m);assert.equal(w.upkeep,0);
 });
 test('the balance may go negative and then nothing can be bought; the engine keeps running and earns it back',()=>{
- let {w}=started(1);w=rich(w);w=hire(w,CAMP,1);w.money=0;run(w,1);assert.ok(w.money<0,'the first wage went below zero');
+ let {w}=started(1);w=rich(w);w=hire(w,CAMP,1);w.money=0;run(w,1);assert.ok(w.money<0,'the first upkeep went below zero');
  assert.throws(()=>E.apply(w,{type:'worker',tile:CAMP}),/余额为负/);assert.doesNotThrow(()=>E.apply(w,{type:'click',tile:CAMP}),'clicking still works');
  run(w,30);assert.ok(w.money>0,'sales brought the balance back');E.validate(w);
-});
-test('a chain that loses money never runs: a demand whose price does not cover wage and tolls gets no freight',()=>{
- let {w,town}=started(1);w=rich(w);w=hire(w,CAMP,1);const hops=E.path(w,CAMP,town).length;
- w.tiles[town].building.buys.log=hops*E.TOLL;run(w,30);assert.equal(w.sold[town].log,0,'nothing shipped at a price that only pays the toll');
- assert.equal(w.shipments.length,0);w.tiles[town].building.buys.log=hops*E.TOLL+1;run(w,30);assert.ok(w.sold[town].log>0,'one coin of margin and it ships');
 });
 test('prices never look at income: a road segment is 250 x terrain and a building its base x 1.3 per one already built, however rich the engine',()=>{
  let {w,town}=started(1);assert.equal(E.buildingCost(w,'camp'),Math.round(E.PRICE.camp*1.3),'second camp costs 1.3x');
@@ -368,7 +347,7 @@ test('hard rule: a town never touches the raw terrain of a good it buys, on any 
 test('a needed raw the map lacks arrives on the very next resource flower, even one next to the town that buys it, on tiles that do not touch the town',()=>{
  for(const seed of [1,2,3,4,5,6,7,8]){let w=rich(started(seed).w);
   // The start town buys stone; there is no rock anywhere.
-  w.tiles[TOWN].building.buys={stone:30};w.flowers['0,0'].design.buys={stone:30};w.tiles[TOWN].building.demand.log=0;
+  w.tiles[TOWN].building.buys={stone:30};w.flowers['0,0'].design.buys={stone:30};
   assert.ok(E.rawDeficit(w).rock>=1);
   let found=null;for(let i=0;i<4&&!found;i++){const fid=fogs(w).sort()[0];w=unlock(w,fid);const f=w.flowers[fid];if(f.design.buys)continue;found=f;
    assert.ok([f.design.center,...f.design.ring].includes('rock'),`seed ${seed}: first resource flower ${fid} (next to the buyer) carries no rock`);}
@@ -433,7 +412,7 @@ test('cleared tiers never come back, so a dip in the moving average cannot farm 
  run(w,E.WINDOW+5); // no clicks, no workers: every rate falls back to zero
  assert.equal(E.GOALS.find(g=>g.id==='produce').value(w),0);
  for(const id of Object.keys(peak))assert.ok(w.goals[id]>=peak[id],id+' never steps back');
- assert.ok(w.money>=money,'a collapsed engine still cannot lose a cleared tier');
+ assert.ok(w.money>=money-w.upkeep,'a collapsed engine still cannot lose a cleared tier');
 });
 test('a goal reward is always smaller than the cheapest road segment, so it can never decide a build',()=>{
  let {w}=started(4);

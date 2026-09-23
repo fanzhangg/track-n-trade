@@ -25,11 +25,11 @@ const signed = n => (n < 0 ? '−' : '+') + coins(Math.abs(n));
 // The engine's steady income (E.steady) is a shadow run; recompute only when something was bought or every 50 rounds.
 let steadyCache = {key:null, value:0};
 function steadyIncome() {
- const key = `${world.spent}:${world.tech.fleet}:${Math.floor(world.tick / 50)}:${Object.keys(world.edges).length}`;
+ const key = `${world.spent}:${Math.floor(world.tick / 50)}:${Object.keys(world.edges).length}`;
  if (steadyCache.key !== key) steadyCache = {key, value:E.steady(world)};
  return steadyCache.value;
 }
-const position = t => [Math.sqrt(3) * 51 * (t.q + t.r / 2), 76.5 * t.r];
+const position = MapGeometry.position;
 let world = E.newWorld(Math.floor(Math.random() * 2 ** 31));
 let selected = E.START_TILE, selectedEdge = null, selectedFlower = null, buildType = null, connectFrom = null;
 let gesture = null, suppressClick = false, interacting = false, speed = 1;
@@ -98,11 +98,10 @@ const afford = cost => world.money >= cost;
 const costly = cost => afford(cost) ? '' : 'costly';
 const unlockedBuildings = () => E.BUILDINGS.filter(b => b === 'camp' || world.tech[b]);
 const townTiles = () => Object.values(world.tiles).filter(t => t.building?.type === 'town');
-// Stock of a good sitting at producers that can reach this town, beyond what its demand pool will take: the part
-// only a click (or more residents) can sell.
+// A town's warehouse for one good when it is full: supply outruns what the residents eat. 0 otherwise.
 function backlog(town, r) {
- const stock = Object.values(world.tiles).reduce((n, t) => E.workshop(t.building) && E.RECIPES[t.building.type].out === r && E.path(world, t.id, town) ? n + t.loose[r] : n, 0);
- return Math.max(0, stock - world.tiles[town].building.demand[r]);
+ const t = world.tiles[town], d = E.buys(world, town)[r];
+ return d && t.loose[r] >= d.cap ? t.loose[r] : 0;
 }
 const connectedTowns = () => townTiles().filter(u => Object.values(world.tiles).some(t => t.building && t.building.type !== 'town' && u.building.buys[E.RECIPES[t.building.type].out] && E.path(world, t.id, u.id))).map(t => t.id);
 function cancelGesture() {
@@ -135,10 +134,10 @@ function tileClick(key) {
 // A click on a workshop makes goods; a click on a town asks for more of every good it buys. Both pop "+n".
 function produce(key) {
  const t = world.tiles[key], b = t.building, town = b.type === 'town';
- const r = town ? null : E.RECIPES[b.type].out, before = town ? {...b.demand} : t.loose[r];
+ const r = town ? null : E.RECIPES[b.type].out, before = town ? {...t.loose} : t.loose[r];
  try {
   world = E.apply(world, {type:'click', tile:key});
-  if (town) { const after = world.tiles[key].building.demand; for (const g in before) if (after[g] > before[g]) pop(key, after[g] - before[g], g); }
+  if (town) { const after = world.tiles[key].loose; for (const g in before) if (after[g] < before[g]) pop(key, after[g] - before[g], g); }
   else pop(key, world.tiles[key].loose[r] - before, r);
   const g = svg.querySelector(`[data-tile="${key}"]`);
   g.classList.remove('bump'); void g.getBoundingClientRect(); g.classList.add('bump');
@@ -152,7 +151,7 @@ function produce(key) {
 function pop(key, n, r) {
  const [x, y] = position(world.tiles[key]), g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
  g.setAttribute('class', 'pop'); g.setAttribute('transform', `translate(${x + 14},${y - 28})`);
- g.innerHTML = `<text text-anchor="middle" class="pop-text click" fill="${goodColor(r)}">+${n}</text>`;
+ g.innerHTML = `<text text-anchor="middle" class="pop-text click" fill="${goodColor(r)}">${n < 0 ? '−' : '+'}${Math.abs(n)}</text>`;
  $('pops').appendChild(g); setTimeout(() => g.remove(), 900);
 }
 
@@ -213,14 +212,6 @@ function stateOf(t) {
  if (!b.workers.length) return '没有工人，点击才生产';
  return '生产中';
 }
-// The one thing the map says about a stalled workshop: which input it lacks. A full yard already shows as an
-// amber 20 with idle workers, so it gets no text.
-function stallOf(t) {
- const b = t.building, miss = missingInputs(t);
- if (!b.workers.length || madeLastRound(t) || !miss.length) return '';
- return `缺${miss.map(r => names[r]).join('、')}`;
-}
-function buyersOf(r, from) { return townTiles().filter(u => u.building.buys[r] && E.path(world, from, u.id)).map(u => u.id); }
 function saturated(k, r, st = windowStats()) { return st.span >= 5 && st.sales(k, r) >= E.buys(world, k)[r].rate * .95; }
 // The supply chain around one tile: who feeds it, who takes from it, and the road segments in between.
 // Both the map highlight and the card's flow diagram read from this.
@@ -247,135 +238,67 @@ function chainOf(t, st = windowStats()) {
  const goods = new Set([...wants, ...(b.type === 'town' ? [] : [E.RECIPES[b.type].out])]);
  return {up, down, edges, nodes, goods};
 }
-// Where a workshop is stuck right now, as one of a few named causes, with the action that fixes it.
-// Inputs are judged first, then the output side, then the workshop's own capacity.
-function bottleneck(t, st, chain) {
- const b = t.building, rc = E.RECIPES[b.type], need = Math.max(1, E.rate(world, t)), r = rc.out;
- const level = (cause, action, key) => ({level:'warn', cause, action, key});
+// The logistics chart in the details panel: source → input warehouse → workshop → product warehouse → buyers, one
+// small card per stage, flows written on the links between them. See docs/ui-system.html「物流流程图」.
+const ic = id => `<i class="ic">${TradeIcons.icon(id, {base:'assets/icons/v1/', size:14, decorative:true})}</i>`;
+const lnode = ({k, main, sub = '', state = '', alert = ''}) => `<div class="lnode ${state}"><span class="lk">${k}</span><b>${main}</b>${sub ? `<span class="lv">${sub}</span>` : ''}${alert ? `<em class="lalert">${alert}</em>` : ''}</div>`;
+const llink = (text = '') => `<div class="llink">${text ? `<span>${text}</span>` : ''}</div>`;
+const who = list => { const m = new Map(); for (const u of list) m.set(u.tile.building.type, (m.get(u.tile.building.type) || 0) + 1); return [...m].map(([k, n]) => `${ic(k)}${names[k]} ×${n}`).join(' '); };
+// A workshop's problem in a few words, and what fixes it. The stage it belongs to is highlighted in the chart.
+function workshopIssue(t, st, chain) {
+ const b = t.building, rc = E.RECIPES[b.type], r = rc.out, made = tileRate(t);
+ if (t.loose[r] >= E.YARD) return chain.down.length
+  ? {node:'out', text:`${names[r]}堆满了`, fix:`下游收不下：给收${names[r]}的城镇加居民、升时代，或连到更多买家`}
+  : {node:'out', text:`${names[r]}没有去处`, fix:`修一条路到收${names[r]}的城镇或用它的工坊`};
+ if (!b.workers.length) return {node:'self', text:'没有工人', fix:'雇第一名工人，或点击手工生产'};
  for (const i of Object.keys(rc.in)) {
-  const srcs = chain.up.filter(u => u.r === i), got = st.inflow(t.id, i);
-  if (!srcs.length) return level(`没有连到产${names[i]}的建筑`, `修一条路到${names[E.BUILDINGS.find(x => E.RECIPES[x].out === i)]}，或新建一座`, i);
-  if (st.span < 5 || got >= need * .9 || (madeLastRound(t) && t.loose[i] >= 1)) continue;
-  const cap = srcs.reduce((n, u) => n + u.rate, 0), maker = names[srcs[0].tile.building.type];
-  if (cap < need) return level(`上游${maker}产能 ${per(cap)} 件/回合，不够这里的 ${need} 件`, `给${maker}加工人、升${maker}工艺，或再建一座`, i);
-  const idle = srcs.filter(u => u.stock >= 1).length;
-  if (idle) {
-   const rivals = Object.values(world.tiles).filter(u => u.building && u.id !== t.id && (u.building.type === 'town' ? u.building.buys[i] : E.RECIPES[u.building.type].in[i]) && srcs.some(s => E.path(world, s.tile.id, u.id)));
-   const mine = E.saleValue(world, t.id, r), who = u => u.building.type === 'town' ? '城镇' : names[u.building.type];
-   const ranked = rivals.map(u => ({u, v:u.building.type === 'town' ? u.building.buys[i] : E.saleValue(world, u.id, E.RECIPES[u.building.type].out)})).sort((a, b) => b.v - a.v);
-   const above = ranked.find(x => x.v > mine), peer = ranked.find(x => x.v === mine);
-   if (above) return level(`${maker}的${names[i]}先给了出价 ${coins(above.v)} 的${who(above.u)}，这里只值 ${coins(mine)}`, `再建一座${maker}，或给这里找更高价的买家`, i);
-   if (peer) return level(`${maker}的${names[i]}要和出价相同的${who(peer.u)}轮流分`, `再建一座${maker}，或给${maker}加工人`, i);
-   return level(`${names[i]}还在路上，${srcs[0].hops} 段路要走 ${srcs[0].hops} 回合`, `修一条更短的路`, i);
+  const srcs = chain.up.filter(u => u.r === i);
+  if (!srcs.length) return {node:'in:' + i, text:`${names[i]}没有来源`, fix:`修一条路到${names[E.BUILDINGS.find(x => E.RECIPES[x].out === i)]}，或新建一座`};
+  if (st.span >= 5 && made < E.rate(world, t) * .9 && t.loose[i] < 1) {
+   const maker = names[srcs[0].tile.building.type];
+   return {node:'in:' + i, text:`缺${names[i]}`, fix:`上游${maker}每回合只送来 ${per(st.inflow(t.id, i))} 件，这里要 ${E.rate(world, t)} 件。给${maker}加工人、升工艺，或再连一座`};
   }
-  return level(`上游${maker}自己也停工了`, `先去看${maker}缺什么`, i);
  }
- if (t.loose[r] >= E.YARD && !madeLastRound(t)) {
-  if (!chain.down.length) return level(`${names[r]}没有去处`, `修一条路到收${names[r]}的城镇或用它的工坊`, r);
-  if (chain.down.every(d => d.town ? d.full : false)) return level(`收${names[r]}的城镇都喂饱了`, `给城镇加居民、升时代，或连到下一座城镇`, r);
-  return {level:'info', cause:'堆场已满，货正在陆续运出', action:'', key:r};
- }
- if (b.workers.length && tileRate(t) >= need * .9) return {level:'ok', cause:'满产，瓶颈是自身产能', action:`雇工人或升${rc.name}工艺`, key:'self'};
- if (!b.workers.length) return {level:'ok', cause:'没有工人，只靠点击', action:'雇第一名工人', key:'self'};
  return null;
 }
-// The card's flow diagram: one bar per stage (actual / limit), inputs above, this workshop in the middle, the
-// output below. Colour is the bar's fill level; the bottleneck row is tinted and the verdict says cause and fix.
-const barRow = ({key, iconHtml, name, got, cap, unit = '', note = '', hot = false, grade}) => {
- const g = grade || (cap <= 0 ? 'none' : got >= cap * .9 ? 'ok' : got > 0 ? 'short' : 'none');
- const pct = cap > 0 ? Math.max(0, Math.min(100, got / cap * 100)) : (got > 0 ? 100 : 0);
- return `<div class="frow ${hot ? 'hot' : ''}" data-key="${key}"><span class="flbl">${iconHtml}<b>${name}</b>${hot ? '<em class="ftag">瓶颈</em>' : ''}</span><span class="fbar"><i class="${g}" style="width:${pct.toFixed(0)}%"></i></span><span class="fnum">${per(got)}${cap > 0 ? ` / ${cap}` : unit}</span>${note ? `<small class="fsrc">${note}</small>` : ''}</div>`;
-};
-const countOf = (n, what) => `${n} 座${what}`;
-function flowSection(t, st) {
- const b = t.building, rc = E.RECIPES[b.type], r = rc.out, chain = chainOf(t, st), need = Math.max(1, E.rate(world, t)), v = bottleneck(t, st, chain);
- const young = st.span < 5;
- let html = '<h3>供需</h3><div class="flow">';
- for (const i of Object.keys(rc.in)) {
-  const srcs = chain.up.filter(u => u.r === i), got = st.inflow(t.id, i);
-  const kinds = [...new Set(srcs.map(u => names[u.tile.building.type]))].join('、');
-  const note = srcs.length ? `来自 ${countOf(srcs.length, kinds)} · 最近 ${Math.min(...srcs.map(u => u.hops))} 段` : '没有连到来源';
-  html += barRow({key:i, iconHtml:icon(i, i + '-c'), name:names[i], got, cap:need, note, hot:v?.key === i, grade:young && srcs.length ? 'ok' : undefined});
+function logisticsChart(t, st) {
+ const b = t.building, rc = E.RECIPES[b.type], r = rc.out, chain = chainOf(t, st), issue = workshopIssue(t, st, chain), made = tileRate(t), ins = Object.keys(rc.in);
+ let html = '<h3>物流流程图</h3><div class="lchart">';
+ for (const i of ins) {
+  const srcs = chain.up.filter(u => u.r === i), hot = issue?.node === 'in:' + i;
+  html += lnode({k:'来源', main:srcs.length ? who(srcs) : '没有', sub:srcs.length ? `送来 ${ic(i)}${per(st.inflow(t.id, i))} /回合` : '', state:srcs.length ? '' : 'bad'}) + llink();
+  html += lnode({k:`${names[i]}仓库`, main:`${ic(i)}${t.loose[i]} / ${E.YARD}`, sub:t.loose[i] < 1 ? '空了' : '', state:hot ? 'wait' : '', alert:hot ? issue.text : ''});
  }
- if (Object.keys(rc.in).length) html += '<div class="farrow"></div>';
- html += barRow({key:'self', iconHtml:icon(b.type, b.type + '-c'), name:names[b.type], got:tileRate(t), cap:need, hot:v?.key === 'self', grade:!b.workers.length ? 'none' : young ? 'ok' : undefined});
- html += '<div class="farrow"></div>';
- const towns = chain.down.filter(d => d.town), shops = chain.down.filter(d => !d.town);
- const parts = [];
- if (towns.length) parts.push(`卖给 ${countOf(towns.length, '城镇')} · ${towns.map(d => `${coins(d.price)} 收 ${per(d.taken)}`).join(' · ')}`);
- if (shops.length) parts.push(`供 ${shops.map(d => `${names[d.tile.building.type]}用 ${per(d.taken)}`).join('、')}`);
- const outNote = parts.length ? parts.join('；') : '没有去处';
- const stuck = t.loose[r] >= E.YARD && !madeLastRound(t);
- html += barRow({key:r, iconHtml:icon(r, r + '-c'), name:names[r], got:st.outflow(t.id, r), cap:0, unit:' 运出', note:outNote, hot:v?.key === r, grade:!chain.down.length ? 'none' : stuck ? 'short' : 'ok'});
+ if (ins.length) html += llink(`用掉 ${ins.map(i => `${ic(i)}${per(made)}`).join(' ')} /回合`);
+ html += lnode({k:`${names[b.type]} · ${b.workers.length} 工人`, main:`${ins.map(i => `${ic(i)}${per(made)}`).join(' ')}${ins.length ? ' → ' : ''}+${ic(r)}${per(made)} /回合`,
+  sub:`产能 ${E.rate(world, t)} · 维护费 ${ic('coin')}${E.upkeep(b)} /回合`, state:made <= 0 && st.span >= 5 ? 'bad' : '', alert:issue?.node === 'self' ? issue.text : ''});
+ html += llink(`产出 ${ic(r)}${per(made)} /回合`);
+ const outHot = issue?.node === 'out', towns = chain.down.filter(d => d.town);
+ html += lnode({k:`${names[r]}仓库`, main:`${ic(r)}${t.loose[r]} / ${E.YARD}`, sub:t.loose[r] >= E.YARD ? '满了' : '', state:outHot ? 'bad' : '', alert:outHot ? issue.text : ''}) + llink();
+ html += lnode({k:'去处', main:chain.down.length ? who(chain.down) : '没有', state:chain.down.length ? '' : 'bad',
+  sub:chain.down.length ? `运出 ${ic(r)}${per(st.outflow(t.id, r))} /回合${towns.length ? ` · ${ic('coin')}${Math.max(...towns.map(d => d.price))} /件` : ''}` : ''});
  html += '</div>';
- if (v) html += `<div class="verdict ${v.level}"><b>${v.cause}。</b>${v.action ? `<span>${v.action}。</span>` : ''}</div>`;
+ if (issue) html += `<div class="verdict warn"><b>${issue.text}。</b><span>${issue.fix}。</span></div>`;
  return html;
 }
-// A town's flow: one bar per good it buys (taken / demand), who supplies it, and what limits it.
-function townFlowSection(t, st) {
- const b = t.building, chain = chainOf(t, st), buys = E.buys(world, t.id), young = st.span < 5;
- let html = '<h3>供需</h3><div class="flow">', verdict = null;
- for (const [r, d] of Object.entries(buys)) {
-  const srcs = chain.up.filter(u => u.r === r), got = st.sales(t.id, r), stuck = backlog(t.id, r);
-  const kinds = [...new Set(srcs.map(u => names[u.tile.building.type]))].join('、');
-  const cap = srcs.reduce((n, u) => n + u.rate, 0);
-  let note = `${coins(d.price)}`;
-  if (srcs.length) { const near = srcs.slice().sort((a, b) => a.hops - b.hops)[0], net = d.price - near.hops * E.TOLL - E.WAGE[near.tile.building.type]; note += ` · 每件到手 <b class="${net <= 0 ? 'warn' : ''}">${coins(net)}</b>`; }
-  note += srcs.length ? ` · 来自 ${countOf(srcs.length, kinds)} · 最近 ${Math.min(...srcs.map(u => u.hops))} 段 · 产 ${cap}` : ' · 没有连到来源';
-  if (stuck) note += ` · <b class="warn">积压 ${stuck}</b>`;
-  let v = null;
-  if (!srcs.length) v = {level:'warn', cause:`没有连到产${names[r]}的建筑`, action:`修一条路到${names[E.BUILDINGS.find(x => E.RECIPES[x].out === r)]}，或新建一座`};
-  else if (stuck) v = {level:'warn', cause:`${names[r]}积压 ${stuck} 件，需求到顶了`, action:'点城镇收购，或加居民、升时代'};
-  else if (!young && got < d.rate * .9) {
-   if (cap < d.rate) v = {level:'warn', cause:`${names[r]}供给只有需求的 ${Math.round(cap / d.rate * 100)}%`, action:`给${kinds}加工人、升工艺，或再连一座`};
-   else {
-    const rival = townTiles().filter(u => u.id !== t.id && u.building.buys[r] > d.price && srcs.some(x => E.path(world, x.tile.id, u.id))).map(u => u.building.buys[r]).sort((a, b) => b - a)[0];
-    v = {level:'warn', cause:rival ? `${kinds}的${names[r]}先给了出价 ${coins(rival)} 的城镇，这里只出 ${coins(d.price)}` : `${kinds}的${names[r]}被同价的城镇轮流分走`, action:`再建一座${kinds}，或加居民抬高这里的需求`};
-   }
-  }
-  if (v && !verdict) verdict = {...v, key:r};
-  html += barRow({key:r, iconHtml:icon(r, r + '-c'), name:names[r], got, cap:d.rate, note, hot:verdict?.key === r, grade:young && srcs.length ? 'ok' : undefined});
+// A town: one chain per good it buys, source → warehouse → eaten per round → income.
+function townChart(t, st) {
+ const chain = chainOf(t, st);
+ let html = '<h3>物流流程图</h3>', verdict = null;
+ for (const [r, x] of Object.entries(E.buys(world, t.id))) {
+  const srcs = chain.up.filter(u => u.r === r), full = t.loose[r] >= x.cap, short = t.loose[r] < x.rate, sold = st.sales(t.id, r);
+  if (!srcs.length && !verdict) verdict = {text:`${names[r]}没有来源`, fix:`修一条路到产${names[r]}的建筑，或新建一座`};
+  if (full && !verdict) verdict = {text:`${names[r]}卖不完`, fix:`每回合送来 ${per(st.inflow(t.id, r))} 件，只吃得下 ${x.rate} 件。加居民或升时代；上游不用再扩`};
+  html += '<div class="lchart">' + lnode({k:'来源', main:srcs.length ? who(srcs) : '没有', sub:srcs.length ? `送来 ${ic(r)}${per(st.inflow(t.id, r))} /回合` : '', state:srcs.length ? '' : 'bad'}) + llink();
+  html += lnode({k:`${names[r]}仓库`, main:`${ic(r)}${t.loose[r]} / ${x.cap}`, sub:full ? '满了' : short ? '不够一回合' : '', state:full ? 'bad' : short ? 'wait' : '', alert:full ? `${names[r]}卖不完` : ''});
+  html += llink(`吃掉 ${ic(r)}${per(sold)} /回合`) + lnode({k:'收入', main:`+${ic('coin')}${Math.round(sold * x.price)} /回合`, sub:`${ic('coin')}${x.price} /件`, state:sold <= 0 && st.span >= 5 ? 'bad' : ''}) + '</div>';
  }
- html += '</div>';
- if (verdict) html += `<div class="verdict ${verdict.level}"><b>${verdict.cause}。</b><span>${verdict.action}。</span></div>`;
- else if (Object.keys(buys).length) html += '<div class="verdict ok"><b>供需平衡。</b><span>想多赚就加居民或升时代。</span></div>';
+ if (verdict) html += `<div class="verdict warn"><b>${verdict.text}。</b><span>${verdict.fix}。</span></div>`;
  return html;
-}
-// One sentence naming the layer that limits this building right now, or nothing.
-function diagnose(t, st) {
- const b = t.building;
- if (!b || b.type === 'town') return null;
- const rc = E.RECIPES[b.type];
- const edges = Object.values(world.edges).filter(e => !e.removing && (e.a === t.id || e.b === t.id));
- const miss = madeLastRound(t) ? [] : missingInputs(t);
- if (miss.length) {
-  if (!edges.length) return {level:'warn', text:`没有道路，${miss.map(r => names[r]).join('和')}进不来。`};
-  for (const r of miss) {
-   const makers = Object.values(world.tiles).filter(x => E.workshop(x.building) && E.RECIPES[x.building.type].out === r && E.path(world, x.id, t.id));
-   if (!makers.length) return {level:'warn', text:`没有连接到任何产${names[r]}的建筑。`};
-  }
-  if (st.span < 5) return null;
-  const need = Math.max(1, E.rate(world, t));
-  const short = miss.filter(r => st.inflow(t.id, r) < need * .9);
-  if (!short.length) return null;
-  const text = short.map(r => `${names[r]}到货 ${per(st.inflow(t.id, r))} 件/回合，需要 ${need} 件/回合。`).join('');
-  return {level:'warn', text};
- }
- const r = rc.out;
- if (t.loose[r] < E.YARD || madeLastRound(t)) return null;
- const buyers = buyersOf(r, t.id), users = Object.values(world.tiles).filter(x => E.workshop(x.building) && E.RECIPES[x.building.type].in[r] && E.path(world, t.id, x.id));
- if (!buyers.length && !users.length) return {level:'warn', text:`堆场已满。没有连到收${names[r]}的地方。`};
- if (buyers.length && buyers.every(k => saturated(k, r, st)) && !users.length) return {level:'warn', text:`堆场已满。收${names[r]}的城镇已喂饱。`};
- return {level:'info', text:'堆场已满，货正在陆续运出。'};
 }
 
 const svg = $('map');
-function hexPoints(x, y, s = 50) {
- return Array.from({length:6}, (_, i) => {
-  const a = (i * 60 - 30) * Math.PI / 180;
-  return `${x + s * Math.cos(a)},${y + s * Math.sin(a)}`;
- }).join(' ');
-}
+const hexPoints = MapGeometry.points;
 // Everything the map must show: placed tiles, fog flowers and the previewed one. The view box follows the map as it grows.
 function flowerPoints(f) { return E.flowerTiles(f).map(p => position({q:p.q, r:p.r})); }
 // The camera: `view` is the map point at the top-left corner plus a zoom scale (screen px per map unit).
@@ -430,8 +353,8 @@ function flowerOutline(f) {
   for (let i = 0; i < 6; i++) {
    const [dq, dr] = HEX_DIRS[i];
    if (keys.has(`${p.q + dq},${p.r + dr}`)) continue;
-   const a = (i * 60 - 30) * Math.PI / 180, b = ((i + 1) * 60 - 30) * Math.PI / 180;
-   d += `M${x + 51 * Math.cos(a)},${y + 51 * Math.sin(a)}L${x + 51 * Math.cos(b)},${y + 51 * Math.sin(b)}`;
+   const a = MapGeometry.vertex(x,y,51,i), b = MapGeometry.vertex(x,y,51,i+1);
+   d += `M${a.join(",")}L${b.join(",")}`;
   }
  }
  return d;
@@ -476,12 +399,26 @@ function tileAt(clientX, clientY) {
  const p = new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
  let best = null, distance = Infinity;
  for (const t of Object.values(world.tiles)) {
-  const [x,y] = position(t), d = Math.hypot(p.x-x,p.y-y);
+  const [x,y] = position(t), d = Math.hypot(p.x-x,(p.y-y)/MapGeometry.depth);
   if (d < distance) { best=t; distance=d; }
  }
  if (!best) return null;
  const [x,y] = position(best), dx = Math.abs(p.x-x), dy = Math.abs(p.y-y);
- return dx <= Math.sqrt(3)*25 && dy <= 50-dx/Math.sqrt(3) ? best.id : null;
+ return MapGeometry.contains(dx,dy) ? best.id : null;
+}
+// What a tile's pills show. Buildings: last round's output and upkeep, and every warehouse. Towns: what each good
+// earns per round (30-round average, so all-or-nothing eating does not flicker) and each warehouse.
+function tileView(t, st) {
+ const b = t.building, last = world.stats.at(-1);
+ if (b.type === 'town') {
+  const d = E.buys(world, t.id);
+  return {type:'town', name:'城镇', offers:Object.entries(d).map(([id, x]) => ({id, used:last?.sales[t.id]?.[id] || 0, income:Math.round(st.sales(t.id, id) * x.price)})),
+   store:Object.entries(d).map(([id, x]) => ({id, count:t.loose[id], cap:x.cap, role:'buy'}))};
+ }
+ const rc = E.RECIPES[b.type], n = last?.tiles[t.id] || 0, ins = Object.keys(rc.in);
+ return {type:b.type, name:names[b.type], cost:E.upkeep(b), made:[{id:rc.out, n}], used:ins.map(id => ({id, n})),
+  starved:ins.filter(id => t.loose[id] < 1),
+  store:[...ins.map(id => ({id, count:t.loose[id], cap:E.YARD, role:'in'})), {id:rc.out, count:t.loose[rc.out], cap:E.YARD, role:'out'}]};
 }
 function renderMap() {
  buildMap();
@@ -509,16 +446,10 @@ function renderMap() {
   g.classList.toggle('invalid', !!buildType && !canPlace(buildType,t));
   g.setAttribute('aria-label', `${names[b?.type || t.terrain]} (${t.id})`);
   let content='',ambient='';
-  if (b?.type === 'town') {
-   const earning=Object.entries(E.buys(world,t.id)).reduce((n,[r,d])=>n+st.sales(t.id,r)*d.price,0);
-   const linked=connectedTowns().includes(t.id);
-   const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,backlog:backlog(t.id,id),full:backlog(t.id,id)>0,income:linked?st.sales(t.id,id)*d.price:null}));
-   content=BuildingTiles.render({type:'town',name:'城镇',level:E.eraPower(world),residents:b.residents,offers,notice:E.warning(world,t),status:linked?`+${coins(earning)}/回合`:'未连路',alert:!linked});
-  } else if (b) {
-   const rc=E.RECIPES[b.type],stall=stallOf(t),count=t.loose[rc.out];
-   const status=stall||(count>=E.YARD?'满仓 · 待运出':!b.workers.length?'点击生产':'生产中');
-   content=BuildingTiles.render({type:b.type,name:names[b.type],level:E.workerPower(world,b.type),output:rc.out,count,capacity:E.YARD,status,notice:E.warning(world,t),alert:!!stall||count>=E.YARD});
-   g.setAttribute('aria-label',`${names[b.type]}，${names[rc.out]}库存 ${count}，${status} (${t.id})`);
+  if (b) {
+   // Production and stock pills, expanded into the full two rows while the tile is selected. See docs/ui-system.html「地图反馈」.
+   content=BuildingTiles.render({...tileView(t,st),pills:true,expanded:t.id===selected&&!buildType&&!connectFrom});
+   g.setAttribute('aria-label',`${names[b.type]} (${t.id})`);
   } else if (!['grass','lake'].includes(t.terrain)||!roadLayout.ports.has(t.id)) {
    // Resource land and mountains keep their scenery whatever runs across them. Empty grass and open water keep
    // theirs only until a road (or a waterway) arrives: from then on the road is the one thing drawn on that tile.
@@ -537,9 +468,10 @@ function renderMap() {
    holder.dataset.key=key;
    holder.classList.toggle('blocked',!!c&&c.blocked);
    holder.classList.toggle('halted',!!c&&world.paused);
-   holder.innerHTML=c?BuildingTiles.people({kind:b.type==='town'?'resident':'worker',count:c.n,active:!c.blocked,paused:world.paused,beat:c.beat,clock:performance.now()/1000}):'';
+   holder.innerHTML=c?BuildingTiles.people({kind:b.type==='town'?'resident':'worker',count:c.n,seed:t.id,active:!c.blocked,paused:world.paused,beat:c.beat,clock:performance.now()/1000}):'';
   }
  }
+ if(selected&&world.tiles[selected]?.building){const ui=svg.querySelector(`[data-tile-ui="${selected}"]`);if(ui&&ui.nextSibling)ui.parentNode.appendChild(ui);}
  $('roads').innerHTML=roadLayout.junctions.map(d=>`<path class="road-junction" d="${d}"/>`).join('')+[...roadLayout.roads.values()].map(e => {
   const on=focus&&focus.edges.has(e.id);
   let label='';
@@ -556,8 +488,8 @@ function renderMap() {
  if (world.tick!==popTick) {
   popTick=world.tick;const lastS=world.stats[world.stats.length-1];
   for(const old of $('pops').querySelectorAll('.pop.tick'))old.remove();
-  if(lastS)for(const tile of Object.values(world.tiles)){const notice=E.warning(world,tile);if(!notice)continue;const[x,y]=position(tile);$('pops').insertAdjacentHTML('beforeend',BuildingTiles.warningPop(notice,x,y+20));}
-  if(lastS)for(const[k,n]of Object.entries(lastS.tiles)){const tile=world.tiles[k],b=tile?.building;if(!b||b.type==='town'||!b.workers.length)continue;const shown=Math.min(n,E.rate(world,tile));if(shown<1)continue;const[x,y]=position(tile);$('pops').insertAdjacentHTML('beforeend',`<g class="pop tick" transform="translate(${x+14},${y-28})"><text text-anchor="middle" class="pop-text" fill="${goodColor(E.RECIPES[b.type].out)}">+${shown}</text></g>`);}
+  // The one per-round animation: every building's upkeep, once the engine is charging it.
+  if(lastS?.upkeep>0)for(const tile of Object.values(world.tiles)){const b=tile.building;if(!E.workshop(b))continue;const[x,y]=position(tile);$('pops').insertAdjacentHTML('beforeend',BuildingTiles.upkeepPop(E.upkeep(b),x,y-43));}
  }
  for (const hit of $('roads').querySelectorAll('[data-edge]')) {
   const select=()=>{if(suppressClick){suppressClick=false;return;} if(buildType||connectFrom)return;selectedEdge=hit.dataset.edge;selected=null;selectedFlower=null;render();};
@@ -575,8 +507,8 @@ function townPanel(t) {
  const earning=Object.entries(buys).reduce((n,[r,d])=>n+st.sales(key,r)*d.price,0), next=E.residentCost(world,key), rate=E.townRate(world,b), full=b.residents>=E.MAX_RESIDENTS, era=E.eraPower(world);
  let html=`<h2>${icon('town','town-c')}城镇 ${BuildingTiles.formatLevel(E.eraPower(world))}</h2><div class="subtitle">${E.ERAS[world.tech.era]} · 每种货每回合收 ${rate} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${coins(earning)}</b><small>/ 回合</small></div>`;
  html+=`<div class="crew"><div class="crew-top"><span>居民 ${b.residents}</span><b>${b.residents} × ${E.TOWN_RATE*era} = ${rate} 件/回合</b></div><div class="slots residents">${Array.from({length:b.residents},(_,i)=>`<span class="resident bt-person-beat ${world.paused||!Object.values(world.stats.at(-1)?.sales[key]||{}).some(n=>n>0)?'is-idle':''}" style="--beat:${Math.max(.25,E.DT/speed)}s;animation-delay:-${i*.15}s">${icon('resident')}</span>`).join('')}</div></div>`;
- html+=townFlowSection(t,st);
- html+=`<div class="actions">${full?'':button(purchaseLabel(`加第 ${b.residents+1} 名居民`,next,`每种货每回合多收 ${E.TOWN_RATE*era} 件`),{type:'resident',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon('town','')}手工收购 每种货 ${E.clickPower(world,t)} 件<small>点城镇加需求，货会立刻派来</small></button></div>`;
+ html+=townChart(t,st);
+ html+=`<div class="actions">${full?'':button(purchaseLabel(`加第 ${b.residents+1} 名居民`,next,`每种货每回合多收 ${E.TOWN_RATE*era} 件`),{type:'resident',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon('town','')}手工收购 每种货 ${E.clickPower(world,t)} 件<small>从仓库里立刻多卖这么多</small></button></div>`;
  return html;
 }
 function flowerPanel(f) {
@@ -604,8 +536,8 @@ function renderSelection() {
   const c=crew(t), full=n>=E.MAX_WORKERS;
   const dots=Array.from({length:c.n},(_,i)=>`<span class="wmeeple" style="${beatStyle(c,i)}">${icon('worker')}</span>`).join('');
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:names[r];
-  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div><div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(purchaseLabel(`雇第 ${n+1} 名工人`,next,`每回合自动多 ${E.workerPower(world,b.type)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>工资</span><b>−${coins(E.WAGE[b.type])} / 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
-  html=html.replace('<h3>近 30 回合每回合</h3>',flowSection(t,st)+'<h3>近 30 回合每回合</h3>');
+  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div><div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(purchaseLabel(`雇第 ${n+1} 名工人`,next,`每回合自动多 ${E.workerPower(world,b.type)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>维护费</span><b>−${coins(E.upkeep(b))} / 回合</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
+  html=html.replace('<h3>近 30 回合每回合</h3>',logisticsChart(t,st)+'<h3>近 30 回合每回合</h3>');
   html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">从这里修路</button>${n?button(`辞退一名工人<small>退回 ${coins(b.workers[n-1].paid)}</small>`,{type:'fireWorker',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
  } else if (t) {
   const fits=unlockedBuildings().filter(b=>E.RECIPES[b].fits.includes(t.terrain));
@@ -668,8 +600,7 @@ function renderLegend() {
 // The tech tree is one card per building, plus the golden finger (manual clicks) and the waterway. A card
 // starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
 function techCards() {
- const cards = [{id:'finger', name:'金手指', icon:'worker', tier:1, kind:'economy', desc:'手工点击：点工坊出货，点城镇加需求。每次至少这么多，工人和居民多了还会跟着涨', craft:'tools', per:n=>`每次点击至少 ${n} 件`},
-  {id:'fleet', name:'车队', icon:'road', tier:1, kind:'economy', desc:'每段路每回合每个方向能过的件数。货在段首排队就是运力不够', craft:'fleet', per:n=>`每段路每回合每方向 ${E.CART_BASE+n-1} 件`},
+ const cards = [{id:'finger', name:'金手指', icon:'worker', tier:1, kind:'economy', desc:'手工点击：点工坊出货，点城镇从仓库多卖。每次至少这么多，工人和居民多了还会跟着涨', craft:'tools', per:n=>`每次点击至少 ${n} 件`},
   {id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
  for (const b of E.BUILDINGS) {
   const t = E.TECH[b], rc = E.RECIPES[b];

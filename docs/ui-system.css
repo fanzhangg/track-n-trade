@@ -20,3 +20,7 @@
 .good i{display:grid;place-items:center;width:32px;height:32px;border:1px solid currentColor;background:var(--surface-panel);border-radius:5px;box-shadow:2px 2px 0 var(--surface-inset)}
 @media(max-width:900px){.reference-grid{grid-template-columns:1fr}.reference-colors{height:32px}}
 @media(max-width:600px){.palette-strip{height:76px}.palette-strip span{font-size:9px}}
+
+/* Ground projection matches map geometry; glyphs stay upright. */
+.terrain-chip{height:54.6px}
+@media(max-width:600px){.terrain-chip{height:44.85px}}
