@@ -30,7 +30,6 @@ const RAW={log:['forest'],stone:['rock'],board:['forest'],tool:['forest','rock']
 // `era` is the demand-side twin: each era every resident of every town takes TOWN_RATE more of each good.
 const ERAS=['农业时代','封建时代','工业时代','电气时代','信息时代'];
 const TECH={
- fleet:{name:'车队',base:1500,growth:1.8,requires:[],kind:'economy',tier:1,repeat:true,desc:'每段路每回合每个方向多过 1 件'},
  era:{name:'时代',requires:[],kind:'economy',tier:1,repeat:true,max:ERAS.length-1,desc:'全图所有居民每种货每回合多收 2 件'},
  quarry:{name:'采石场',cost:1200,requires:[],kind:'building',tier:1,desc:'可以在岩地建采石场'},
  sawmill:{name:'锯木厂',cost:3000,requires:[],kind:'building',tier:1,desc:'可以在草地建锯木厂，原木 → 木板'},
@@ -46,13 +45,12 @@ const TERRAIN_NAME={grass:'草地',town:'城镇',forest:'森林',rock:'岩地',o
 const TERRAIN_FACTOR={grass:1,town:1,forest:2,rock:2,ore:2,lake:3};
 // Roads only connect: a piece moves one segment per round and a segment carries any number of pieces.
 const ROAD_BASE=250;
-// Freight has a size. A road segment carries CART_BASE + fleet level pieces per direction per round, any mix of
-// goods; a busy trunk clogs and the answer is the fleet tech (a fixed ladder, FLEET_BASE x FLEET_GROWTH^level) or a
-// second road. Spending happens where it is caused: every piece pays TOLL the moment it enters a segment, and every
+// Distance is the only cost of a road: every piece moves one segment a round, however many share it, so chains never
+// block each other. Spending happens where it is caused: every piece pays TOLL the moment it enters a segment, and every
 // piece made costs its building's WAGE. Roads and buildings never look at income: a road segment is ROAD_BASE x
 // terrain, a building its base price x BUILDING_GROWTH per one of its type already built, so a rebuild costs what
 // the demolition refunded.
-const CART_BASE=3,TOLL=1,FAR_BONUS=.15,BUILDING_GROWTH=1.3,FLEET_BASE=TECH.fleet.base,FLEET_GROWTH=TECH.fleet.growth;
+const TOLL=1,FAR_BONUS=.15,BUILDING_GROWTH=1.3;
 const WAGE={camp:2,quarry:2,mine:2,sawmill:8,mason:8,smelter:8};
 // Towns mirror workshops: up to MAX_RESIDENTS residents, each taking TOWN_RATE of every good per round times the
 // global era. Residents, crafts and eras are all priced by what they add: PAYBACK rounds of it, x GROWTH per step.
@@ -298,7 +296,6 @@ function newWorld(seed=1){const w={schemaVersion:19,seed:seed>>>0,tick:0,serial:
  w.initial=totals(w);return w;}
 
 /* ---------- prices ---------- */
-const cartSize=w=>CART_BASE+(w.tech.fleet||0);
 function buildingCost(w,type){const n=Object.values(w.tiles).filter(t=>t.building?.type===type).length;return Math.round(PRICE[type]*BUILDING_GROWTH**n);}
 function workerCost(w,t){const b=t.building;return Math.round(WORKER[b.type]*WORKER_GROWTH**b.workers.length);}
 // What one more piece of a good is worth at best: its town price, or the price of what it turns into.
@@ -528,23 +525,21 @@ function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{}
  const ds=demands(w);reconcile(w,ds);
  // Roads that existed at the start of the round carry freight this round; a new segment opens next round.
  for(const e of Object.values(w.edges))if(oldEdges.has(e.id)&&!e.removing&&e.readyAt<=w.tick)sample.edges[e.id]={flows:{}};
- // A segment moves cartSize pieces per direction per round, goods mixed freely. A piece that finds it full waits at
- // its node for the next round. The toll is paid the moment a piece enters a segment.
- const K=cartSize(w),toll=TOLL;
- const cartOk=(eid,from,r)=>{const e=w.edges[eid],to=e.a===from?e.b:e.a,flows=sample.edges[eid].flows,pre=from+'>'+to+':';
-  let n=0;for(const k in flows)if(k.startsWith(pre))n+=flows[k];return n<K;};
- // Shortest path whose first segment, the only one taken this round, still has cart room for this good.
- const openPath=(from,to,r)=>{const all=pathState(w).edgesOf,edgesOf={...all};edgesOf[from]=(all[from]||[]).filter(e=>sample.edges[e.id]&&cartOk(e.id,from,r));return findPath(edgesOf,from,to);};
+ // Every piece moves one segment per round; a segment carries any number. The toll is paid the moment a piece
+ // enters a segment.
+ const toll=TOLL;
+ // Shortest path whose first segment, the only one taken this round, is open this round.
+ const openPath=(from,to)=>{const all=pathState(w).edgesOf,edgesOf={...all};edgesOf[from]=(all[from]||[]).filter(e=>sample.edges[e.id]);return findPath(edgesOf,from,to);};
  const send=(s,eid)=>{const e=w.edges[eid];s.edge=eid;s.from=s.node;s.to=e.a===s.node?e.b:e.a;s.remaining=1;s.next=null;const fk=s.from+'>'+s.to+':'+s.r;sample.edges[eid].flows[fk]=(sample.edges[eid].flows[fk]||0)+1;w.money-=toll;w.tollPaid+=toll;sample.toll+=toll;};
- // Freight already under way takes its next segment if there is room in this round's cart.
+ // Freight already under way takes its next segment.
  for(const s of w.shipments){if(s.edge||!s.key||!s.next)continue;
-  if(sample.edges[s.next]&&cartOk(s.next,s.node,s.r)){send(s,s.next);continue;}
-  const p=openPath(s.node,s.destination,s.r);if(p&&p.length)send(s,p[0]);}
+  if(sample.edges[s.next]){send(s,s.next);continue;}
+  const p=openPath(s.node,s.destination);if(p&&p.length)send(s,p[0]);}
  // New freight: the most valuable demands are served first, equally valuable ones take turns piece by piece,
  // and every piece comes from the nearest source that still has one to spare. A source whose piece would not be
  // worth its tolls and the wage at the door is not a source: a chain that loses money never runs.
  const groups=new Map();for(const d of ds){const g=d.r+'@'+d.value;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(d);}
- const source=d=>Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:openPath(t.id,d.tile,d.r)})).filter(x=>x.p&&x.p.length&&netValue(w,d,x.p.length)>0).sort((a,b)=>a.p.length-b.p.length||a.t.id.localeCompare(b.t.id))[0];
+ const source=d=>Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:openPath(t.id,d.tile)})).filter(x=>x.p&&x.p.length&&netValue(w,d,x.p.length)>0).sort((a,b)=>a.p.length-b.p.length||a.t.id.localeCompare(b.t.id))[0];
  for(const[scope,group]of groups)for(;;){const d=choose(w,scope,group,d=>d.target-d.local-allocated(w,d.key)>0&&source(d));if(!d)break;const x=source(d);x.t.loose[d.r]--;const s={id:id(w),key:d.key,r:d.r,node:x.t.id,destination:d.tile};w.shipments.push(s);send(s,x.p[0]);}
  updateWarnings(w,sample);
  sample.income=sample.gross-sample.wages-sample.toll;
@@ -580,10 +575,12 @@ function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
  qty(w.initial);qty(w.production);qty(w.consumption);const total=totals(w);for(const r of RES)if(total[r]!==w.initial[r]+w.production[r]-w.consumption[r])throw Error('资源账本不守恒');return true;}
 function apply(w,c){const next=copy(w);command(next,c);validate(next);return next;}
 function load(saved){const next=copy(saved);if(next&&next.lastNovel==null)next.lastNovel=0;
- // v18 saves settled tolls out of sales and had no wages or fleet; carry them over with the ledger intact.
- if(next&&next.schemaVersion===18&&next.tech&&next.manual&&Array.isArray(next.stats)){next.schemaVersion=19;delete next.tollDue;next.tollPaid=next.tollPaid||0;next.wages=0;next.tech.fleet=0;next.manual.wages=0;for(const s of next.stats){s.toll=s.toll||0;s.gross=s.income+s.toll;s.wages=0;}}
+ // v18 saves settled tolls out of sales and had no wages; carry them over with the ledger intact. v19 saves may carry
+ // the retired fleet tech, which is dropped.
+ if(next&&next.schemaVersion===18&&next.tech&&next.manual&&Array.isArray(next.stats)){next.schemaVersion=19;delete next.tollDue;next.tollPaid=next.tollPaid||0;next.wages=0;next.manual.wages=0;for(const s of next.stats){s.toll=s.toll||0;s.gross=s.income+s.toll;s.wages=0;}}
+ if(next?.tech)delete next.tech.fleet;
  validate(next);return next;}
-const api={WARNING_ROUNDS,buildingBottleneck,warning,formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,CART_BASE,TOLL,FAR_BONUS,BUILDING_GROWTH,FLEET_BASE,FLEET_GROWTH,WAGE,cartSize,netValue,steady,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
+const api={WARNING_ROUNDS,buildingBottleneck,warning,formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,TOLL,FAR_BONUS,BUILDING_GROWTH,WAGE,netValue,steady,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
  copy,zero,add,workshop,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,command,tick,totals,validate,apply,load,demands,allocated,buffer,transit,pipeline,available,buildingCost,workerCost,firstRoad,techCost,techOwned,techAvailable,techMaxed,workerPower,clickPower,eraPower,goodValue,workersOf,craftCost,eraCost,edgeCost,segmentCost,anchored,residentCost,townRate,income,buys,recentSales,terrainFactor,passable,rate,value,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
