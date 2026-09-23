@@ -288,7 +288,7 @@ function generateFlower(w,n,f){const rand=rng(mix(w.seed,n));return orient(w,f,s
 // the raw it needs never touch), the rest grass and a mountain. The camp on the forest and the two-segment road to
 // the town is the whole first lesson; START_MONEY pays for exactly that.
 const START_DESIGN={center:'grass',ring:['forest','grass','town','grass','mountain','grass'],buys:{log:20}},START_TILE='1,0',START_TOWN='0,-1';
-function newWorld(seed=1){const w={schemaVersion:17,seed:seed>>>0,tick:0,serial:0,flowers:{},tiles:{},edges:{},shipments:[],scheduler:{},stats:[],money:START_MONEY,earned:0,spent:0,production:zero(),consumption:zero(),sold:{},tech:{},unlocked:0,lastTownUnlock:0,preview:null,clicks:0,manual:{out:zero(),tiles:{}},milestones:{},flags:{},paused:false,tollDue:0,tollPaid:0,lastNovel:0};
+function newWorld(seed=1){const w={schemaVersion:18,seed:seed>>>0,tick:0,serial:0,flowers:{},tiles:{},edges:{},shipments:[],scheduler:{},stats:[],money:START_MONEY,earned:0,spent:0,production:zero(),consumption:zero(),sold:{},tech:{},unlocked:0,lastTownUnlock:0,preview:null,clicks:0,manual:{out:zero(),tiles:{}},goals:Object.fromEntries(GOALS.map(g=>[g.id,1])),flags:{},paused:false,tollDue:0,tollPaid:0,lastNovel:0};
  for(const k of Object.keys(TECH))w.tech[k]=0;
  const f={id:fidOf(0,0),a:0,b:0,center:flowerCenter(0,0),state:'placed',design:copy(START_DESIGN),rotation:0,order:0};
  w.flowers[f.id]=f;materialize(w,f);spawnFog(w,f);
@@ -436,23 +436,39 @@ function release(w,s){w.tiles[s.node].loose[s.r]++;w.shipments.splice(w.shipment
 function reconcile(w,ds){const map=new Map(ds.map(d=>[d.key,d]));for(const s of w.shipments)if(!map.has(s.key))s.key=null;for(const d of ds){const ss=w.shipments.filter(s=>s.key===d.key).sort((a,b)=>b.id.localeCompare(a.id));let excess=ss.length-Math.max(0,d.target-d.local);for(const s of ss){if(excess--<=0)break;s.key=null;}}for(const s of [...w.shipments])if(!s.edge){const d=map.get(s.key);if(!d){release(w,s);continue;}if(s.node===d.tile){w.tiles[d.tile].loose[s.r]++;w.shipments.splice(w.shipments.indexOf(s),1);continue;}const p=path(w,s.node,d.tile);if(!p){release(w,s);continue;}s.next=p[0];}}
 // Among equally valuable demands the scheduler round-robins; higher value always goes first.
 function choose(w,scope,ds,eligible){const top=ds.filter(eligible);if(!top.length)return null;const best=Math.max(...top.map(d=>d.value));const ring=top.filter(d=>d.value===best).sort((a,b)=>a.key.localeCompare(b.key));let start=ring.findIndex(d=>d.key===w.scheduler[scope]);start=start<0?0:(start+1)%ring.length;const d=ring[start];w.scheduler[scope]=d.key;return d;}
-const MILESTONES=[
- {id:'click',name:'点击伐木营，做出第一根原木',reward:100,test:w=>w.clicks>0},
- {id:'yard',name:'把伐木营的堆场堆满',reward:200,test:w=>w.flags.yardFull},
- {id:'explore1',name:'解锁第一块板块',reward:300,test:w=>w.unlocked>=1},
- {id:'market',name:'把货卖进第一座城镇',reward:400,test:w=>Object.values(w.sold).some(s=>RES.some(r=>s[r]>0))},
- {id:'worker',name:'雇第一名工人',reward:400,test:w=>Object.values(w.tiles).some(t=>t.building?.workers?.length>0)},
- {id:'tech',name:'买下第一项科技',reward:500,test:w=>Object.keys(TECH).some(k=>w.tech[k]>0)},
- {id:'quarry',name:'建成采石场',reward:800,test:w=>Object.values(w.tiles).some(t=>t.building?.type==='quarry')},
- {id:'explore3',name:'解锁第三块板块',reward:1000,test:w=>w.unlocked>=3},
- {id:'board',name:'卖出第一块木板',reward:1000,test:w=>Object.values(w.sold).some(s=>s.board>0)},
- {id:'camp2',name:'建成第二座伐木营',reward:1000,test:w=>Object.values(w.tiles).filter(t=>t.building?.type==='camp').length>=2},
- {id:'explore4',name:'解锁第四块板块',reward:2000,test:w=>w.unlocked>=4},
- {id:'tool',name:'卖出第一件石头工具',reward:2000,test:w=>Object.values(w.sold).some(s=>s.tool>0)},
- {id:'waterway',name:'开通航道',reward:2000,test:w=>w.tech.waterway>0},
- {id:'explore5',name:'解锁第五块板块',reward:4000,test:w=>w.unlocked>=5},
- {id:'mine',name:'建成矿山',reward:3000,test:w=>Object.values(w.tiles).some(t=>t.building?.type==='mine')},
- {id:'iron',name:'卖出第一块铁',reward:6000,test:w=>Object.values(w.sold).some(s=>s.iron>0)}];
+/* ---------- goals ---------- */
+// Goals measure the engine, never the bank: four rates and the map's footprint. Coins in hand are freight in
+// transit, not a score. Each track is an open-ended ladder whose steps are meant to cost the same effort every
+// time. Buying anything is priced in rounds of current income (a road 1, a building 2, a flower 5), so the
+// economy is scale-free and only a doubling keeps the effort per step constant; unlocking, residents and crafts
+// already cost exponentially more each time, so those ladders step by one instead. Produce, freight and sell are
+// the three stages of one pipeline and share a base so their tiers stay comparable.
+const GOAL_REWARD_ROUNDS=.5,GOAL_REWARD_FLOOR=100;
+const goodsIn=a=>RES.reduce((n,r)=>n+(a[r]||0),0);
+const GOALS=[
+ {id:'produce',icon:'camp',label:'每回合产出',unit:'件',base:4,step:2,value:w=>windowRate(w,s=>goodsIn(s.out))},
+ {id:'freight',icon:'road',label:'每回合运量',unit:'件段',base:4,step:2,
+  value:w=>windowRate(w,s=>Object.values(s.edges).reduce((n,e)=>n+Object.values(e.flows).reduce((m,x)=>m+x,0),0))},
+ {id:'sell',icon:'town',label:'每回合卖出',unit:'件',base:4,step:2,value:w=>windowRate(w,s=>Object.values(s.sales).reduce((n,v)=>n+goodsIn(v),0))},
+ {id:'income',icon:'coin',label:'每回合收入',unit:'金币',base:20,step:2,value:income},
+ {id:'map',icon:'fog',label:'已解锁板块',unit:'块',base:1,step:1,value:w=>w.unlocked}];
+function windowRate(w,pick){const{S,span}=windowStats(w);if(!span)return 0;return S.reduce((n,s)=>n+pick(s),0)/span;}
+// Tier 1 is the base; after that the step either multiplies (rates) or adds (counts).
+function goalTarget(g,tier){return g.step===1?g.base+tier-1:g.base*g.step**(tier-1);}
+function goalFloor(g,tier){return tier<=1?0:goalTarget(g,tier-1);}
+// Small on purpose: always less than the cheapest road segment, so a reward can never decide a build.
+function goalReward(w){return Math.max(GOAL_REWARD_FLOOR,Math.round(income(w)*GOAL_REWARD_ROUNDS));}
+function goalProgress(w,g){const tier=w.goals[g.id],cur=g.value(w),target=goalTarget(g,tier),floor=goalFloor(g,tier);
+ return{tier,cur,target,floor,ratio:Math.max(0,Math.min(1,(cur-floor)/(target-floor)))};}
+// Every track is checked every round and completes the moment it is reached, in any order and with nothing to
+// claim. A tier that is already met completes at once, so after a burst the ladder catches up in one round.
+// Cleared tiers never come back, so a dip in the moving average cannot farm the same reward twice.
+function advanceGoals(w,sample){const reward=goalReward(w);
+ for(const g of GOALS){const cur=g.value(w);let levels=0;
+  while(cur>=goalTarget(g,w.goals[g.id])){w.goals[g.id]++;levels++;}
+  if(!levels)continue;
+  const paid=levels*reward;w.money+=paid;w.earned+=paid;
+  (sample.goals||(sample.goals={}))[g.id]={levels,reward:paid,tier:w.goals[g.id]};}}
 function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{},income:0,sales:{}};const oldEdges=new Set(Object.keys(w.edges));
  add(sample.out,w.manual.out);Object.assign(sample.tiles,w.manual.tiles);w.manual={out:zero(),tiles:{}};
  for(const s of w.shipments)if(s.edge){s.remaining--;if(s.remaining<=0){s.node=s.to;s.edge=null;s.remaining=0;}}
@@ -487,11 +503,13 @@ function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{}
  const source=d=>Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:openPath(t.id,d.tile,d.r)})).filter(x=>x.p&&x.p.length).sort((a,b)=>a.p.length-b.p.length||a.t.id.localeCompare(b.t.id))[0];
  for(const[scope,group]of groups)for(;;){const d=choose(w,scope,group,d=>d.target-d.local-allocated(w,d.key)>0&&source(d));if(!d)break;const x=source(d);x.t.loose[d.r]--;const s={id:id(w),key:d.key,r:d.r,node:x.t.id,destination:d.tile};w.shipments.push(s);send(s,x.p[0]);}
  w.stats.push(sample);while(w.stats.length&&w.stats[0].tick<=w.tick-WINDOW)w.stats.shift();
- for(const m of MILESTONES)if(!w.milestones[m.id]&&m.test(w)){w.milestones[m.id]=w.tick;w.money+=m.reward;w.earned+=m.reward;}
+ advanceGoals(w,sample);
 }
 function totals(w){const sum=zero();for(const t of Object.values(w.tiles))add(sum,t.loose);for(const s of w.shipments)sum[s.r]++;return sum;}
 function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
- if(w?.schemaVersion!==17||!w.tiles||!w.flowers||!Array.isArray(w.shipments)||!Array.isArray(w.stats)||!w.scheduler||!w.milestones||!w.tech||!w.manual||!w.sold||!w.flags||!int(w.tick)||!int(w.serial)||!int(w.money)||!int(w.earned)||!int(w.spent)||!int(w.clicks)||!int(w.seed)||!int(w.unlocked)||!int(w.lastTownUnlock)||!int(w.tollDue)||!int(w.tollPaid)||!int(w.lastNovel))throw Error('存档格式不兼容');
+ if(w?.schemaVersion!==18||!w.tiles||!w.flowers||!Array.isArray(w.shipments)||!Array.isArray(w.stats)||!w.scheduler||!w.goals||!w.tech||!w.manual||!w.sold||!w.flags||!int(w.tick)||!int(w.serial)||!int(w.money)||!int(w.earned)||!int(w.spent)||!int(w.clicks)||!int(w.seed)||!int(w.unlocked)||!int(w.lastTownUnlock)||!int(w.tollDue)||!int(w.tollPaid)||!int(w.lastNovel))throw Error('存档格式不兼容');
+ for(const g of GOALS)if(!Number.isSafeInteger(w.goals[g.id])||w.goals[g.id]<1)throw Error('目标等级无效');
+ for(const k of Object.keys(w.goals))if(!GOALS.some(g=>g.id===k))throw Error('目标等级无效');
  for(const k of Object.keys(TECH))if(!int(w.tech[k])||(!TECH[k].repeat&&w.tech[k]>1)||(TECH[k].max!=null&&w.tech[k]>TECH[k].max))throw Error('科技无效');
  for(const k of Object.keys(w.tech))if(!TECH[k])throw Error('科技无效');
  const qty=a=>{if(!a||!RES.every(r=>int(a[r])))throw Error('材料数量无效');},ids=new Set();const unique=n=>{if(typeof n!=='string'||!/^\d+$/.test(n)||+n>w.serial||ids.has(n))throw Error('对象 ID 无效');ids.add(n);};
@@ -516,7 +534,7 @@ function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
  qty(w.initial);qty(w.production);qty(w.consumption);const total=totals(w);for(const r of RES)if(total[r]!==w.initial[r]+w.production[r]-w.consumption[r])throw Error('资源账本不守恒');return true;}
 function apply(w,c){const next=copy(w);command(next,c);validate(next);return next;}
 function load(saved){const next=copy(saved);if(next&&next.tollDue==null)next.tollDue=0;if(next&&next.tollPaid==null)next.tollPaid=0;if(next&&next.lastNovel==null)next.lastNovel=0;validate(next);return next;}
-const api={RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,CART_BASE,TOLL,FAR_BONUS,ROAD_ROUNDS,BUILDING_ROUNDS,BUILDING_GROWTH,cartSize,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,MILESTONES,
+const api={RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,CART_BASE,TOLL,FAR_BONUS,ROAD_ROUNDS,BUILDING_ROUNDS,BUILDING_GROWTH,cartSize,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
  copy,zero,add,workshop,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,command,tick,totals,validate,apply,load,demands,allocated,buffer,transit,pipeline,available,buildingCost,workerCost,firstRoad,techCost,techOwned,techAvailable,techMaxed,workerPower,clickPower,eraPower,goodValue,workersOf,craftCost,eraCost,edgeCost,segmentCost,anchored,residentCost,townRate,income,buys,recentSales,terrainFactor,passable,rate,value,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

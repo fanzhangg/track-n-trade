@@ -11,15 +11,20 @@ button.primary:active{background:var(--action-pressed);border-color:var(--action
 button.primary small{color:var(--surface-panel)}
 button:focus-visible,summary:focus-visible,[role=button]:focus-visible{outline-color:var(--focus-ring)}
 button.danger{color:var(--bottleneck-1)}
-.money-hud strong,.resource.coins strong,.coins b,.reward,.strip .reward,.goal-hud small,.head-extra,.milestones small,.milestone-strip small,.brand,.panel-title,.goal-hud b,aside h3{color:var(--text-primary)}
-.money-hud small,.resource small,.coins small,.contract .line small,.strip>span,.node p,.milestones li,.state,.owned,.owned-mark{color:var(--text-secondary)}
+.money-hud strong,.resource.coins strong,.coins b,.reward,.strip .reward,.head-extra,.goal .gnum,.brand,.panel-title,aside h3{color:var(--text-primary)}
+.money-hud small,.resource small,.coins small,.contract .line small,.strip>span,.node p,.goal .glbl,.goal .gunit,.state,.owned,.owned-mark{color:var(--text-secondary)}
 .fold{border-top-color:var(--text-secondary)}
-.milestones li.done,.milestones li.done small{color:var(--text-disabled)}
-.progress,.strip .progress{background:var(--surface-inset)}
-.progress span,.strip .progress span,.contract .progress span{background:var(--road-base)}
-.milestone-strip{background:var(--surface-panel);border-color:var(--border-subtle)}
-.milestone-strip>span{color:var(--text-secondary)}
+.progress,.strip .progress,.goal .progress{background:var(--surface-inset)}
+.progress span,.strip .progress span,.contract .progress span,.goal .progress span{background:var(--road-base)}
 .toolbar button[data-build].active,.toolbar button[data-build].active:hover{background:var(--action-pressed);border-color:var(--action-pressed);color:var(--surface-panel);box-shadow:0 0 0 2px var(--action-subtle);opacity:1}
+.goal .gpay{color:var(--value-warning)}
+.goal.done .glbl,.goal.done .gpay,.goal.done .gnum,.goal.done .gunit,.goal.done .icon{color:var(--value-positive)}
+.goal-legend{background:var(--surface-panel);border-color:var(--border-subtle)}
+.goal-legend .legend-badge{background:var(--value-positive-bg);color:var(--value-positive)}
+.goal-legend .legend-head{color:var(--value-positive)}
+.goal-legend .legend-line b{color:var(--text-primary)}
+.goal-legend .legend-step,.goal-legend .legend-close{color:var(--text-secondary)}
+.goal.done .progress span{background:var(--value-positive)}
 .state.wait{color:var(--value-warning)}
 .toolbar button.research .icon,.tech-button .icon{color:var(--action-primary)}
 .toolbar button.research.owned,.node.owned{background:var(--surface-panel);color:var(--text-secondary);border-color:var(--border-subtle)}

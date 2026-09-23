@@ -34,7 +34,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <h1>规则说明书</h1>
 <p class="lede">这是给玩家看的完整规则。Tracks &amp; Trade 是一个单人物流建设游戏：你点击、雇人、铺路、揭开地图、买科技；系统自动把货送到需要它的地方、卖成金币。<strong>你设计网络，系统跑网络。</strong>本页列出每一条规则和每一个数字，需要什么翻到哪一节即可。</p>
 <ul class="toc">
-<li><a href="#goal">你在玩什么</a></li><li><a href="#start">开局与前十分钟</a></li><li><a href="#clock">时钟与整数</a></li><li><a href="#map">地图、迷雾与板块</a></li><li><a href="#terrain">地形</a></li><li><a href="#buildings">建筑与货物</a></li><li><a href="#production">生产：点击与工人</a></li><li><a href="#roads">道路</a></li><li><a href="#freight">派货</a></li><li><a href="#towns">城镇</a></li><li><a href="#tech">科技树</a></li><li><a href="#coins">金币、退款与里程碑</a></li><li><a href="#ui">界面与操作</a></li><li><a href="#save">存档</a></li><li><a href="#faq">常见问题</a></li><li><a href="#sheet">数字速查表</a></li>
+<li><a href="#goal">你在玩什么</a></li><li><a href="#start">开局与前十分钟</a></li><li><a href="#clock">时钟与整数</a></li><li><a href="#map">地图、迷雾与板块</a></li><li><a href="#terrain">地形</a></li><li><a href="#buildings">建筑与货物</a></li><li><a href="#production">生产：点击与工人</a></li><li><a href="#roads">道路</a></li><li><a href="#freight">派货</a></li><li><a href="#towns">城镇</a></li><li><a href="#tech">科技树</a></li><li><a href="#coins">金币、退款与目标</a></li><li><a href="#ui">界面与操作</a></li><li><a href="#save">存档</a></li><li><a href="#faq">常见问题</a></li><li><a href="#sheet">数字速查表</a></li>
 </ul>
 </header>
 
@@ -61,7 +61,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <li><strong>旋转再放下。</strong>预览里地图会画出从伐木营到新城镇最短的路和造价。转到一个修得起、路又短的朝向，点「放下板块」。</li>
 <li><strong>修第一条路。</strong>按住伐木营拖到城镇，松手付钱。下一回合起原木自己上路，到城镇门口就卖掉，金币进账。</li>
 <li><strong>雇第一名工人。</strong>选中伐木营，点「雇工人」（400 金币）。从此伐木营每回合自动出 1 根原木，你不用再点。</li>
-<li><strong>接着往下走。</strong>顶栏的目标条会一句话告诉你下一步：攒钱探索、买科技、建采石场、开第二条产业链……前五块板块每块教一件新事，之后就是自由沙盒。</li>
+<li><strong>接着往下走。</strong>地图是随机生成的，没有既定路线。右侧「目标」面板里五条轨道一直在跑——产出、运量、卖出、收入、板块——想推哪条就推哪条，达标即完成，下一级直接翻倍。</li>
 </ol>
 </div>
 <div>
@@ -269,24 +269,25 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </section>
 
 <section id="coins">
-<h2>金币、退款与里程碑</h2>
+<h2>金币、退款与目标</h2>
 <h3>钱从哪来</h3>
 <ul>
 <li><strong>卖货：</strong>货到城镇门口按收购价入账。这是唯一持续的收入。</li>
-<li><strong>里程碑奖励：</strong>第一次做到下面这些事时一次性入账。</li>
+<li><strong>目标奖励：</strong>每达成一级目标入账半回合收入（最少 100 金币）。这笔钱永远买不起最便宜的一段路，只是拍拍肩膀。</li>
 <li><strong>退款：</strong>拆建筑、辞退工人、拆路都退回实付全款。</li>
 </ul>
+<p>目标不是一张清单，是五条一直在跑的轨道。它们衡量的是你的引擎，不是你的存款——手上的金币只是在途的货，不计分。五条同时判定，达标即完成，没有顺序、没有前置、也没有要领取的东西；完成一级，目标数字立刻换成下一级。</p>
 <div class="table"><table>
-<tr><th>里程碑</th><th class="num">奖励</th><th>里程碑</th><th class="num">奖励</th></tr>
-<tr><td>点击伐木营，做出第一根原木</td><td class="num">100</td><td>解锁第三块板块</td><td class="num">1 000</td></tr>
-<tr><td>把伐木营的堆场堆满</td><td class="num">200</td><td>卖出第一块木板</td><td class="num">1 000</td></tr>
-<tr><td>解锁第一块板块</td><td class="num">300</td><td>建成第二座伐木营</td><td class="num">1 000</td></tr>
-<tr><td>把货卖进第一座城镇</td><td class="num">400</td><td>解锁第四块板块</td><td class="num">2 000</td></tr>
-<tr><td>雇第一名工人</td><td class="num">400</td><td>卖出第一件石头工具</td><td class="num">2 000</td></tr>
-<tr><td>买下第一项科技</td><td class="num">500</td><td>开通航道</td><td class="num">2 000</td></tr>
-<tr><td>建成采石场</td><td class="num">800</td><td>解锁第五块板块</td><td class="num">4 000</td></tr>
-<tr><td>建成矿山</td><td class="num">3 000</td><td>卖出第一块铁</td><td class="num">6 000</td></tr>
+<tr><th>目标</th><th>单位</th><th class="num">第一级</th><th>下一级</th></tr>
+<tr><td>每回合产出</td><td>件</td><td class="num">4</td><td>翻倍</td></tr>
+<tr><td>每回合运量（一件货走一段路记 1）</td><td>件段</td><td class="num">4</td><td>翻倍</td></tr>
+<tr><td>每回合卖出</td><td>件</td><td class="num">4</td><td>翻倍</td></tr>
+<tr><td>每回合收入</td><td>金币</td><td class="num">20</td><td>翻倍</td></tr>
+<tr><td>已解锁板块</td><td>块</td><td class="num">1</td><td>加一</td></tr>
 </table></div>
+<p>为什么是翻倍：买东西一律按「几回合的当前收入」计价（一段路 1 回合、一座建筑 2 回合、一块板块 5 回合），所以把收入从 20 做到 40，和从 2 000 做到 4 000，花的功夫是一样的——只有指数阶梯才能让每一级一样难。板块反过来：它的价格本来每两块就翻倍，所以加一块就已经是指数步长了。</p>
+<p>前三条是同一条流水线的三段（产 → 运 → 卖），共用同一个起点，所以它们的进度可以直接互相比较：哪一段落后，哪一段就是瓶颈。达成过的级别不会因为收入回落而撤销。每条轨道都标着达成这一级给多少金币。</p>
+<p>完成一级时，画面底部会立起一张达成提示，写清哪条目标、达成多少、下一级是多少、给了多少金币。它<b>不会自动消失</b>，点右上角的 × 才关掉，所以你不会因为正在看地图另一头而错过。</p>
 <h3>钱往哪去</h3>
 <div class="table"><table>
 <tr><th>支出</th><th>能不能退</th></tr>
@@ -327,8 +328,8 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </ul>
 <h3>顶栏</h3>
 <ul>
-<li>金币余额和每回合收入。</li>
-<li><strong>目标条：</strong>下一个里程碑和它的奖励。</li>
+<li>金币余额和每回合收入。目标不在顶栏，在右侧「目标」面板里；达成提示在画面底部，要手动关闭。</li>
+
 <li><span class="kbd">暂停</span> / <span class="kbd">继续</span>，速度 <span class="kbd">1×</span> → <span class="kbd">2×</span> → <span class="kbd">5×</span> 循环。</li>
 <li><span class="kbd">更多</span>：导出存档、导入存档、重新开始，以及本说明书、玩法设计、UI Design System 的链接。</li>
 </ul>

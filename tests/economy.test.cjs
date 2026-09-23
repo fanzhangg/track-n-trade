@@ -56,10 +56,10 @@ test("the projection's first steps reproduce in the engine: 20 clicks sell for 4
  assert.ok(w.money>=after+400-20*hops*E.TOLL,'twenty logs are one worker, less the toll');
  w=hire(w,CAMP,1);run(w,30);const net=20-hops*E.TOLL;assert.ok(E.income(w)>=net-2&&E.income(w)<=net+2,`one worker feeds a level-0 town at ${net}/round net: `+E.income(w));
 });
-test('clicks make pieces up to a full yard; the yard milestone fires; a click on a workshop needs every input',()=>{
+test('clicks make pieces up to a full yard; a click on a workshop needs every input',()=>{
  let w=click(fresh(),CAMP,20);assert.equal(w.tiles[CAMP].loose.log,20);
  assert.throws(()=>E.apply(w,{type:'click',tile:CAMP}),/堆场已满/);
- E.tick(w);assert.ok(w.milestones.click&&w.milestones.yard);
+ E.tick(w);
  let m;[w,m]=build(w,'mason');
  assert.throws(()=>E.apply(w,{type:'click',tile:m}),/没有原木和石头/);
  w.tiles[m].loose.log=3;w.initial.log+=3;assert.throws(()=>E.apply(w,{type:'click',tile:m}),/没有石头/);
@@ -177,9 +177,10 @@ test('full refunds: demolishing, firing and removing roads return exactly what w
  w=E.apply(w,{type:'demolish',tile:CAMP});assert.equal(w.money,m0+roadPaid+1200,'the start camp refunds its nominal price');
  assert.ok(w.money>=1200+500,'enough to rebuild a camp and a road');E.validate(w);
 });
-test('money = start - spending + refunds + milestones + pieces x price - tolls paid; every stored number stays an integer',()=>{
+test('money = start - spending + refunds + goal rewards + pieces x price - tolls paid; every stored number stays an integer',()=>{
  let {w,town}=started(2);w=click(w,CAMP,20);run(w,15);w=hire(w,CAMP,1);w=click(w,CAMP,6);run(w,80);
- const bonus=E.MILESTONES.filter(m=>w.milestones[m.id]).reduce((n,m)=>n+m.reward,0);
+ const bonus=w.money-(E.START_MONEY-w.spent+w.sold[town].log*20-w.tollPaid);
+ assert.ok(bonus>0,'some goal tiers cleared and paid out');
  assert.equal(w.money,E.START_MONEY-w.spent+bonus+w.sold[town].log*20-w.tollPaid);assert.ok(w.tollPaid>0);
  const walk=(v,p)=>{if(typeof v==='number')assert.ok(isInt(v),`non-integer at ${p}: ${v}`);else if(v&&typeof v==='object')for(const[k,x]of Object.entries(v))walk(x,p+'.'+k);};
  walk(w,'w');E.validate(w);
@@ -375,4 +376,56 @@ test('chain gaps close themselves: raw with no buyer makes the next town buy wha
   assert.ok(E.chainGaps(w).rawNeeded.includes('ore'));
   let res=null;for(let i=0;i<6&&!res;i++){const fid=fogs(w).sort()[0];w=unlock(w,fid);const f=w.flowers[fid];if(!f.design.buys)res=f;}
   assert.ok(res&&[res.design.center,...res.design.ring].includes('ore'),`seed ${seed}: the next resource flower does not bring ore`);}
+});
+
+// ---------- goals ----------
+// Five tracks, no script: nothing here asks what the map drew or what order things were done in.
+test('the goal ladder steps so every tier costs the same effort: rates double, counts step by one',()=>{
+ const rates=E.GOALS.filter(g=>g.step===2),counts=E.GOALS.filter(g=>g.step===1);
+ assert.equal(rates.length,4);assert.equal(counts.length,1);
+ for(const g of rates){
+  assert.equal(E.goalTarget(g,1),g.base,'tier 1 is the base');
+  for(let t=1;t<12;t++)assert.equal(E.goalTarget(g,t+1),E.goalTarget(g,t)*2,g.id+' doubles');
+  assert.equal(E.goalFloor(g,1),0);assert.equal(E.goalFloor(g,5),E.goalTarget(g,4));}
+ for(const g of counts)for(let t=1;t<12;t++)assert.equal(E.goalTarget(g,t+1),E.goalTarget(g,t)+1,g.id+' steps by one');
+ // Produce, freight and sell are one pipeline: sharing a base is what keeps their tiers comparable.
+ const pipeline=['produce','freight','sell'].map(id=>E.GOALS.find(g=>g.id===id));
+ assert.equal(new Set(pipeline.map(g=>g.base)).size,1);
+});
+test('progress is measured inside the current tier, so every tier sweeps a full bar',()=>{
+ const g=E.GOALS.find(g=>g.id==='map');let w=fresh();w=rich(w);
+ assert.equal(E.goalProgress(w,g).ratio,0,'nothing unlocked yet');
+ w=unlock(w);E.tick(w);
+ const p=E.goalProgress(w,g);
+ assert.equal(p.tier,2);assert.equal(p.target,2);assert.equal(p.floor,1);
+ assert.equal(p.ratio,0,'a cleared tier restarts the bar at zero, not at half');
+});
+test('goals complete the moment they are reached, in any order, and a met tier catches up in one round',()=>{
+ let w=rich(fresh());const g=E.GOALS.find(g=>g.id==='map');
+ for(let i=0;i<3;i++)w=unlock(w);
+ assert.equal(w.goals.map,1,'unlocking does not settle goals by itself');
+ const before=w.money;E.tick(w);
+ assert.equal(w.goals.map,4,'three tiers clear in the single round after the burst');
+ const d=w.stats.at(-1).goals.map;
+ assert.equal(d.levels,3);assert.equal(d.reward,3*E.goalReward(w));
+ assert.equal(w.money,before+d.reward);
+ E.tick(w);assert.equal(w.goals.map,4,'nothing clears twice');E.validate(w);
+});
+test('cleared tiers never come back, so a dip in the moving average cannot farm a reward twice',()=>{
+ let {w}=started(3);w=click(w,CAMP,20);run(w,40);
+ const peak=E.copy(w.goals);assert.ok(peak.produce>1,'clicking cleared at least one produce tier');
+ const money=w.money;
+ run(w,E.WINDOW+5); // no clicks, no workers: every rate falls back to zero
+ assert.equal(E.GOALS.find(g=>g.id==='produce').value(w),0);
+ for(const id of Object.keys(peak))assert.ok(w.goals[id]>=peak[id],id+' never steps back');
+ assert.ok(w.money>=money,'a collapsed engine still cannot lose a cleared tier');
+});
+test('a goal reward is always smaller than the cheapest road segment, so it can never decide a build',()=>{
+ let {w}=started(4);
+ for(const ticks of [0,30,60,120]){
+  run(w,ticks);
+  const cheapest=E.segmentCost(w,Math.min(...Object.values(E.TERRAIN_FACTOR)));
+  assert.ok(E.goalReward(w)<cheapest,`reward ${E.goalReward(w)} < cheapest segment ${cheapest} at round ${w.tick}`);}
+ w=rich(w,1e9);w=hire(w,CAMP,3);run(w,60);
+ assert.ok(E.goalReward(w)<E.segmentCost(w,1),'still true once income dominates the floors');
 });

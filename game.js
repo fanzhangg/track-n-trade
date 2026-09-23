@@ -1,7 +1,7 @@
 'use strict';
 const E = TradeEngine;
 const $ = id => document.getElementById(id);
-const SAVE = 'tnt-mvp-v16';
+const SAVE = 'tnt-mvp-v17';
 const names = Object.assign({town:'城镇'}, E.GOODS, E.TERRAIN_NAME, Object.fromEntries(Object.entries(E.RECIPES).map(([k, r]) => [k, r.name])));
 const colors = {forest:'var(--terrain-forest)',grass:'var(--terrain-grass)',rock:'var(--terrain-rock)',ore:'var(--terrain-ore)',mountain:'var(--terrain-mountain)',lake:'var(--terrain-lake)',town:'var(--terrain-town)',fog:'var(--terrain-fog)',
  log:'var(--goods-log)',stone:'var(--goods-stone)',board:'var(--goods-board)',tool:'var(--goods-tool)',ore_good:'var(--goods-ore)',iron:'var(--goods-iron)'};
@@ -45,17 +45,17 @@ function recordHistory() {
 try {
  const raw = localStorage.getItem(SAVE);
  if (raw) { world = E.load(JSON.parse(raw)); welcome = '已恢复进度'; }
- else if (['tnt-mvp-v15','tnt-mvp-v14','tnt-mvp-v13','tnt-mvp-v12','tnt-mvp-v11','tnt-mvp-v10','tnt-mvp-v9','tnt-mvp-v8'].some(k => localStorage.getItem(k))) welcome = 'v0.14：修路自由了——从任何建筑或已有的路出发，停在任何格子上，拐弯要加钱。驿站已取消。旧存档已保留但不再读取。';
+ else if (['tnt-mvp-v16','tnt-mvp-v15','tnt-mvp-v14','tnt-mvp-v13','tnt-mvp-v12','tnt-mvp-v11','tnt-mvp-v10','tnt-mvp-v9','tnt-mvp-v8'].some(k => localStorage.getItem(k))) welcome = 'v0.15：里程碑换成了五条一直在跑的目标——产出、运量、卖出、收入、板块，达标即完成，下一级目标直接翻倍。旧存档已保留但不再读取。';
 } catch {
  storageBlocked = true;
  welcome = '原存档无法读取，已保留；当前进度可通过导出保存';
 }
 
-function toast(message) {
+function toast(message, hold = 3500) {
  $('toast').textContent = message;
  $('toast').classList.add('show');
  clearTimeout(toast.timer);
- toast.timer = setTimeout(() => $('toast').classList.remove('show'), 3500);
+ toast.timer = setTimeout(() => $('toast').classList.remove('show'), hold);
 }
 function save() {
  if (storageBlocked) return;
@@ -557,10 +557,6 @@ function renderMap() {
 function button(label, command, primary=false, disabled=false, cls='') {
  return `<button data-command='${JSON.stringify(command)}' class="${primary?'primary':''} ${cls}" ${disabled?'disabled':''}>${label}</button>`;
 }
-function milestonesPanel(open=false) {
- const done=E.MILESTONES.filter(m=>world.milestones[m.id]).length;
- return `<details class="more" data-key="milestones" ${open?'open':''}><summary>里程碑 ${done} / ${E.MILESTONES.length}</summary><ul class="milestones">${E.MILESTONES.map(m=>`<li class="${world.milestones[m.id]?'done':''}"><span>${m.name}</span><small>+${m.reward}</small></li>`).join('')}</ul></details>`;
-}
 function townPanel(t) {
  const st=windowStats(), key=t.id, buys=E.buys(world,key), linked=connectedTowns().includes(key), b=t.building;
  const earning=Object.entries(buys).reduce((n,[r,d])=>n+st.sales(key,r)*d.price,0), next=E.residentCost(world,key), rate=E.townRate(world,b), full=b.residents>=E.MAX_RESIDENTS, era=E.eraPower(world);
@@ -608,7 +604,7 @@ function renderSelection() {
   else if(t.terrain==='lake')html+=`<div class="terrain-association">${icon('waterway')}<b>${world.tech.waterway?'航道已开放':'需要航道科技'}</b><span>可通行，不可建造</span></div>`;
   if(fits.length)html+=`<div class="actions">${fits.map(b=>button(`建造${names[b]}<small>${coins(E.buildingCost(world,b))}</small>`,{type:'build',tile:t.id,buildType:b},true,!afford(E.buildingCost(world,b)),costly(E.buildingCost(world,b)))).join('')}</div>`;
   if(locked.length)html+=`<p class="tip">未解锁：${locked.map(b=>names[b]).join('、')}</p>`;
- } else html=milestonesPanel(true);
+ } else html='<div class="empty-state"><h2>详情</h2><p>点地图上的建筑、城镇或道路查看详情。目标在右侧「目标」面板里。</p></div>';
  box.innerHTML=html;
  for(const d of box.querySelectorAll('details'))if(wasOpen.has(d.dataset.key))d.open=wasOpen.get(d.dataset.key);
  bindCommands(box);
@@ -616,9 +612,43 @@ function renderSelection() {
  if($('produce'))$('produce').onclick=()=>produce(t.id);
  if(active)[...box.querySelectorAll('[data-command]')].find(b=>b.dataset.command===active)?.focus({preventScroll:true});
 }
+// Goals live here and nowhere else: five tracks, always on screen, nothing to pin and nothing to claim. A row is
+// four things and no prose -- what to reach, what it pays, how far along, and a bar. The bar measures the CURRENT
+// tier's span, not cur / target: targets double, so cur / target would sit at 50% the instant a tier cleared and
+// the bar would look stuck at half.
+const goalFlash = {};
+const goalNum = n => n >= 100 ? fmt(n) : per(n);
 function renderGoals() {
- const next=E.MILESTONES.find(m=>!world.milestones[m.id]);
- $('goal-hud').innerHTML=next?`<span>下一目标</span><b>${next.name}</b><small>+${next.reward}</small>`:'';
+ const now=performance.now(), reward=E.goalReward(world);
+ $('goals-body').innerHTML=`<ul class="goals">${E.GOALS.map(g=>{
+  const p=E.goalProgress(world,g), done=goalFlash[g.id]>now;
+  const num=done?`达成 ${goalNum(p.floor)}`:`${goalNum(Math.min(p.cur,p.target))} / ${fmt(p.target)}`;
+  return `<li class="goal ${done?'done':''}"><svg class="icon" aria-hidden="true"><use href="#icon-${done?'check':g.icon}"/></svg>`
+   +`<span class="glbl">${g.label}</span>`
+   +`<span class="gval"><b class="gnum">${num}</b><span class="gunit">${g.unit}</span></span>`
+   +`<span class="gpay">+${fmt(reward)} 金币</span>`
+   +`<span class="progress"><span style="width:${(done?1:p.ratio)*100}%"></span></span></li>`;
+ }).join('')}</ul>`;
+}
+// Clearing a tier is the one notice in the game that does not time out: it stacks up at the bottom and stays
+// until the player closes it, so nothing is missed while they are looking at the other side of the map.
+const legendLines=[];
+function announceGoals(cleared) {
+ for(const[id,d]of Object.entries(cleared)){
+  const g=E.GOALS.find(g=>g.id===id), tier=world.goals[id];
+  goalFlash[id]=performance.now()+1600;
+  legendLines.unshift(`<div class="legend-line"><b>${g.label} ${fmt(E.goalTarget(g,tier-1))} ${g.unit}</b>`
+   +`<span class="legend-step">下一级 ${fmt(E.goalTarget(g,tier))} ${g.unit}</span>`
+   +`<span class="legend-reward">+${fmt(d.reward)} 金币</span></div>`);
+ }
+ legendLines.length=Math.min(legendLines.length,6);
+ renderLegend();
+}
+function renderLegend() {
+ const box=$('goal-legend');
+ box.hidden=!legendLines.length;
+ if(!legendLines.length)return;
+ $('legend-list').innerHTML=`<div class="legend-head">目标达成${legendLines.length>1?` ×${legendLines.length}`:''}</div>`+legendLines.join('');
 }
 // The tech tree: one dialog, tiers top to bottom; buyable nodes are live, owned ones ticked, locked ones grey with their missing prerequisites.
 // The tech tree is one card per building, plus the golden finger (manual clicks) and the waterway. A card
@@ -865,6 +895,7 @@ if(new URLSearchParams(location.search).has('cheat')){
  $('dev-menu').hidden=false;
  $('cheat-money').onclick=()=>{world.money+=1_000_000;save();render();toast('作弊：+1,000,000 金币');};
 }
+$('legend-close').onclick=()=>{legendLines.length=0;renderLegend();};
 $('reset').onclick=()=>{
  if(!confirm('重新开始？可先导出当前进度。'))return;
  world=E.newWorld(Math.floor(Math.random()*2**31));selected=E.START_TILE;selectedEdge=null;selectedFlower=null;storageBlocked=false;
@@ -881,11 +912,11 @@ for(const panel of document.querySelectorAll('.panel')){
   if(e.target.closest('button,details,a'))return;
   const opening=panel.classList.contains('collapsed');
   setPanel(panel.id,!opening);
-  if(opening&&isMobileStack())for(const other of document.querySelectorAll('.panel'))if(other!==panel&&other.id!=='tools-panel')setPanel(other.id,true);
+  if(opening&&isMobileStack())for(const other of document.querySelectorAll('.panel'))if(other!==panel&&!['tools-panel','goals-panel'].includes(other.id))setPanel(other.id,true);
  });
 }
 if(isMobileStack()){
- const open=[...document.querySelectorAll('.panel')].filter(p=>p.id!=='tools-panel'&&!p.classList.contains('collapsed'));
+ const open=[...document.querySelectorAll('.panel')].filter(p=>!['tools-panel','goals-panel'].includes(p.id)&&!p.classList.contains('collapsed'));
  for(const panel of open.slice(1))setPanel(panel.id,true);
 }
 loadHistory();recordHistory();render();fitAll();requestAnimationFrame(()=>{if(!fitted)fitAll();});if(welcome)toast(welcome);if(!storageBlocked)save();
@@ -893,11 +924,14 @@ setInterval(()=>{
  const now=performance.now(),elapsed=Math.min(.5,(now-last)/1000);last=now;
  if(!document.hidden&&!world.paused){
   accumulator+=elapsed*speed;
-  const before=Object.keys(world.milestones);
   let ticked=false;
-  while(accumulator>=E.DT){E.tick(world);recordHistory();accumulator-=E.DT;ticked=true;}
-  const fresh=Object.keys(world.milestones).filter(k=>!before.includes(k));
-  if(fresh.length){const m=E.MILESTONES.find(m=>m.id===fresh[0]);toast(`里程碑「${m.name}」达成，+${m.reward} 金币`);}
+  const cleared={};
+  while(accumulator>=E.DT){
+   E.tick(world);recordHistory();accumulator-=E.DT;ticked=true;
+   for(const[id,d]of Object.entries(world.stats.at(-1).goals||{})){
+    const u=cleared[id]||(cleared[id]={levels:0,reward:0});u.levels+=d.levels;u.reward+=d.reward;}
+  }
+  if(Object.keys(cleared).length)announceGoals(cleared);
   if(world.tick-lastSave>=5)save();
   if(!gesture&&!interacting&&(ticked||now-lastPaint>=100)){render();lastPaint=now;}
  }
