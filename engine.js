@@ -264,6 +264,7 @@ function newWorld(seed=1){const w={schemaVersion:25,seed:seed>>>0,tick:0,serial:
 
 /* ---------- prices ---------- */
 const projectDuration=cost=>8*(2+Math.ceil(Math.sqrt(cost/100)));
+const constructionDuration=cost=>projectDuration(cost)/2;
 function projectProgress(w,p){if(!p)return null;const done=Math.min(p.duration,Math.max(0,w.tick-p.started));return {...p,done,remaining:p.duration-done,percent:Math.floor(done/p.duration*100)};}
 const buildingProgress=(w,t)=>projectProgress(w,t?.building?.construction);
 const techProgress=(w,k)=>projectProgress(w,w.research?.[k]);
@@ -429,7 +430,7 @@ function previewRoute(w,f){const temp=copy(w);temp.serial+=1000;materialize(temp
 /* ---------- commands ---------- */
 function command(w,c){const t=w.tiles[c.tile],b=t?.building;const fail=m=>{throw Error(m);};
  if(c.type==='build'){if(!RECIPES[c.buildType])fail('未知建筑');if(c.buildType!=='camp'&&!w.tech[c.buildType])fail(`先在科技树里解锁${RECIPES[c.buildType].name}`);if(!t||t.building)fail('这里已有建筑');if(!RECIPES[c.buildType].fits.includes(t.terrain))fail('这种建筑不适合这块地');const cost=buildingCost(w,c.buildType);
-  pay(w,cost);t.building={id:id(w),type:c.buildType,paid:cost,workers:[],construction:{started:w.tick,duration:projectDuration(cost)}};
+  pay(w,cost);t.building={id:id(w),type:c.buildType,paid:cost,workers:[],construction:{started:w.tick,duration:constructionDuration(cost)}};
  }else if(c.type==='click'){if(b?.construction)fail('建筑施工中');if(!b)fail('点击工坊才能生产');
   if(b.type==='town')fail('城镇自动收购，点击只查看详情');
   const state=productionState(w,t);if(state.missing.length)fail('请连接'+state.missing.map(r=>GOODS[r]).join('、')+'的运行中上游');
@@ -601,7 +602,7 @@ function load(saved){const next=copy(saved);if(next&&next.lastNovel==null)next.l
   delete next.flags.yardFull;
  }
  validate(next);return next;}
-const api={projectDuration,projectProgress,buildingProgress,techProgress,projects,roadEndpoints,techDiscoveryReason,techPrerequisitesMet,DISCOVERY_MARKET,productionState,NEW_GOODS,NEW_BUILDINGS,RESEARCH,productionBonuses,researchStatus,processing,nearWater,WARNING_ROUNDS,buildingBottleneck,warning,formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,FAR_BONUS,BUILDING_GROWTH,CRAFT_BASE,CRAFT_GROWTH,ERA_BASE,townCap,steady,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,discovery,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
+const api={constructionDuration,projectDuration,projectProgress,buildingProgress,techProgress,projects,roadEndpoints,techDiscoveryReason,techPrerequisitesMet,DISCOVERY_MARKET,productionState,NEW_GOODS,NEW_BUILDINGS,RESEARCH,productionBonuses,researchStatus,processing,nearWater,WARNING_ROUNDS,buildingBottleneck,warning,formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,FAR_BONUS,BUILDING_GROWTH,CRAFT_BASE,CRAFT_GROWTH,ERA_BASE,townCap,steady,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,discovery,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
  copy,zero,add,workshop,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,roadComponent,command,tick,totals,validate,apply,load,buildingCost,workerCost,techCost,techOwned,techAvailable,techMaxed,workerPower,clickPower,eraPower,goodValue,workersOf,craftCost,eraCost,edgeCost,segmentCost,anchored,residentCost,townRate,income,buys,recentSales,terrainFactor,passable,rate,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
