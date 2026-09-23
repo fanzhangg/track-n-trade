@@ -69,6 +69,7 @@ button.purchase-action{display:flex;align-items:center;justify-content:space-bet
 .action-title{display:block;font-size:14px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
 button .action-description{display:block;font-size:12px;font-weight:400;line-height:1.5;margin-top:4px}
 button .action-cost{flex:none;margin-left:auto;font-size:18px;font-weight:750;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
-.toolbar button[data-build] .action-cost{font-size:16px}
+.toolbar button[data-build] .action-copy{text-align:left}
+.toolbar button[data-build] .action-cost{display:block;margin:3px 0 0;font-size:12px;font-weight:400;line-height:1.4;opacity:.85}
 .toolbar button[data-build]{flex-wrap:nowrap;max-width:100%}
 @media(max-width:740px){.actions{grid-template-columns:1fr}.toolbar button[data-build]{flex:1 1 160px}.action-title{font-size:14px}}

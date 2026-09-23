@@ -752,7 +752,7 @@ function renderToolbar() {
  const want=unlockedBuildings().join(',');
  if (bar.dataset.key!==want) {
   bar.dataset.key=want;
-  bar.innerHTML=unlockedBuildings().map(b=>`<button data-build="${b}">${icon(b)}<span class="action-copy"><strong class="action-title">${names[b]}</strong></span><span class="action-cost"></span></button>`).join('');
+  bar.innerHTML=unlockedBuildings().map(b=>`<button data-build="${b}">${icon(b)}<span class="action-copy"><strong class="action-title">${names[b]}</strong><span class="action-cost"></span></span></button>`).join('');
   for(const button of bar.querySelectorAll('[data-build]')){
    button.onpointerdown=event=>{if(event.button!==0)return;gesture={kind:'build',type:button.dataset.build,x:event.clientX,y:event.clientY,moved:false,pointerId:event.pointerId};button.setPointerCapture(event.pointerId);};
    button.onclick=()=>{if(suppressClick){suppressClick=false;return;}buildType=buildType===button.dataset.build?null:button.dataset.build;connectFrom=null;render();};
@@ -761,6 +761,7 @@ function renderToolbar() {
  for(const b of bar.querySelectorAll('[data-build]')){
   b.classList.toggle('active',b.dataset.build===buildType);
   b.setAttribute('aria-pressed',b.dataset.build===buildType?'true':'false');
+  b.querySelector('.action-title').textContent=`${names[b.dataset.build]} ${BuildingTiles.formatLevel(E.workerPower(world,b.dataset.build))}`;
   b.querySelector('.action-cost').textContent=coins(E.buildingCost(world,b.dataset.build));
   const ok=afford(E.buildingCost(world,b.dataset.build));
   b.classList.toggle('primary',ok);b.classList.toggle('costly',!ok);
