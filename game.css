@@ -6,11 +6,11 @@
 /* v0.12: fog flowers, previewed flower, tech tree, new terrains */
 .build-buttons{display:flex;gap:9px;flex-wrap:wrap}.tech-button{display:flex;align-items:center;gap:8px;text-align:left;padding:8px 12px}.tech-button .icon{width:18px;height:18px;color:#5170a0}.tech-button.ready{border-color:#77a68b;background:#f2f8f4}.tech-button.ready small{color:#49876b}
 .mason-c{color:#8a5a2b}.mine-c{color:#6b5040}.smelter-c{color:#5f6b7a}.tool-c{color:#a5773f}.ore-c{color:#b3785a}.iron-c{color:#5f6b7a}
-.fog-hex{fill:#c7ccd3;stroke:#c7ccd3;stroke-width:1;transition:fill .1s,stroke .1s}.fog-edge{fill:none;stroke:#eef1f4;stroke-width:4;stroke-linecap:round;pointer-events:none}.fog-flower{cursor:pointer;outline:none}.fog-flower:not(.affordable) .fog-cta{opacity:.55}.fog-flower:not(.affordable){pointer-events:none;cursor:default}.fog-flower:hover .fog-hex,.fog-flower:focus-visible .fog-hex{fill:#bcc5d2;stroke:#bcc5d2}.fog-flower.selected .fog-edge{stroke:#3876e1;stroke-width:3}.fog-label{font-size:11px;font-weight:700;fill:#303e43;pointer-events:none}.fog-price{font-size:10px;font-weight:600;fill:#303e43;font-variant-numeric:tabular-nums;pointer-events:none}
+.fog-hex{fill:var(--terrain-fog);stroke:var(--terrain-fog);stroke-width:1;transition:fill .1s,stroke .1s}.fog-edge{fill:none;stroke:#eef1f4;stroke-width:4;stroke-linecap:round;pointer-events:none}.fog-flower{cursor:pointer;outline:none}.fog-flower:hover .fog-hex,.fog-flower:focus-visible .fog-hex{fill:#bcc5d2;stroke:#bcc5d2}.fog-flower.selected .fog-edge{stroke:#3876e1;stroke-width:3}.fog-cta{display:none;cursor:pointer;outline:none}.fog-flower.selected .fog-cta{display:block}.fog-action-bg{fill:var(--action-primary);stroke:var(--action-pressed);stroke-width:1}.fog-cta:hover .fog-action-bg,.fog-cta:focus-visible .fog-action-bg{fill:var(--action-hover)}.fog-cta:focus-visible .fog-action-bg{stroke:var(--focus-ring);stroke-width:2}.fog-label{font-size:11px;font-weight:700;fill:white;pointer-events:none}.fog-price{font-size:10px;font-weight:600;fill:white;font-variant-numeric:tabular-nums;pointer-events:none}.fog-flower:not(.affordable) .fog-cta{opacity:.55;cursor:default}
 .preview-hex{stroke:#3876e1;stroke-width:2.5;stroke-dasharray:6 4}.terrain-label.faint{fill:#b3bcc4;font-weight:500}
 .road.water{stroke-dasharray:10 6}
 
-.tier{display:grid;gap:8px;padding:10px 0;border-bottom:1px dashed var(--border)}.tier:last-child{border-bottom:0}.tier-label{font-size:11px;color:var(--muted)}.nodes{display:grid;gap:8px}
+.chain-recipe{padding:10px 0;border-bottom:1px solid var(--border)}.chain-recipe>strong{display:flex;align-items:center;gap:6px;font-size:13px}.chain-recipe>strong .tt-icon{--icon-size:28px!important}.chain-formula{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:6px 0;font-size:12px}.chain-good{display:inline-flex;align-items:center;gap:3px}.chain-good .tt-icon{--icon-size:18px!important}.chain-recipe>small{color:var(--muted);font-size:11px}.chain-recipe.locked{opacity:.55}.tier{display:grid;gap:8px;padding:10px 0;border-bottom:1px dashed var(--border)}.tier:last-child{border-bottom:0}.tier-label{font-size:11px;color:var(--muted)}.nodes{display:grid;gap:8px}
 .node{border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;display:grid;gap:6px;font-size:12px}.node p{margin:0;color:#4f5f70;font-size:12px}.node-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.node-head b{font-size:14px}.node-head small{font-size:10px;color:var(--muted)}.node.kind-building{border-left:4px solid #486b3a}.node.kind-road{border-left:4px solid #8b5a2b}.node.kind-waterway{border-left:4px solid #3f7fa6}.node.kind-economy{border-left:4px solid #6b7075}.node.locked{opacity:.55}.node.owned{background:#f2f8f4;border-color:#cfe3d6}.node.ready{box-shadow:0 0 0 2px #cfe3d6}.node .actions{margin:0}.node button{text-align:left;font-size:12px;padding:8px 10px}.owned-mark{display:flex;align-items:center;gap:6px;color:#49876b;font-weight:600}.craft-now{color:#49876b;font-weight:600}.slots.residents{gap:4px}.resident .icon{width:20px;height:20px;color:#b8743a}use.resident{fill:#8a5a2b}.owned-mark .icon{width:14px;height:14px}.locked-note{color:var(--muted)}
 
 /* Meeples remain physical pieces in the map world; their cadence still communicates throughput. */
@@ -39,21 +39,12 @@
 
 
 #growth-body{padding:10px 14px}
-.growth-chart{display:block;width:100%;height:auto}
-.growth-chart .axis{stroke:#dde5ed;stroke-width:1}
-.growth-chart .income-line{fill:none;stroke:#b8743a;stroke-width:2.4}
-.growth-chart .good-area{stroke:none;opacity:.55}
-.growth-chart .chart-label{font-size:10px;fill:#8794a4}
-.growth-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#4f5f70;margin-top:6px;font-variant-numeric:tabular-nums}
-.growth-legend span{display:inline-flex;align-items:center;gap:5px}
-.growth-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}
-.growth-empty{font-size:12px;color:var(--muted);padding:20px 0;text-align:center}
 
 /* 取不到手的东西只有一套画法 · 见 docs/ui-system.html「状态 · 操作与选择」，样本见 docs/ui-components.html。
    .costly（买不起，仍可点）与 .locked（前置未满足）共用同样的压暗，不靠配色互相区分；.locked 另带锁图标。
    地图迷雾板块例外：不压暗，整块换底色，买不起的退进地图衬底。 */
 .costly{opacity:.55}
-.node.costly{box-shadow:none}
+.node.costly{box-shadow:none;opacity:1}
 .fog-flower:not(.affordable) .fog-hex{fill:#dcdad4;stroke:#dcdad4}
 
 
@@ -163,3 +154,78 @@ button .action-cost{flex:none;margin-left:auto;font-size:18px;font-weight:750;li
 .efficiency-track{height:4px;background:var(--surface-inset);border-radius:2px;overflow:hidden}
 .efficiency-track span{display:block;height:100%;background:var(--action-primary)}
 .ledger-section+.detail-caption{margin-top:12px}
+
+.next-step{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 0 10px;margin-bottom:2px;border-bottom:1px solid var(--border);font-size:12px;color:#4f5f70}.next-step b{display:block;color:#3d4c5c}.next-step button{flex-shrink:0;padding:6px 9px;font-size:11px;color:#3f5f86}
+
+/* Building details · shared with the isolated design-system example. */
+.detail-card .panel-title{display:flex;align-items:center;gap:9px}
+.detail-card .panel-title>.tt-icon{flex:none}
+.workshop-status{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 10px;font-size:11px;color:var(--text-secondary)}
+.state-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:5px;background:var(--surface-inset);color:var(--text-secondary);font-size:11px;font-weight:600}
+.state-badge.running{background:var(--value-positive-bg);color:var(--value-positive)}
+.workshop-metrics{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;margin:12px 0;padding:13px 12px;border-radius:9px;background:color-mix(in srgb,var(--surface-inset) 48%,var(--surface-panel))}
+.metric-label{display:block;color:var(--text-secondary);font-size:11px;line-height:1.4}
+.workshop-metrics strong{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:24px;line-height:1.15;font-weight:750;font-variant-numeric:tabular-nums}
+.workshop-metrics strong small{font-size:11px;font-weight:400;color:var(--text-secondary)}
+.crew-metric{border-left:1px solid var(--border-subtle);padding-left:12px}
+.crew-metric strong{font-size:19px}
+.input-connections{margin:10px 0}
+.input-connection{display:flex;justify-content:space-between;gap:8px;padding:6px 0;font-size:12px;line-height:1.5}
+.input-connection+ .input-connection{border-top:1px solid color-mix(in srgb,var(--border-subtle) 45%,transparent)}
+.input-connection>span{display:flex;align-items:center;gap:5px}
+.connection-status{color:var(--text-secondary);font-size:11px;text-align:right}
+.connection-status.waiting{color:var(--value-warning)}
+.detail-footnote{margin:8px 0 0;font-size:11px;line-height:1.5;color:var(--text-secondary)}
+.detail-card .detail-tech{margin-top:10px;padding-top:0;border-top:0}
+.detail-card .detail-tech>h3{display:none}
+.detail-card .detail-actions{margin-top:12px}
+.detail-card .more{margin-top:14px;padding-top:10px}
+.detail-card .more summary{display:flex;align-items:center;gap:5px;min-height:32px;cursor:pointer}
+.detail-card .more summary::after{content:'⌄';margin-left:auto}
+.detail-card .more[open] summary::after{content:'⌃'}
+.detail-demo h2{display:flex;align-items:center;gap:8px}
+@media(prefers-reduced-motion:reduce){button.detail-button{transition:none}}
+.fog-flower:not(.affordable):hover .fog-hex,.fog-flower:not(.affordable):focus-visible .fog-hex{fill:var(--terrain-fog-costly);stroke:var(--terrain-fog-costly)}.fog-flower:not(.affordable) .fog-cta:hover .fog-action-bg{fill:var(--action-primary)}
+
+/* All panel actions share the detail panel's tactile button surface. */
+button:not(.planner-node):not(.panel-head):not(.legend-close){min-height:36px;border-radius:9px;box-shadow:0 2px 0 var(--border-subtle);transition:background .12s,transform .12s,box-shadow .12s}
+button.primary:not(.planner-node){box-shadow:0 2px 0 var(--action-pressed)}
+button.upgrade:not(.planner-node){box-shadow:0 2px 0 var(--action-upgrade-pressed)}
+button.unlock:not(.planner-node){box-shadow:0 2px 0 var(--action-unlock-pressed)}
+button:not(.planner-node):not(.panel-head):not(.legend-close):not(:disabled):active{transform:translateY(1px);box-shadow:none}
+button:not(.planner-node):focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
+button:disabled{box-shadow:none!important}
+button.purchase-action,button.detail-button{min-height:48px}
+button.purchase-action .action-cost{font-size:20px}
+.toolbar button[data-build] .action-cost{font-size:18px;font-weight:750;opacity:1}
+button.detail-button.unlock{background:var(--action-unlock);border-color:var(--action-unlock-pressed);color:var(--surface-panel)}
+button.detail-button.unlock:not(:disabled):hover{background:var(--action-unlock-hover)}
+@media(prefers-reduced-motion:reduce){button{transition:none!important}}
+
+.road-hit:focus,.road-hit:focus-visible{outline:none;stroke:transparent}
+.road-control:has(.road-hit:focus-visible) .road{stroke:var(--action-primary);stroke-width:8}
+
+
+/* One action component across details, planning and isolated examples. */
+button.action-button[data-action]{--button-bg:var(--surface-panel);--button-hover:var(--surface-inset);--button-pressed:var(--surface-inset);--button-border:var(--border-control);--button-ink:var(--text-primary);display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-width:0;min-height:64px;padding:12px;border:1px solid var(--button-border);border-radius:9px;background:var(--button-bg);color:var(--button-ink);box-shadow:0 2px 0 var(--button-border);text-align:left;font:400 14px/1.4 system-ui,"Microsoft YaHei",sans-serif;opacity:1;cursor:pointer;transition:background .12s,transform .12s,box-shadow .12s}
+button.action-button[data-action=build]{--button-bg:var(--action-primary);--button-hover:var(--action-hover);--button-pressed:var(--action-pressed);--button-border:var(--action-pressed);--button-ink:var(--surface-panel)}
+button.action-button[data-action=unlock]{--button-bg:var(--action-unlock);--button-hover:var(--action-unlock-hover);--button-pressed:var(--action-unlock-pressed);--button-border:var(--action-unlock-pressed);--button-ink:var(--surface-panel)}
+button.action-button[data-action=upgrade]{--button-bg:var(--action-upgrade);--button-hover:var(--action-upgrade-hover);--button-pressed:var(--action-upgrade-pressed);--button-border:var(--action-upgrade-pressed);--button-ink:var(--surface-panel)}
+button.action-button[data-action=remove]{--button-ink:var(--bottleneck-1);--button-border:var(--bottleneck-1);--button-hover:color-mix(in srgb,var(--bottleneck-1) 9%,var(--surface-panel));--button-pressed:color-mix(in srgb,var(--bottleneck-1) 16%,var(--surface-panel))}
+button.action-button[data-action]:not(:disabled):hover,button.action-button[data-preview-state=hover]{background:var(--button-hover)}
+button.action-button[data-action]:not(:disabled):active,button.action-button[data-preview-state=active]{background:var(--button-pressed);transform:translateY(1px);box-shadow:none}
+button.action-button[data-action]:focus-visible,button.action-button[data-preview-state=focus]{outline:2px solid var(--focus-ring);outline-offset:3px}
+button.action-button[data-action][aria-pressed=true]{box-shadow:0 0 0 3px var(--action-subtle);outline:2px solid var(--focus-ring);outline-offset:1px}
+button.action-button[data-action]:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;transform:none;background:var(--button-bg)}
+button.action-button[data-action]>.tt-icon{flex:none;--icon-size:24px!important}
+button.action-button[data-action]>.tt-control img{filter:brightness(0) invert(1)}
+button.action-button[data-action=neutral]>.tt-control img,button.action-button[data-action=remove]>.tt-control img{filter:none}
+button.action-button[data-action] .action-copy{display:block;flex:1;min-width:0}
+button.action-button[data-action] .action-title{display:block;font-size:14px;line-height:1.4;font-weight:700;color:inherit}
+button.action-button[data-action] .action-description{display:block;margin:3px 0 0;font-size:12px;line-height:1.5;font-weight:400;color:inherit;opacity:.85}
+button.action-button[data-action] .action-cost{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex:none;margin:0 0 0 auto;font-size:18px;line-height:1.2;font-weight:750;font-variant-numeric:tabular-nums;color:inherit;white-space:nowrap}
+button.action-button[data-action] .action-cost .tt-icon{--icon-size:18px!important}
+button.action-button[data-action] .action-refund{font-size:11px;font-weight:400;color:inherit}
+@media(prefers-reduced-motion:reduce){button.action-button[data-action]{transition:none}}
+
+button.action-button[data-action] .action-reason{display:block;margin-top:3px;font-size:11px;font-weight:400;color:inherit}

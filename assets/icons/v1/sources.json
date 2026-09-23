@@ -522,7 +522,12 @@
       "license": "Project asset; not a Kenney source copy",
       "width": 1254,
       "height": 1254,
-      "bounds": {"x": 134, "y": 121, "width": 987, "height": 1013},
+      "bounds": {
+        "x": 134,
+        "y": 121,
+        "width": 987,
+        "height": 1013
+      },
       "sha256": "97052bc052514a8f5927e992a97399a35a774c20222f458e4ce28203ca05cbc9"
     },
     {
@@ -533,8 +538,141 @@
       "license": "Project asset; not a Kenney source copy",
       "width": 1254,
       "height": 1254,
-      "bounds": {"x": 133, "y": 121, "width": 992, "height": 1018},
+      "bounds": {
+        "x": 133,
+        "y": 121,
+        "width": 992,
+        "height": 1018
+      },
       "sha256": "9520ab95002e36e12414834ccc9fb5836b3d0483ab7e634006a3d3c965314296"
+    },
+    {
+      "id": "charcoal",
+      "file": "redrawn/charcoal.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "2510ab7c8f3a6008c91c2ea0046d6634da2fb34e4bbc7b89d2d2c29463c1452d"
+    },
+    {
+      "id": "paper",
+      "file": "redrawn/paper.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "af6bcf33f5beb136fb0b5778bff6e54e8caf9e649a3a6cca6035960cbda0394f"
+    },
+    {
+      "id": "book",
+      "file": "redrawn/book.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "9218b31fd958df1e8d0656a14f72d64dedc598deaadfab865bd3ebe089c3a70f"
+    },
+    {
+      "id": "machine",
+      "file": "redrawn/machine.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "d64a58dc69e7c7b0b584c5743fed0a3836eeb67f6dd8973bc6eccf64bb9cf73b"
+    },
+    {
+      "id": "kiln",
+      "file": "redrawn/kiln.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "d8dc6ebf1ab362856633cfdadf7cee7d74c79e2cc488e91cb9412e790e125831"
+    },
+    {
+      "id": "paperMill",
+      "file": "redrawn/paperMill.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "b050d9b36e6a113d2714709472ed3d214be71c1ca8f078259f7cfc7f93797c23"
+    },
+    {
+      "id": "printer",
+      "file": "redrawn/printer.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "db48046fe7df9735e512e0fb330c2b2005ed78e2fe707f3d13cf9551398dc009"
+    },
+    {
+      "id": "machineWorks",
+      "file": "redrawn/machineWorks.svg",
+      "pack": "Project · production chain extension",
+      "source": "Project-authored SVG",
+      "license": "Project asset",
+      "width": 128,
+      "height": 128,
+      "bounds": {
+        "x": 5,
+        "y": 0,
+        "width": 116,
+        "height": 120
+      },
+      "sha256": "808c6c48ba160fc6e9c7fca198421104e38c6fd05829fbc5925ed9e42a110611"
     }
   ]
 }

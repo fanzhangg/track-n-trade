@@ -31,3 +31,5 @@ footer p{font-size:13px}footer a{color:var(--action-primary)}
 @media print{body{background:white;font-size:11pt}main{margin:0;padding:0}.document-download{display:none}}
 
 .contrast-details{margin:24px 0;color:var(--text-secondary);font-size:13px}.contrast-details summary{cursor:pointer}.contrast-details .table-wrap{margin-top:12px}
+
+.component-frame.action-frame{height:850px}

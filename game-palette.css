@@ -73,3 +73,10 @@ button.danger{color:var(--bottleneck-1)}
 button .action-description{color:var(--text-secondary)}
 button.primary .action-description,button.upgrade .action-description,button.active .action-description{color:color-mix(in srgb,currentColor 76%,transparent)}
 button .action-cost{color:inherit}
+
+/* Compact map action uses the same unlock semantics. */
+.fog-flower .fog-action-bg{fill:var(--action-unlock);stroke:var(--action-unlock-pressed)}
+.fog-flower.affordable .fog-cta:hover .fog-action-bg{fill:var(--action-unlock-hover)}
+.fog-flower.affordable .fog-cta:active .fog-action-bg{fill:var(--action-unlock-pressed)}
+.fog-flower .fog-label,.fog-flower .fog-price{fill:var(--surface-panel)}
+.fog-flower:not(.affordable) .fog-cta:hover .fog-action-bg{fill:var(--action-unlock)}

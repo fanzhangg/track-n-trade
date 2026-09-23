@@ -4,7 +4,7 @@ const $ = id => document.getElementById(id);
 const SAVE = 'tnt-mvp-v17';
 const names = Object.assign({town:'城镇'}, E.GOODS, E.TERRAIN_NAME, Object.fromEntries(Object.entries(E.RECIPES).map(([k, r]) => [k, r.name])));
 const colors = {forest:'var(--terrain-forest)',grass:'var(--terrain-grass)',rock:'var(--terrain-rock)',ore:'var(--terrain-ore)',mountain:'var(--terrain-mountain)',lake:'var(--terrain-lake)',town:'var(--terrain-town)',fog:'var(--terrain-fog)',
- log:'var(--goods-log)',stone:'var(--goods-stone)',board:'var(--goods-board)',tool:'var(--goods-tool)',ore_good:'var(--goods-ore)',iron:'var(--goods-iron)'};
+ log:'var(--goods-log)',stone:'var(--goods-stone)',board:'var(--goods-board)',tool:'var(--goods-tool)',ore_good:'var(--goods-ore)',iron:'var(--goods-iron)',charcoal:'var(--goods-charcoal)',paper:'var(--goods-paper)',book:'var(--goods-book)',machine:'var(--goods-machine)'};
 const goodColor = r => r === 'ore' ? colors.ore_good : colors[r];
 const iconIds = new Set(TradeIcons.catalog.map(item=>item.id));
 const iconAliases = {check:'ui-checkmark',warn:'ui-exclamation',fog:'ui-question',tech:'ui-gear'};
@@ -28,21 +28,7 @@ let selected = E.START_TILE, selectedEdge = null, selectedFlower = null, buildTy
 let gesture = null, suppressClick = false, interacting = false, speed = 1;
 let last = performance.now(), accumulator = 0, lastSave = 0, lastPaint = 0;
 let storageBlocked = false, welcome = '', mapKey = '', hovered = null;
-let history = [];
-const HISTORY_CAP = 600, HISTORY = 'tnt-history';
-function loadHistory() {
- try {
-  const h = JSON.parse(localStorage.getItem(HISTORY) || 'null');
-  if (h && h.seed === world.seed && Array.isArray(h.pts) && h.pts.every(p => p.tick <= world.tick)) history = h.pts;
- } catch {}
-}
-function recordHistory() {
- const st=windowStats(), goods={};
- for (const r of E.SELLABLE) goods[r]=townTiles().reduce((n,t)=>n+(t.building.buys[r]?st.sales(t.id,r)*t.building.buys[r]:0),0);
- history.push({tick:world.tick, income:st.income, goods});
- if (history.length > HISTORY_CAP) history = history.filter((_, i) => i % 2 === 0);
-}
-
+let industryMode='production',industrySelected='camp',industryScale=1,industryLayout=null;
 try {
  const raw = localStorage.getItem(SAVE);
  if (raw) { world = E.load(JSON.parse(raw)); welcome = '已恢复进度'; }
@@ -63,7 +49,6 @@ function save() {
  try {
   E.validate(world);
   localStorage.setItem(SAVE, JSON.stringify(world));
-  localStorage.setItem(HISTORY, JSON.stringify({seed:world.seed, pts:history}));
   lastSave = world.tick;
   $('save-status').textContent = '已自动保存';
  } catch { $('save-status').textContent = '保存失败，请导出存档'; }
@@ -76,13 +61,14 @@ function act(command, message) {
   return true;
  } catch (error) { toast(error.message); return false; }
 }
-const messages = {build:'已建成',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',resident:'已加一名居民',tech:'科技已解锁',removeRoad:'在途货物通过后拆除，全额退款',restoreRoad:'已撤销拆除'};
+const messages = {build:'已建成',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',resident:'已加一名居民',tech:'科技已解锁',removeRoad:'下一回合拆除，全额退款',restoreRoad:'已撤销拆除'};
 function bindCommands(root) {
  for (const b of root.querySelectorAll('[data-command]')) b.onclick = () => {
   const c = JSON.parse(b.dataset.command);
   if (c.type === 'explore') return explore(c.flower);
   if (c.type === 'place') { const keep = selectedFlower; selectedFlower = null; if (!act(c, messages.place)) selectedFlower = keep; else focusFlower(c.flower); return; }
   act(c, messages[c.type] ?? '已更新');
+  if($('industry-dialog').open){$('planner-notice').textContent=$('toast').textContent;($('tech-body').querySelector('button:not(:disabled)')||$('planner-graph').querySelector(`[data-industry="${industrySelected}"]`)).focus({preventScroll:true});}
  };
 }
 function canPlace(type, tile) { return !!tile && !tile.building && E.RECIPES[type].fits.includes(tile.terrain); }
@@ -91,11 +77,6 @@ const afford = cost => world.money >= cost;
 const costly = cost => afford(cost) ? '' : 'costly';
 const unlockedBuildings = () => E.BUILDINGS.filter(b => b === 'camp' || world.tech[b]);
 const townTiles = () => Object.values(world.tiles).filter(t => t.building?.type === 'town');
-// A town's warehouse for one good when it is full: supply outruns what the residents eat. 0 otherwise.
-function backlog(town, r) {
- const t = world.tiles[town], d = E.buys(world, town)[r];
- return d && t.loose[r] >= d.cap ? t.loose[r] : 0;
-}
 const connectedTowns = () => townTiles().filter(u => Object.values(world.tiles).some(t => t.building && t.building.type !== 'town' && u.building.buys[E.RECIPES[t.building.type].out] && E.path(world, t.id, u.id))).map(t => t.id);
 function cancelGesture() {
  gesture = null; buildType = null; connectFrom = null;
@@ -194,18 +175,12 @@ function beatStyle(c, i, clock = performance.now() / 1000) {
  const phase = (clock + (i * c.beat) / c.n) % c.beat;
  return `--beat:${c.beat.toFixed(3)}s;animation-delay:${(-phase).toFixed(3)}s`;
 }
-const missingInputs = t => Object.keys(E.RECIPES[t.building.type].in).filter(r => t.loose[r] < 1);
-// A workshop whose inputs arrive and are used within the same round shows empty yards between deliveries;
-// what the player needs to know is whether it made something last round.
-const madeLastRound = t => (world.stats[world.stats.length - 1]?.tiles[t.id] || 0) > 0;
+const missingInputs = t => E.productionState(world,t).missing;
 function stateOf(t) {
- const b = t.building, miss = missingInputs(t);
- if (miss.length && !madeLastRound(t)) return `等待${miss.map(r => names[r]).join('、')}`;
- if (t.loose[E.RECIPES[b.type].out] >= E.YARD && !madeLastRound(t)) return '堆场已满，停工';
- if (!b.workers.length) return '没有工人，点击才生产';
- return '生产中';
+ if(!t.building.workers.length)return '待雇工';
+ const state=E.productionState(world,t);
+ return state.active?'生产中':'待连接'+state.missing.map(r=>names[r]).join('、')+'的运行中上游';
 }
-function saturated(k, r, st = windowStats()) { return st.span >= 5 && st.sales(k, r) >= E.buys(world, k)[r].rate * .95; }
 // The supply chain around one tile: who feeds it, who takes from it, and the road segments in between.
 // Both the map highlight and the card's flow diagram read from this.
 function chainOf(t, st = windowStats()) {
@@ -225,7 +200,7 @@ function chainOf(t, st = windowStats()) {
    if (!takes) continue;
    const hops = walk(t.id, u.id); if (hops === null) continue;
    nodes.add(u.id);
-   down.push(u.building.type === 'town' ? {tile:u, r, hops, town:true, price:u.building.buys[r], taken:st.sales(u.id, r), full:saturated(u.id, r, st), backlog:backlog(u.id, r)} : {tile:u, r, hops, town:false, taken:st.inflow(u.id, r), value:E.saleValue(world, u.id, E.RECIPES[u.building.type].out)});
+   down.push(u.building.type === 'town' ? {tile:u, r, hops, town:true, price:u.building.buys[r], taken:st.sales(u.id, r)} : {tile:u, r, hops, town:false, taken:st.inflow(u.id, r), value:E.saleValue(world, u.id, E.RECIPES[u.building.type].out)});
   }
  }
  const goods = new Set([...wants, ...(b.type === 'town' ? [] : [E.RECIPES[b.type].out])]);
@@ -234,26 +209,8 @@ function chainOf(t, st = windowStats()) {
 // The logistics chart in the details panel: source → input warehouse → workshop → product warehouse → buyers, one
 // small card per stage, flows written on the links between them. See docs/ui-system.html「物流流程图」.
 const ic = id => `<i class="ic">${TradeIcons.icon(id, {base:'assets/icons/v1/', size:14, decorative:true})}</i>`;
-const lnode = ({k, main, sub = '', state = '', alert = ''}) => `<div class="lnode ${state}"><span class="lk">${k}</span><b>${main}</b>${sub ? `<span class="lv">${sub}</span>` : ''}${alert ? `<em class="lalert">${alert}</em>` : ''}</div>`;
-const llink = (text = '') => `<div class="llink">${text ? `<span>${text}</span>` : ''}</div>`;
-const who = list => { const m = new Map(); for (const u of list) m.set(u.tile.building.type, (m.get(u.tile.building.type) || 0) + 1); return [...m].map(([k, n]) => `${ic(k)}${names[k]} ×${n}`).join(' '); };
-// A workshop's problem in a few words, and what fixes it. The stage it belongs to is highlighted in the chart.
-function workshopIssue(t, st, chain) {
- const b = t.building, rc = E.RECIPES[b.type], r = rc.out, made = tileRate(t);
- if (t.loose[r] >= E.YARD) return chain.down.length
-  ? {node:'out', text:`${names[r]}堆满了`, fix:`下游收不下：给收${names[r]}的城镇加居民、升时代，或连到更多买家`}
-  : {node:'out', text:`${names[r]}没有去处`, fix:`连接收${names[r]}的城镇或用它的工坊`};
- if (!b.workers.length) return {node:'self', text:'没有工人', fix:'雇第一名工人，或点击手工生产'};
- for (const i of Object.keys(rc.in)) {
-  const srcs = chain.up.filter(u => u.r === i);
-  if (!srcs.length) return {node:'in:' + i, text:`${names[i]}没有来源`, fix:`连接${names[E.BUILDINGS.find(x => E.RECIPES[x].out === i)]}，或新建一座`};
-  if (st.span >= 5 && made < E.rate(world, t) * .9 && t.loose[i] < 1) {
-   const maker = names[srcs[0].tile.building.type];
-   return {node:'in:' + i, text:`缺${names[i]}`, fix:`上游${maker}每回合只送来 ${per(st.inflow(t.id, i))} 件，这里要 ${E.rate(world, t)} 件。给${maker}加工人、升工艺，或再连一座`};
-  }
- }
- return null;
-}
+// Use recorded revenue so a price upgrade never rewrites earlier income.
+function townRevenue(tile,r){const S=world.stats;if(!S.length)return 0;return S.reduce((n,s)=>n+(s.revenue?.[tile]?.[r]??((s.sales[tile]?.[r]||0)*(world.tiles[tile].building.buys[r]||0))),0)/(world.tick-S[0].tick+1);}
 const svg = $('map');
 const hexPoints = MapGeometry.points;
 // Everything the map must show: placed tiles, fog flowers and the previewed one. The view box follows the map as it grows.
@@ -326,7 +283,7 @@ function buildMap() {
  }).join('')}</g><g id="highlight" pointer-events="none"></g><g id="roads"></g><g id="preview" pointer-events="none"></g><g id="ambient" pointer-events="none">${Object.values(world.tiles).map(t=>{const [x,y]=position(t);return `<g data-tile-ambient="${t.id}" transform="translate(${x},${y})"></g>`;}).join('')}</g><g id="freight" pointer-events="none"></g><g id="tile-ui" pointer-events="none">${Object.values(world.tiles).map(t=>{const [x,y]=position(t);return `<g data-tile-ui="${t.id}" transform="translate(${x},${y})"><g class="tile-content"></g><g class="tile-crew"></g></g>`;}).join('')}</g><g id="pops" pointer-events="none"></g>`;
  $('fog').innerHTML = Object.values(world.flowers).filter(f => f.state === 'fog').map(f => {
   const pts = flowerPoints(f), [cx, cy] = pts[0];
-  return `<g class="fog-flower" data-flower="${f.id}" tabindex="0" role="button" aria-label="迷雾板块，解锁 ${coins(E.flowerCost(world))}">${pts.map(([x,y]) => `<polygon class="fog-hex" points="${hexPoints(x,y,51)}"/>`).join('')}<path class="fog-edge" d="${flowerOutline(f)}"/><g class="fog-cta"><text x="${cx}" y="${cy - 4}" text-anchor="middle" class="fog-label">解锁</text><text x="${cx}" y="${cy + 12}" text-anchor="middle" class="fog-price"></text></g></g>`;
+  return `<g class="fog-flower" data-flower="${f.id}" tabindex="0" role="button">${pts.map(([x,y]) => `<polygon class="fog-hex" points="${hexPoints(x,y,51)}"/>`).join('')}<path class="fog-edge" d="${flowerOutline(f)}"/><g class="fog-cta" data-fog-unlock="${f.id}" tabindex="0" role="button"><rect class="fog-action-bg" x="${cx-29}" y="${cy-22}" width="58" height="42" rx="7"/><text x="${cx}" y="${cy - 4}" text-anchor="middle" class="fog-label">解锁</text><text x="${cx}" y="${cy + 12}" text-anchor="middle" class="fog-price"></text></g></g>`;
  }).join('');
  for (const g of svg.querySelectorAll('[data-tile]')) {
   g.addEventListener('click', () => tileClick(g.dataset.tile));
@@ -335,9 +292,9 @@ function buildMap() {
   g.addEventListener('keydown', e => { if (['Enter',' '].includes(e.key)) { e.preventDefault(); suppressClick = false; tileClick(g.dataset.tile); } });
  }
  for (const g of svg.querySelectorAll('[data-flower]')) {
-  const pick = () => { if (suppressClick) { suppressClick = false; return; } if (!afford(E.flowerCost(world))) return; selectedFlower = g.dataset.flower; selected = null; selectedEdge = null; render(); };
-  g.addEventListener('click', pick);
-  g.addEventListener('keydown', e => { if (['Enter',' '].includes(e.key)) { e.preventDefault(); pick(); } });
+  const pick = () => { if (suppressClick) { suppressClick = false; return; } selectedFlower = g.dataset.flower; selected = null; selectedEdge = null; render(); };
+  g.addEventListener('click', e => { if (e.target.closest('[data-fog-unlock]')) { e.stopPropagation(); if (afford(E.flowerCost(world))) explore(g.dataset.flower); } else pick(); });
+  g.addEventListener('keydown', e => { if (!['Enter',' '].includes(e.key)) return; e.preventDefault(); e.stopPropagation(); if (e.target.closest('[data-fog-unlock]')) { if (afford(E.flowerCost(world))) explore(g.dataset.flower); } else pick(); });
  }
  applyView();
 }
@@ -369,27 +326,30 @@ function tileView(t, st) {
  const b = t.building, last = world.stats.at(-1);
  if (b.type === 'town') {
   const d = E.buys(world, t.id);
-  return {type:'town', name:'城镇', undeveloped:!Object.values(world.sold[t.id]||{}).some(n=>n>0), offers:Object.entries(d).map(([id, x]) => ({id, price:x.price, used:last?.sales[t.id]?.[id] || 0, income:Math.round(st.sales(t.id, id) * x.price)})),
-   store:Object.entries(d).map(([id, x]) => ({id, count:t.loose[id], cap:x.cap, role:'buy'}))};
+  return {type:'town', name:'城镇', undeveloped:!Object.values(world.sold[t.id]||{}).some(n=>n>0), offers:Object.entries(d).map(([id, x]) => ({id, price:x.price, used:last?.sales[t.id]?.[id] || 0, income:Math.round(townRevenue(t.id,id))})),
+   store:[]};
  }
  const rc = E.RECIPES[b.type], n = last?.tiles[t.id] || 0, ins = Object.keys(rc.in);
- return {type:b.type, name:names[b.type], made:[{id:rc.out, n}], used:ins.map(id => ({id, n})),
-  starved:ins.filter(id => t.loose[id] < 1),
-  store:[...ins.map(id => ({id, count:t.loose[id], cap:E.buffer(world,t), role:'in'})), {id:rc.out, count:t.loose[rc.out], cap:E.YARD, role:'out'}]};
+ return {type:b.type, name:names[b.type], made:[{id:rc.out, n}], used:[],
+  starved:[], store:[]};
 }
+let decorativeRoads=null,decorativeTraffic=null,travelClock=0,travelLast=performance.now();
+const reducedTravelMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function renderMap() {
  buildMap();
  const st = windowStats();
  const roadLayout=RoadTiles.layout(world.tiles,Object.values(world.edges),position);
+ const selectedRoads=new Set(selectedEdge?E.roadComponent(world,selectedEdge).map(e=>e.id):[]);
  for (const g of svg.querySelectorAll('[data-flower]')) {
   g.classList.toggle('selected', g.dataset.flower === selectedFlower);
-  // 买不起的板块整块不可交互：不可点、不可聚焦、无悬停。见 docs/ui-system.html
   const cost = E.flowerCost(world), ok = afford(cost);
   g.classList.toggle('affordable', ok);
   g.querySelector('.fog-price').textContent = coins(cost);
-  if (ok) g.setAttribute('tabindex', '0'); else g.removeAttribute('tabindex');
-  g.setAttribute('role', ok ? 'button' : 'img');
-  g.setAttribute('aria-label', ok ? `迷雾板块，解锁 ${coins(cost)}` : `迷雾板块，需要 ${coins(cost)}，金币不足`);
+  g.setAttribute('aria-label', `迷雾板块，选择后可解锁，费用 ${coins(cost)}`);
+  const action=g.querySelector('[data-fog-unlock]');
+  if (g.dataset.flower === selectedFlower && ok) action.setAttribute('tabindex','0'); else action.removeAttribute('tabindex');
+  action.setAttribute('aria-disabled', ok?'false':'true');
+  action.setAttribute('aria-label', ok?`解锁迷雾板块，费用 ${coins(cost)}`:`解锁迷雾板块，费用 ${coins(cost)}，金币不足`);
  }
  renderHighlight();
  const focus=world.tiles[selected]?.building&&!buildType&&!connectFrom?chainOf(world.tiles[selected],st):null;
@@ -431,72 +391,94 @@ function renderMap() {
  if(selected&&world.tiles[selected]?.building){const ui=svg.querySelector(`[data-tile-ui="${selected}"]`);if(ui&&ui.nextSibling)ui.parentNode.appendChild(ui);}
  $('roads').innerHTML=roadLayout.junctions.map(d=>`<path class="road-junction" d="${d}"/>`).join('')+[...roadLayout.roads.values()].map(e => {
   const on=focus&&focus.edges.has(e.id);
-  return `<g class="road-control ${on?'chain':''}"><path d="${e.d}" class="road ${e.removing?'removing':''} ${selectedEdge===e.id?'selected':''} ${e.water?'water':''} ${on?'chain':''}"/><path d="${e.hit}" class="road-hit" data-edge="${e.id}" tabindex="0" role="button" aria-label="${e.water?'航道':'道路'}${e.removing?'，拆除中':''}" aria-pressed="${selectedEdge===e.id}" fill="none" stroke="transparent" stroke-width="22" pointer-events="stroke"/></g>`;
+  return `<g class="road-control ${on?'chain':''}"><path d="${e.d}" class="road ${e.removing?'removing':''} ${selectedRoads.has(e.id)?'selected':''} ${e.water?'water':''} ${on?'chain':''}"/><path d="${e.hit}" class="road-hit" data-edge="${e.id}" tabindex="0" role="button" aria-label="${e.water?'航道':'道路'}${e.removing?'，拆除中':''}" aria-pressed="${selectedRoads.has(e.id)}" fill="none" stroke="transparent" stroke-width="22" pointer-events="stroke"/></g>`;
  }).join('');
- const f=Math.max(0,Math.min(1,accumulator/E.DT));
- $('freight').innerHTML=world.shipments.filter(s=>s.edge).map(s=>{
-  const road=roadLayout.roads.get(s.edge);
-  if(!road)return '';
-  const [x,y]=road.at(s.from===road.a?f:1-f);
-  return `<circle class="freight" cx="${x}" cy="${y}" r="3.5" fill="${goodColor(s.r)}"/>`;
- }).join('');
+ decorativeRoads=roadLayout;
+ decorativeTraffic=RoadTiles.traffic(roadLayout,world.stats.at(-1)?.traffic||[],travelClock,decorativeTraffic,(from,to)=>E.path(world,from,to));
+ $('freight').innerHTML=RoadTiles.travelers(decorativeTraffic,travelClock,{reduced:reducedTravelMotion.matches});
 
 }
 function purchaseLabel(title, cost, description='') {
  return `<span class="action-copy"><strong class="action-title">${title}</strong>${description?`<small class="action-description">${description}</small>`:''}</span><span class="action-cost">${coins(cost)}</span>`;
 }
+function buildingEffect(type) {
+ const recipe=E.RECIPES[type],inputs=Object.keys(recipe.in);
+ return inputs.length?`${inputs.map(r=>names[r]).join(' + ')} → ${names[recipe.out]}`:`生产${names[recipe.out]}`;
+}
 function button(label, command, primary=false, disabled=false, cls='') {
+ if(command.type==='tech'&&!E.TECH[command.key].repeat)cls+=' unlock';
  return `<button data-command='${JSON.stringify(command)}' class="${primary?'primary':''} ${label.includes('action-cost')?'purchase-action':''} ${cls}" ${disabled?'disabled':''}>${label}</button>`;
 }
-function detailStats(label, value, unit, crewLabel, count, max) {
- return `<div class="detail-stats"><div title="近 30 回合的每回合平均值"><span>${label}</span><strong>${value} <small>${unit}</small></strong></div><div><span>${crewLabel}</span><strong>${count} <small>/ ${max}</small></strong></div></div>`;
-}
-function detailNotice(issue) {
- return issue ? `<div class="detail-notice"><b>${issue.text}</b><p>${issue.fix}。</p></div>` : '';
-}
-// Only endpoint deliveries count; passing freight is not a building's supply.
-function supplyStats(t) {
- const samples=world.stats.filter(s=>s.received&&s.dispatched), n=samples.length;
- const avg=fn=>n?samples.reduce((sum,s)=>sum+fn(s),0)/n:0;
- return {n, incoming:r=>avg(s=>s.received[t.id]?.[r]||0), outgoing:r=>avg(s=>s.dispatched[t.id]?.[r]||0), made:avg(s=>s.tiles[t.id]||0), capacity:avg(s=>s.capacities?.[t.id]||0), automatic:avg(s=>Math.max(0,(s.tiles[t.id]||0)-(s.manualTiles?.[t.id]||0))), sales:r=>avg(s=>s.sales[t.id]?.[r]||0)};
-}
-function supplyCaption(s) {return `<p class="detail-caption">${s.n?'近 '+s.n+' 回合均值':'等待下一回合统计'} · 库存为当前值</p>`;}
-function supplyRelation(list) {
- const counts=new Map();for(const u of list)counts.set(u.tile.building.type,(counts.get(u.tile.building.type)||0)+1);
- return [...counts].map(([type,n])=>names[type]+' ×'+n).join('、')||'暂无';
-}
-const ledgerNumber=n=>Number(n.toFixed(2)).toLocaleString('zh-CN');
 function ledgerTable(headers, rows, footer='') {
  return `<table class="detail-table"><thead><tr>${headers.map(h=>'<th scope="col">'+h+'</th>').join('')}</tr></thead><tbody>${rows.join('')}</tbody>${footer}</table>`;
 }
 function goodCell(r) {return `<th scope="row"><span class="ledger-good">${ic(r)}<span>${names[r]}</span></span></th>`;}
+const detailIcon=(id,size=20)=>TradeIcons.icon(id,{base:'assets/icons/v1/',size,decorative:true});
 function workshopSupply(t,st) {
- const b=t.building,rc=E.RECIPES[b.type],s=supplyStats(t),chain=chainOf(t,st),capacity=E.rate(world,t),inputs=Object.keys(rc.in);
- const rate=n=>s.n?ledgerNumber(n):'—', efficiency=s.n&&s.capacity?Math.round(s.automatic/s.capacity*100):null;
- const inputRows=inputs.map(r=>`<tr>${goodCell(r)}<td>${rate(s.incoming(r))}</td><td>${rate(s.made)}</td><td>${t.loose[r]}</td></tr>`);
- return supplyCaption(s)+(inputs.length?`<section class="ledger-section"><h3>原料 <small>件 / 回合</small></h3>${ledgerTable(['货物','运入','消耗','库存<small>件 · 当前</small>'],inputRows)}<p class="ledger-note">${inputs.map(r=>names[r]+' ← '+supplyRelation(chain.up.filter(u=>u.r===r))).join('<br>')}</p></section>`:'')
- +`<section class="ledger-section"><h3>生产 <small>${names[rc.out]} / 回合</small></h3><div class="output-compare"><div><span>实际产出</span><strong>${rate(s.made)}</strong></div><div><span>当前产能</span><strong>${capacity}</strong></div></div><div class="efficiency-line"><span title="近期自动产出 ÷ 同期自动产能，不含手工生产">自动效率</span><b>${efficiency===null?'—':efficiency+'%'}</b></div><div class="efficiency-track" aria-hidden="true"><span style="width:${Math.min(100,efficiency||0)}%"></span></div></section>
- <section class="ledger-section"><h3>产品 <small>件 / 回合</small></h3>${ledgerTable(['货物','运出','积压<small>件 · 当前</small>'],[`<tr>${goodCell(rc.out)}<td>${rate(s.outgoing(rc.out))}</td><td class="${t.loose[rc.out]>=E.YARD?'warn':''}">${t.loose[rc.out]} / ${E.YARD}</td></tr>`])}<p class="ledger-note">${names[rc.out]} → ${supplyRelation(chain.down)}</p></section><p class="detail-caption">工人 ${b.workers.length} / ${E.MAX_WORKERS}</p>`;
+ const b=t.building,rc=E.RECIPES[b.type],state=E.productionState(world,t),inputs=Object.keys(rc.in);
+ const recipe=inputs.length?inputs.map(r=>names[r]).join(' + ')+' → '+names[rc.out]:'生产'+names[rc.out];
+ return `<div class="workshop-status"><span class="state-badge ${state.active?'running':''}">${detailIcon(state.active?'ui-checkmark':'ui-pause',12)}${state.active?'生产中':b.workers.length?'待连接':'待雇工'}</span><span>${recipe}</span></div>
+ <div class="workshop-metrics"><div class="production-metric"><span class="metric-label">${state.active?'固定产量':'接通并雇工后产量'} / 回合</span><strong>${detailIcon(rc.out,24)}${E.rate(world,t)} <small>件${names[rc.out]}</small></strong></div><div class="crew-metric"><span class="metric-label">工人</span><strong>${detailIcon('worker',18)}${b.workers.length} <small>/ ${E.MAX_WORKERS}</small></strong></div></div>
+ ${inputs.length?`<div class="input-connections" aria-label="上游连接">${inputs.map(r=>`<div class="input-connection"><span>${detailIcon(r,17)}${names[r]}</span><span class="connection-status ${state.sources[r]?'':'waiting'}">${detailIcon(state.sources[r]?'ui-checkmark':'ui-plus',12)}${state.sources[r]?'已接通':'待连接'+names[E.BUILDINGS.find(b=>E.RECIPES[b].out===r)]}</span></div>`).join('')}</div>`:''}`;
+}
+function decorateDetailButtons(box){
+ for(const btn of box.querySelectorAll('button')){
+  if(btn.hasAttribute('data-planner-focus'))continue;
+  const c=btn.dataset.command?JSON.parse(btn.dataset.command):{};
+  const kind=c.type==='tech'?(E.TECH[c.key].repeat?'upgrade':'unlock'):['demolish','fireWorker','removeRoad'].includes(c.type)?'remove':c.type==='resident'?'upgrade':c.type==='build'||c.type==='worker'||btn.dataset.build?'build':'neutral';
+  const icon=btn.id==='connect-accessible'||c.type==='restoreRoad'?'rail':c.type==='worker'?'worker':undefined;
+  const reason=c.type==='tech'&&!E.techAvailable(world,c.key)?E.techDiscoveryReason(world,c.key)||'前置未满足':undefined;
+  ActionButtons.enhance(btn,{kind,icon,reason});
+ }
+}
+function refundLabel(title,amount){
+ return `<span class="action-copy"><strong class="action-title">${title}</strong></span><span class="action-cost"><small class="action-refund">退回</small>${coins(amount)}</span>`;
 }
 function townPanel(t) {
- const st=windowStats(),s=supplyStats(t),buys=E.buys(world,t.id),b=t.building,chain=chainOf(t,st),next=E.residentCost(world,t.id);
- const goods=Object.entries(buys), rate=n=>s.n?ledgerNumber(n):'—', total=goods.reduce((sum,[r,d])=>sum+s.sales(r)*d.price,0);
- const market=goods.map(([r,d])=>`<tr>${goodCell(r)}<td>${coins(d.price)}</td><td>${rate(s.sales(r))}</td><td>${s.n?coins(s.sales(r)*d.price):'—'}</td></tr>`);
- const stock=goods.map(([r,d])=>`<tr>${goodCell(r)}<td>${rate(s.incoming(r))}</td><td>${d.rate}</td><td class="${t.loose[r]>=d.cap?'warn':''}">${t.loose[r]} / ${d.cap}</td></tr>`);
- return `<h2>城镇 ${BuildingTiles.formatLevel(E.eraPower(world))}</h2>`+supplyCaption(s)
- +`<section class="ledger-section"><h3>收购收益</h3>${ledgerTable(['货物','单价<small>/件</small>','收购<small>件/回合</small>','收入<small>/回合</small>'],market,`<tfoot><tr><th colspan="3">总收入 /回合</th><td>${s.n?coins(total):'—'}</td></tr></tfoot>`)}</section>
- <section class="ledger-section"><h3>供货与库存 <small>件 / 回合</small></h3>${ledgerTable(['货物','运入','可收购','库存<small>件 · 当前</small>'],stock)}<p class="ledger-note">${goods.map(([r])=>names[r]+' ← '+supplyRelation(chain.up.filter(u=>u.r===r))).join('<br>')}</p></section>
- <p class="detail-caption">居民 ${b.residents} / ${E.MAX_RESIDENTS}</p><div class="actions detail-actions">${b.residents<E.MAX_RESIDENTS?button(purchaseLabel('增加居民',next,`每种货每回合多收 ${E.TOWN_RATE*E.eraPower(world)} 件`),{type:'resident',tile:t.id},true,!afford(next),costly(next)):''}</div>`;
+ const b=t.building,next=E.residentCost(world,t.id),goods=Object.entries(E.buys(world,t.id));
+ const rows=goods.map(([r,d])=>`<tr>${goodCell(r)}<td>${coins(d.price)}</td><td>${coins(townRevenue(t.id,r))}</td></tr>`);
+ return `<h2>城镇 ${BuildingTiles.formatLevel(E.eraPower(world))}</h2><p class="detail-caption">不限量收购 · 接通后每回合自动结算</p>
+ <section class="ledger-section">${ledgerTable(['货物','单价 / 件','实际收入 / 回合'],rows,`<tfoot><tr><th colspan="2">总收入 / 回合</th><td>${coins(goods.reduce((n,[r])=>n+townRevenue(t.id,r),0))}</td></tr></tfoot>`)}</section>
+ <p class="detail-caption">居民 ${b.residents} / ${E.MAX_RESIDENTS} · 售价加成 ${(b.residents-1+world.tech.era)*25}%</p><div class="actions detail-actions">${b.residents<E.MAX_RESIDENTS?button(purchaseLabel('增加居民',next,'本城镇基础售价 +25%'),{type:'resident',tile:t.id},true,!afford(next),costly(next)):''}</div>`;
 }
 function flowerPanel(f) {
  if (f.state === 'fog') {
   const cost=E.flowerCost(world);
-  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2></div><div class="actions">${button(purchaseLabel(`解锁这块板块`,cost),{type:'explore',flower:f.id},true,!afford(cost),costly(cost))}</div>`;
+  return `<div class="empty-state"><h2>${icon('fog','quarry-c')}迷雾板块</h2><p>${coins(cost)}${afford(cost)?'':' · 金币不足'}</p></div>`;
  }
+}
+function detailTechAction(key,label){
+ if(E.techMaxed(world,key))return '';
+ if(E.techDiscoveryReason(world,key))return `<p class="tip">${E.techDiscoveryReason(world,key)}</p>`;
+ const cost=E.techCost(world,key),missing=E.TECH[key].requires.filter(r=>!world.tech[r]);
+ if(missing.length)return `<p class="tip">${E.TECH[key].name}需要先解锁${missing.map(r=>E.TECH[r].name).join('、')}</p>`;
+ const description=E.TECH[key].building?'每名工人 +1 件 / 回合':key==='era'?'全图基础售价 +25%':E.BUILDINGS.includes(key)?buildingEffect(key):E.TECH[key].desc;
+ return button(purchaseLabel(label,cost,description),{type:'tech',key},true,!afford(cost),`${E.TECH[key].repeat?'upgrade ':''}${costly(cost)}`);
+}
+function detailResearch(keys){
+ const ready=keys.filter(k=>!world.tech[k]&&E.techAvailable(world,k));
+ return ready.length?`<section class="detail-tech"><h3>可研究科技</h3><div class="actions">${ready.map(k=>detailTechAction(k,`研究${E.TECH[k].name}`)).join('')}</div></section>`:'';
+}
+// Patch unchanged elements in place so live updates do not restart hover transitions.
+function syncContent(target,source){
+ const key=n=>n.nodeType===1?(n.id||n.getAttribute('data-command')||n.getAttribute('data-key')||''):'';
+ for(let i=0;i<source.childNodes.length;i++){
+  const next=source.childNodes[i],current=target.childNodes[i];
+  if(!current){target.append(next.cloneNode(true));continue;}
+  if(current.nodeType!==next.nodeType||current.nodeName!==next.nodeName||key(current)!==key(next)){
+   current.replaceWith(next.cloneNode(true));continue;
+  }
+  if(next.nodeType!==1){if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;continue;}
+  for(const attr of [...current.attributes])if(!next.hasAttribute(attr.name)&&!(current.tagName==='DETAILS'&&attr.name==='open'))current.removeAttribute(attr.name);
+  for(const attr of next.attributes)if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
+  syncContent(current,next);
+ }
+ while(target.childNodes.length>source.childNodes.length)target.lastChild.remove();
 }
 function renderSelection() {
  const box=$('selection');
  const active=document.activeElement?.dataset.command;
+ const activeId=box.contains(document.activeElement)?document.activeElement.id:null;
  const selectionKey=selectedEdge||selectedFlower||selected||'';
  const changedSelection=box.dataset.selectionKey!==selectionKey;
  const wasOpen=new Map(!changedSelection?[...box.querySelectorAll('details')].map(d=>[d.dataset.key,d.open]):[]);
@@ -505,41 +487,53 @@ function renderSelection() {
  const t=world.tiles[selected],f=world.flowers[selectedFlower],st=windowStats();
  if (selectedEdge && world.edges[selectedEdge]) {
   const e=world.edges[selectedEdge];
-  html=`<h2>道路</h2><p class="detail-caption">${e.removing?'拆除中：停止新货进入，等待在途货物通过后全额退款。':'拆除后停止新货进入，在途货物通过后全额退款。'}</p><div class="actions">${button(e.removing?`撤销拆除<small>完成后退回 ${coins(e.paid)}</small>`:`拆除这段路<small>退回 ${coins(e.paid)}</small>`,{type:e.removing?'restoreRoad':'removeRoad',edge:e.id},false,false,e.removing?'':'danger')}</div>`;
+  const group=E.roadComponent(world,e.id),paid=group.reduce((sum,part)=>sum+part.paid,0);
+  const endpoints=E.roadEndpoints(group).map(id=>names[world.tiles[id]?.building?.type]||'路口').join(' ↔ ');
+  html=`<h2>道路</h2><p class="detail-caption">${endpoints} · 仅管理这条连接</p>${e.removing?'<p class="detail-caption">拆除中 · 下一回合退款</p>':''}<div class="actions">${button(e.removing?'撤销拆除':refundLabel('拆除整条路',paid),{type:e.removing?'restoreRoad':'removeRoad',edge:e.id},false,false,e.removing?'':'danger')}</div>`+detailResearch(['roadEngineering','navigation','mountainPass']);
  } else if (f && f.state !== 'placed') html=flowerPanel(f);
  else if (t?.building?.type==='town') {
-  html=townPanel(t);
+  html=townPanel(t)+`<div class="actions"><button id="connect-accessible">从这里修路</button></div><section class="detail-tech"><h3>科技</h3><div class="actions">${detailTechAction('era','提升时代')}</div></section>`;
  } else if (t?.building) {
   const b=t.building,next=E.workerCost(world,t),rc=E.RECIPES[b.type],r=rc.out,n=b.workers.length;
-  const paid=b.paid+b.workers.reduce((n,m)=>n+m.paid,0), issue=workshopIssue(t,st,chainOf(t,st));
+  const paid=b.paid+b.workers.reduce((n,m)=>n+m.paid,0);
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:`生产${names[r]}`;
-  html=`<h2>${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2><p class="detail-recipe">${recipe}</p>`
+  html=`<h2>${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2>${E.productionBonuses(world,t).length?`<p class="craft-now">自动生产加成：${E.productionBonuses(world,t).map(b=>E.TECH[b.key].name+' +'+b.amount+' 件/回合').join(' · ')}</p>`:''}`
    +workshopSupply(t,st)
-   +detailNotice(issue)
-   +`<div class="actions detail-actions">${n<E.MAX_WORKERS?button(purchaseLabel('雇用工人',next,`每回合多产 ${E.workerPower(world,b.type)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next)):''}<button id="produce">手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div>`;
+   +`<div class="actions detail-actions">${n<E.MAX_WORKERS?button(purchaseLabel('雇用工人',next,`每回合多产 ${E.rate(world,t,n+1)-E.rate(world,t)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next)):''}<button id="produce"><span class="action-copy"><strong class="action-title">手工生产</strong><small class="action-description">+${E.clickPower(world,t)} 件${names[r]}</small></span></button></div>`
+   +`<section class="detail-tech"><h3>工艺科技</h3><div class="actions">${detailTechAction(E.craftOf(b.type),`升级工艺`)}</div></section>`;
 
-  html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">从这里修路</button>${n?button(`辞退一名工人<small>退回 ${coins(b.workers[n-1].paid)}</small>`,{type:'fireWorker',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
+  html+=`<details class="more" data-key="manage"><summary>${detailIcon('ui-gear',14)}管理建筑</summary><div class="actions"><button id="connect-accessible">从这里修路</button>${n?button(refundLabel('辞退一名工人',b.workers[n-1].paid),{type:'fireWorker',tile:t.id}):''}${button(refundLabel('拆除建筑',paid),{type:'demolish',tile:t.id},false,false,'danger')}</div></details>`;
+  html+=detailResearch(b.type==='mine'?['deepMining']:E.processing(t)?['waterPower','specialization']:[]);
  } else if (t) {
   const fits=unlockedBuildings().filter(b=>E.RECIPES[b].fits.includes(t.terrain));
-  const locked=E.BUILDINGS.filter(b=>!world.tech[b]&&b!=='camp'&&E.RECIPES[b].fits.includes(t.terrain));
+  const locked=E.BUILDINGS.filter(b=>!world.tech[b]&&b!=='camp'&&E.techAvailable(world,b)&&E.RECIPES[b].fits.includes(t.terrain));
   html=`<div class="empty-state"><h2>${names[t.terrain]}</h2></div>`;
-  if(!fits.length&&!locked.length&&t.terrain==='mountain')html+='<div class="terrain-association"><b>不可建造</b></div>';
+  if(!fits.length&&!locked.length&&t.terrain==='mountain')html+=`<div class="terrain-association"><b>${world.tech.mountainPass?'山地工程已开放':'需要山地工程科技'}</b><span>${world.tech.mountainPass?'可修路':'研究后可修路'}，不可建造 · 地形系数 ×4</span></div>`;
   else if(t.terrain==='lake')html+=`<div class="terrain-association">${icon('waterway')}<b>${world.tech.waterway?'航道已开放':'需要航道科技'}</b><span>可通行，不可建造</span></div>`;
-  if(fits.length)html+=`<div class="actions">${fits.map(b=>button(purchaseLabel(`建造${names[b]}`,E.buildingCost(world,b)),{type:'build',tile:t.id,buildType:b},true,!afford(E.buildingCost(world,b)),costly(E.buildingCost(world,b)))).join('')}</div>`;
-  if(locked.length)html+=`<p class="tip">未解锁：${locked.map(b=>names[b]).join('、')}</p>`;
+  if(fits.length)html+=`<div class="actions">${fits.map(b=>button(purchaseLabel(`建造${names[b]}`,E.buildingCost(world,b),buildingEffect(b)),{type:'build',tile:t.id,buildType:b},true,!afford(E.buildingCost(world,b)),costly(E.buildingCost(world,b)))).join('')}</div>`;
+  if(locked.length)html+=`<section class="detail-tech"><h3>可解锁科技</h3><div class="actions">${locked.map(b=>detailTechAction(b,`解锁${names[b]}`)).join('')}</div></section>`;
+  if(t.terrain==='lake'){
+   if(!world.tech.waterway)html+=`<section class="detail-tech"><h3>可解锁科技</h3><div class="actions">${detailTechAction('waterway','解锁航道')}</div></section>`;
+   html+=detailResearch(['navigation','waterPower']);
+  }
+  if(t.terrain==='mountain')html+=detailResearch(['mountainPass']);
  }
  $('selection-panel').hidden=!html;
- box.innerHTML=html;
- const heading=box.querySelector('h2');
+ const draft=document.createElement('div');draft.innerHTML=html;
+ const heading=draft.querySelector('h2');
  $('selection-panel').querySelector('.panel-title').textContent=heading?.textContent||'详情';
- heading?.remove();
+ const panelTitle=$('selection-panel').querySelector('.panel-title');
+ if(t?.building)panelTitle.insertAdjacentHTML('afterbegin',detailIcon(t.building.type,26));
+ heading?.remove();decorateDetailButtons(draft);
+ if(changedSelection)box.replaceChildren(...draft.childNodes);else syncContent(box,draft);
  if(changedSelection){box.scrollTop=0;const stack=document.querySelector('.mobile-stack-wrap');if(stack&&window.matchMedia('(max-width:740px)').matches)stack.scrollTop=0;}
  for(const d of box.querySelectorAll('details'))if(wasOpen.has(d.dataset.key))d.open=wasOpen.get(d.dataset.key);
  bindCommands(box);
 
- if($('connect-accessible'))$('connect-accessible').onclick=()=>{connectFrom=t.id;buildType=null;render();toast('选择修路终点 · Esc 取消');};
+ if($('connect-accessible'))$('connect-accessible').onclick=()=>{connectFrom=t.id;buildType=null;render();toast('点选另一座建筑，自动规划道路 · Esc 取消');};
  if($('produce'))$('produce').onclick=()=>produce(t.id);
  if(active)[...box.querySelectorAll('[data-command]')].find(b=>b.dataset.command===active)?.focus({preventScroll:true});
+ else if(activeId)box.querySelector('#'+activeId)?.focus({preventScroll:true});
 }
 // Goals live here and nowhere else: five tracks, always on screen, nothing to pin and nothing to claim. A row is
 // four things and no prose -- what to reach, what it pays, how far along, and a bar. The bar measures the CURRENT
@@ -549,7 +543,13 @@ const goalFlash = {};
 const goalNum = n => n >= 100 ? fmt(n) : per(n);
 function renderGoals() {
  const now=performance.now(), reward=E.goalReward(world);
- $('goals-body').innerHTML=`<ul class="goals">${E.GOALS.map(g=>{
+ const fog=Object.values(world.flowers).filter(f=>f.state==='fog').sort((a,b)=>E.flowerDistance(a)-E.flowerDistance(b)||a.id.localeCompare(b.id))[0];
+ const price=fog?E.flowerCost(world,fog):0;
+ const missing=townTiles().flatMap(t=>Object.keys(t.building.buys)).find(r=>!Object.values(world.tiles).some(t=>E.workshop(t.building)&&E.RECIPES[t.building.type].out===r));
+ const plan=!!missing||!fog;
+ const step=missing?`新城镇想收购${names[missing]} · 查看科技与建造`:fog?(afford(price)?`探索一块新地图 · ${coins(price)}`:`探索还差 ${coins(price-world.money)} · 可点击伐木营手工生产`):'打开产业规划，尝试新的科技和产线';
+ const draft=document.createElement('div');
+ draft.innerHTML=`<div class="next-step"><span><b>下一步</b> ${step}</span><button id="next-step-action">${plan?'产业规划':'查看迷雾'}</button></div><ul class="goals">${E.GOALS.map(g=>{
   const p=E.goalProgress(world,g), done=goalFlash[g.id]>now;
   const number=g.id==='income'?coins:goalNum;
   const num=done?`达成 ${number(p.floor)}`:`${number(Math.min(p.cur,p.target))} / ${number(p.target)}`;
@@ -559,6 +559,8 @@ function renderGoals() {
    +`<span class="gpay">+${coins(reward)}</span>`
    +`<span class="progress"><span style="width:${(done?1:p.ratio)*100}%"></span></span></li>`;
  }).join('')}</ul>`;
+ syncContent($('goals-body'),draft);
+ $('next-step-action').onclick=()=>{if(plan)openIndustry();else{focusFlower(fog.id);selectedFlower=fog.id;selected=null;selectedEdge=null;renderSelection();}};
 }
 // Clearing a tier is the one notice in the game that does not time out: it stacks up at the bottom and stays
 // until the player closes it, so nothing is missed while they are looking at the other side of the map.
@@ -584,39 +586,43 @@ function renderLegend() {
 // The tech tree is one card per building, plus the era and the waterway. A card
 // starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
 function techCards() {
- const cards = [{id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
+ const cards = [{id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'每级提高全图城镇基础售价 25%，与居民加成相加', craft:'era', per:n=>`全图基础售价 +${(n-1)*25}%`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
  for (const b of E.BUILDINGS) {
   const t = E.TECH[b], rc = E.RECIPES[b];
   const ins = Object.keys(rc.in).map(r => names[r]).join(' + ');
   cards.push({id:b, name:names[b], icon:b, tier:t ? t.tier : 1, kind:'building', unlock:t ? b : null, craft:E.craftOf(b),
-   desc:t ? t.desc : `在${names[rc.fits[0]]}建，产${names[rc.out]}`, per:n=>`每名工人每回合 ${n} 件 · 手工每次 ${n} 件`});
+   desc:t ? t.desc : `在${names[rc.fits[0]]}建，产${names[rc.out]}`, per:n=>`每名工人 <b>${n}</b> 件${names[rc.out]} / 回合 · 手工 <b>${n}</b> 件`});
  }
  cards.push({id:'waterway', name:E.TECH.waterway.name, icon:'waterway', tier:E.TECH.waterway.tier, kind:'waterway', unlock:'waterway', desc:E.TECH.waterway.desc});
+ for(const [id,t] of Object.entries(E.RESEARCH))cards.push({...t,id,unlock:id,research:true});
  return cards.filter(c=>E.TECH[c.craft||c.unlock]);
 }
 function renderTech() {
- const key=Object.keys(E.TECH).map(k=>`${world.tech[k]||0}${E.techAvailable(world,k)?'a':''}${E.techCost(world,k)}${afford(E.techCost(world,k))?'$':''}`).join('');
+ const key=industrySelected+'|'+world.unlocked+'|'+world.money+'|'+Object.keys(E.RESEARCH).map(k=>E.researchStatus(world,k)).join('|')+Object.keys(E.TECH).map(k=>`${world.tech[k]||0}${E.techAvailable(world,k)?'a':''}${E.techCost(world,k)}${afford(E.techCost(world,k))?'$':''}`).join('');
  if ($('tech-body').dataset.key===key) return;
  $('tech-body').dataset.key=key;
- const cards=techCards(), tiers=[...new Set(cards.map(c=>c.tier))].sort();
+ const cards=techCards().filter(c=>c.id===industrySelected), tiers=[...new Set(cards.map(c=>c.tier))].sort();
  $('tech-body').innerHTML=tiers.map(tier=>`<div class="tier"><div class="tier-label">第 ${tier} 层</div><div class="nodes">${cards.filter(c=>c.tier===tier).map(c=>{
   const owned=!c.unlock||world.tech[c.unlock]>0;
+  const state=IndustryGraph.status(E,world,c.id);
   const level=c.craft?world.tech[c.craft]||0:0;
   let cls, body;
   if (!owned) {
    const avail=E.techAvailable(world,c.unlock), cost=E.techCost(world,c.unlock);
+   const discovery=E.techDiscoveryReason(world,c.unlock);
    const missing=E.TECH[c.unlock].requires.filter(r=>!world.tech[r]).map(r=>E.TECH[r].name);
    cls=!avail?'locked':afford(cost)?'ready':'costly';
-   body=!avail?`<div class="locked-note">${icon('ui-locked')}需要先解锁${missing.join('、')}</div>`:button(purchaseLabel(`解锁`,cost),{type:'tech',key:c.unlock},true,!afford(cost),costly(cost));
+   body=!avail?`<div class="locked-note">${icon('ui-locked')}${discovery||'需要先解锁'+missing.join('、')}</div>`:button(purchaseLabel(`${c.research?'研究':'解锁'}${c.name}`,cost,E.RECIPES[c.id]?buildingEffect(c.id):E.TECH[c.unlock].desc),{type:'tech',key:c.unlock},true,!afford(cost),costly(cost));
   } else if (c.craft) {
    const cost=E.techCost(world,c.craft), maxed=E.techMaxed(world,c.craft);
    cls=maxed?'owned':afford(cost)?'owned ready':'owned costly';
-   body=`<div class="craft-now">${c.per(level+1)}</div>`+(maxed?`<div class="owned-mark">${icon('check')}已是最高</div>`:button(purchaseLabel(`${c.next?c.next(level+1):`升级到 ${BuildingTiles.formatLevel(level+2)}`}`,cost,`${c.per(level+2)}`),{type:'tech',key:c.craft},true,!afford(cost),`upgrade ${costly(cost)}`));
+   body=(maxed?`<div class="owned-mark">${icon('check')}已满级</div>`:button(purchaseLabel(`${c.next?c.next(level+1):`升级工艺 · <b>${IndustryGraph.roman(level+2)}</b>`}`,cost),{type:'tech',key:c.craft},true,!state.available||!afford(cost),`upgrade ${costly(cost)}`));
   } else {
-   cls='owned'; body=`<div class="owned-mark">${icon('check')}已开通</div>`;
+   cls='owned'; body=`<div class="owned-mark">${icon('check')}${c.research?'已研究':'已开通'}</div>`;
   }
-  return `<div class="node ${cls} kind-${c.kind}"><div class="node-head"><b>${iconIds.has(c.icon)?icon(c.icon):`<span class="building-icon">${icon(c.icon)}</span>`}${c.title?c.title(level):c.name}${owned&&c.craft&&!c.title?` ${BuildingTiles.formatLevel(level+1)}`:''}</b></div><p>${c.desc}</p>${body}</div>`;
+  return `<div class="node ${cls} kind-${c.kind}" data-tech="${c.id}"><div class="node-head"><b>${iconIds.has(c.icon)?icon(c.icon):`<span class="building-icon">${icon(c.icon)}</span>`}${c.title?c.title(level):c.name}</b>${c.branch?`<small>${c.branch}</small>`:''}</div>${IndustryGraph.detail(E,world,c.id)}${body}${state.reason?`<p class="tip">${state.reason}</p>`:''}${state.kind==='poor'?`<p class="tech-shortfall">还差 ${coins(state.cost-world.money)}</p>`:''}</div>`;
  }).join('')}</div></div>`).join('');
+ decorateDetailButtons($('tech-body'));
  bindCommands($('tech-body'));
 }
 function setPanel(id, collapsed) {
@@ -625,76 +631,61 @@ function setPanel(id, collapsed) {
  folded[id]=collapsed;
  try{localStorage.setItem(PANELS,JSON.stringify(folded));}catch{}
 }
-// The production chain: raw buildings on the left, their goods, then processing buildings and products. Data comes from the engine's recipes.
-// The production chain as a picture: building icons feeding good icons, each good labelled with what the whole
-// map earns from it per round, so the player sees which chain carries the income and which one is idle.
-function renderChain() {
- const raw=E.BUILDINGS.filter(b=>!Object.keys(E.RECIPES[b].in).length), proc=E.BUILDINGS.filter(b=>Object.keys(E.RECIPES[b].in).length);
- const N={}, W=320, ROW=78, BS=40, GS=30;
- raw.forEach((b,i)=>{N[b]={x:44,y:40+i*ROW};N[E.RECIPES[b].out]={x:122,y:40+i*ROW};});
- proc.forEach((b,i)=>{N[b]={x:200,y:40+i*ROW};N[E.RECIPES[b].out]={x:280,y:40+i*ROW};});
- const H=40+ROW*(Math.max(raw.length,proc.length)-1)+44;
- const unlocked=new Set(unlockedBuildings()), st=windowStats();
- const earned=r=>townTiles().reduce((n,t)=>n+(t.building.buys[r]?st.sales(t.id,r)*t.building.buys[r]:0),0);
- let edges='', nodes='';
- for (const b of E.BUILDINGS) {
-  const locked=!unlocked.has(b), rc=E.RECIPES[b], B=N[b], O=N[rc.out];
-  for (const i of Object.keys(rc.in)) { const A=N[i]; edges+=`<path class="e ${i==='log'?'log':''} ${locked?'locked':''}" d="M${A.x+GS/2},${A.y} C${A.x+GS/2+30},${A.y} ${B.x-BS/2-30},${B.y} ${B.x-BS/2},${B.y}"/>`; }
-  edges+=`<path class="e ${locked?'locked':''}" d="M${B.x+BS/2},${B.y} L${O.x-GS/2},${O.y}"/>`;
-  nodes+=`<g class="${locked?'locked':''}"><title>${rc.name} · ${rc.fits.map(t=>names[t]).join('/')}</title>${TradeIcons.svgIcon(b,{x:B.x-BS/2,y:B.y-BS/2,size:BS})}<text class="lbl" x="${B.x}" y="${B.y+BS/2+11}" text-anchor="middle">${rc.name}</text></g>`;
-  const inc=earned(rc.out), price=E.BASE_PRICE[rc.out];
-  nodes+=`<g class="${locked?'locked':''}"><title>${names[rc.out]}${price?` · 基准价 ${coins(price)}${inc>0?` · +${coins(inc)}/回合`:''}`:' · 没有城镇收，只能炼铁'}</title><circle class="g ${locked?'locked':''} ${inc>0?'earning':''}" cx="${O.x}" cy="${O.y}" r="${GS/2+3}"/>${TradeIcons.svgIcon(rc.out,{x:O.x-GS/2,y:O.y-GS/2,size:GS})}<text class="gsub ${inc>0?'earning':''}" x="${O.x}" y="${O.y+GS/2+13}" text-anchor="middle">${names[rc.out]}</text></g>`;
- }
- $('chain-body').innerHTML=`<svg class="chain" viewBox="0 0 ${W} ${H}" role="img" aria-label="生产链">${edges}${nodes}</svg>`;
-}
-// Growth chart: the header's income/turn figure over the whole run, on a linear scale so the exponential curve reads as one.
-function renderGrowth() {
- if (history.length<2) { $('growth-body').innerHTML='<p class="growth-empty">再玩几回合，增长曲线就会开始画出来。</p>'; return; }
- const W=310,H=130,PAD=6;
- const maxIncome=Math.max(1,...history.map(p=>p.income));
- const x=i=>PAD+(W-PAD*2)*i/(history.length-1);
- const y=v=>H-8-(H-30)*v/maxIncome;
- const line=get=>history.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(get(p)).toFixed(1)}`).join('');
- const last=history.at(-1), sold=E.SELLABLE.filter(r=>history.some(p=>p.goods[r]>0));
- let base=history.map(()=>0), goodLines='';
- for (const r of sold) {
-  const top=base.map((b,i)=>b+history[i].goods[r]);
-  const upper=top.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`), lower=base.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).reverse();
-  goodLines+=`<path class="good-area" style="fill:${goodColor(r)}" d="M${upper.join('L')}L${lower.join('L')}Z"/>`;
-  base=top;
- }
- const legend=[`<span><i style="background:#b8743a"></i>合计 +${coins(last.income)}</span>`,...sold.map(r=>`<span><i style="background:${goodColor(r)}"></i>${names[r]} +${coins(last.goods[r])}</span>`)].join('');
- $('growth-body').innerHTML=`
-  <svg class="growth-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每回合收入随时间变化">
-   <text class="chart-label" x="${PAD}" y="14">每回合收入 · 峰值 ${coins(maxIncome)}</text>
-   <line class="axis" x1="${PAD}" y1="${H-8}" x2="${W-PAD}" y2="${H-8}"/>
-   ${goodLines}
-   <path class="income-line" d="${line(p=>p.income)}"/>
-  </svg>
-  <div class="growth-legend">${legend}</div>`;
-}
 function renderToolbar() {
- const bar=$('build-buttons');
- const want=unlockedBuildings().join(',');
- if (bar.dataset.key!==want) {
-  bar.dataset.key=want;
-  bar.innerHTML=unlockedBuildings().map(b=>`<button data-build="${b}">${icon(b)}<span class="action-copy"><strong class="action-title">${names[b]}</strong><span class="action-cost"></span></span></button>`).join('');
-  for(const button of bar.querySelectorAll('[data-build]')){
-   button.onpointerdown=event=>{if(event.button!==0)return;gesture={kind:'build',type:button.dataset.build,x:event.clientX,y:event.clientY,moved:false,pointerId:event.pointerId};button.setPointerCapture(event.pointerId);};
-   button.onclick=()=>{if(suppressClick){suppressClick=false;return;}buildType=buildType===button.dataset.build?null:button.dataset.build;connectFrom=null;render();};
-  }
- }
- for(const b of bar.querySelectorAll('[data-build]')){
-  b.classList.toggle('active',b.dataset.build===buildType);
-  b.setAttribute('aria-pressed',b.dataset.build===buildType?'true':'false');
-  b.querySelector('.action-title').textContent=`${names[b.dataset.build]} ${BuildingTiles.formatLevel(E.workerPower(world,b.dataset.build))}`;
-  b.querySelector('.action-cost').textContent=coins(E.buildingCost(world,b.dataset.build));
-  const ok=afford(E.buildingCost(world,b.dataset.build));
-  b.classList.toggle('primary',ok);b.classList.toggle('costly',!ok);
- }
  const ready=Object.keys(E.TECH).filter(k=>!E.techOwned(world,k)&&!E.techMaxed(world,k)&&E.techAvailable(world,k)&&afford(E.techCost(world,k))).length;
- $('tech-ready').textContent=ready?`${ready} 项可买`:'';
+ $('tech-ready').textContent=ready?`${ready} 项可研究`:'建造与科技';
+ $('industry-open').classList.remove('upgrade');
+ $('build-intent').hidden=!buildType&&!connectFrom;
+ $('build-intent').textContent=buildType?`待建：${names[buildType]} · 点选${E.RECIPES[buildType].fits.map(f=>names[f]).join('/')}地块`:connectFrom?'点选另一座建筑以自动修路':'';
 }
+function plannerZoom(scale){
+ industryScale=Math.max(.15,Math.min(1.5,scale));
+ $('planner-graph').style.transform=`scale(${industryScale})`;
+ $('planner-space').style.width=industryLayout.width*industryScale+'px';$('planner-space').style.height=industryLayout.height*industryScale+'px';
+ $('planner-scale').textContent=Math.round(industryScale*100)+'%';
+}
+function locateIndustry(){
+ const node=industryLayout.nodes.find(n=>n.id===industrySelected),view=$('planner-viewport');
+ if(node)view.scrollTo({left:Math.max(0,(node.x+110)*industryScale-view.clientWidth/2),top:Math.max(0,(node.y+65)*industryScale-view.clientHeight/2)});
+}
+function selectIndustry(id,locate=false){industrySelected=id;renderPlanner();if(locate)locateIndustry();}
+function renderPlanner(){
+ if(!$('industry-dialog').open)return;
+ let graph=IndustryGraph.markup(E,world,industryMode,industrySelected);
+ if(!graph.nodes.some(n=>n.id===industrySelected&&n.discovered)){
+  industrySelected='camp';graph=IndustryGraph.markup(E,world,industryMode,industrySelected);
+ }
+ industryLayout=graph;$('planner-graph').innerHTML=graph.html;
+ $('planner-graph').style.width=graph.width+'px';$('planner-graph').style.height=graph.height+'px';plannerZoom(industryScale);
+ for(const node of $('planner-graph').querySelectorAll('[data-industry]'))node.onclick=()=>{selectIndustry(node.dataset.industry);$('planner-graph').querySelector(`[data-industry="${industrySelected}"]`).focus({preventScroll:true});};
+ renderTech();
+ const b=industrySelected,rc=E.RECIPES[b],owned=b==='camp'||world.tech[b]>0,ins=rc?Object.keys(rc.in):[],deps=E.TECH[b]?.requires||[];
+ const go=(key,label)=>`<button class="tech-flow-item" data-planner-focus="${E.TECH[key]?.building||key}">${detailIcon(E.TECH[key]?.building||E.TECH[key]?.icon||key,28)}<span>${label}</span></button>`;
+ $('planner-extra').innerHTML=(rc?`<div class="tech-facts"><span>${detailIcon(b,24)}<b>${Object.values(world.tiles).filter(t=>t.building?.type===b).length}</b> 已建</span>${E.SELLABLE.includes(rc.out)?`<span>${detailIcon("coin",22)}<b>${coins(E.BASE_PRICE[rc.out])}</b> / 件</span>`:'<span>中间原料</span>'}</div><div class="tech-terrain">建造地形 <b>${rc.fits.map(f=>names[f]).join(" / ")}</b></div>${owned?`<button class="primary purchase-action planner-build ${costly(E.buildingCost(world,b))}" data-build="${b}" ${afford(E.buildingCost(world,b))?'':'disabled'}>${purchaseLabel(`建造${names[b]}`,E.buildingCost(world,b),buildingEffect(b))}</button>`:''}`:'')
+  +(deps.length?`<h3>研究前置</h3><div class="planner-related">${deps.map(d=>go(d,E.TECH[d].name+(E.TECH[d].building?' II':''))).join('<span class="tech-flow-plus">+</span>')}</div>`:'');
+ decorateDetailButtons($('planner-extra'));
+ for(const button of document.querySelectorAll('.planner-details [data-planner-focus]'))button.onclick=()=>{const id=button.dataset.plannerFocus;if(!industryLayout.nodes.some(n=>n.id===id))setIndustryMode('tech');selectIndustry(id,true);};
+ const build=$('planner-extra').querySelector('[data-build]');if(build)build.onclick=()=>{buildType=b;connectFrom=null;$('industry-dialog').close();render();};
+}
+function setIndustryMode(mode){
+ industryMode=mode;
+ if(mode==='production'&&!E.BUILDINGS.includes(industrySelected))industrySelected='camp';
+ for(const tab of ['production','tech']){$('view-'+tab).setAttribute('aria-selected',String(tab===mode));$('view-'+tab).tabIndex=tab===mode?0:-1;}
+ $('planner-viewport').setAttribute('aria-labelledby','view-'+mode);
+ renderPlanner();locateIndustry();
+}
+function openIndustry(){
+ gesture=null;interacting=false;$('preview').innerHTML='';$('drag-label').style.display='none';
+ $('industry-dialog').showModal();accumulator=0;last=performance.now();renderPlanner();locateIndustry();
+}
+$('industry-open').onclick=openIndustry;
+$('industry-close').onclick=()=>$('industry-dialog').close();
+$('industry-dialog').addEventListener('close',()=>{accumulator=0;last=performance.now();$('industry-open').focus();});
+$('industry-dialog').addEventListener('cancel',event=>{event.preventDefault();$('industry-dialog').close();});
+for(const mode of ['production','tech'])$('view-'+mode).onclick=()=>setIndustryMode(mode);
+document.querySelector('.planner-tabs').onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();setIndustryMode(event.key==='Home'?'production':event.key==='End'?'tech':industryMode==='production'?'tech':'production');$('view-'+industryMode).focus();}};
+$('planner-minus').onclick=()=>plannerZoom(industryScale-.1);$('planner-plus').onclick=()=>plannerZoom(industryScale+.1);
+$('planner-fit').onclick=()=>{const view=$('planner-viewport');plannerZoom(Math.min(view.clientWidth/industryLayout.width,view.clientHeight/industryLayout.height,1));view.scrollTo(0,0);};
 function render() {
  $('money').textContent=coins(world.money);
  $('income').textContent=signed(windowStats().income)+'/回合';
@@ -702,8 +693,7 @@ function render() {
  $('cancel').hidden=!buildType&&!connectFrom;
  renderToolbar();
  svg.classList.toggle('connecting',!!connectFrom||!!buildType||gesture?.kind==='connect');
- renderGoals();renderMap();renderSelection();renderTech();renderChain();
- if (!$('growth-panel').classList.contains('collapsed')) renderGrowth();
+ renderGoals();renderMap();renderSelection();renderPlanner();
 }
 
 function preview(event) {
@@ -744,11 +734,10 @@ document.addEventListener('pointerdown',()=>{interacting=true;suppressClick=fals
 document.addEventListener('pointerup',()=>{setTimeout(()=>{interacting=false;},0);},true);
 svg.addEventListener('pointerdown',event=>{
  if(event.button!==0||gesture)return;
- // Drag from a building or an existing network tile to build; elsewhere drag to pan.
+ // Map drags pan. Road building starts explicitly from a building detail action.
  const tile=event.target.closest('[data-tile]')?.dataset.tile||tileAt(event.clientX,event.clientY);
  if(buildType||connectFrom)return;
  const edge=event.target.closest('[data-edge]')?.dataset.edge;
- if(edge||(tile&&E.anchored(world,tile))){gesture={kind:'connect',from:tile||world.edges[edge].a,edge,x:event.clientX,y:event.clientY,moved:false,pointerId:event.pointerId};svg.setPointerCapture(event.pointerId);return;}
  gesture={kind:'pan',x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,pointerId:event.pointerId};
 });
 svg.addEventListener('keydown',event=>{
@@ -756,6 +745,18 @@ svg.addEventListener('keydown',event=>{
  if(!edge||!['Enter',' '].includes(event.key)||buildType||connectFrom)return;
  event.preventDefault();selectedEdge=edge;selected=null;selectedFlower=null;render();
  svg.querySelector(`[data-edge="${edge}"]`)?.focus();
+});
+svg.addEventListener('click',event=>{
+ if(connectFrom){
+  // Road hit paths sit above tiles; resolve the intended building from the map position.
+  if(event.target.closest('[data-tile]'))return;
+  const tile=tileAt(event.clientX,event.clientY);
+  if(tile&&world.tiles[tile]?.building)connect(connectFrom,tile);
+  return;
+ }
+ const edge=event.target.closest('[data-edge]')?.dataset.edge;
+ if(!edge||buildType||connectFrom||suppressClick)return;
+ selectedEdge=edge;selected=null;selectedFlower=null;render();
 });
 svg.addEventListener('wheel',event=>{event.preventDefault();zoomAt(event.clientX,event.clientY,Math.exp(-event.deltaY*.0015));},{passive:false});
 window.addEventListener('resize',()=>{if(!fitted)return fitAll();const cx=view.x+svg.clientWidth/2/view.scale,cy=view.y+svg.clientHeight/2/view.scale;applyView();centerOn(cx,cy);});
@@ -793,12 +794,11 @@ document.addEventListener('pointerup',event=>{
  const tile=tileAt(event.clientX,event.clientY);
  if(finished.kind==='build'){
   if(tile)place(finished.type,tile);else{buildType=null;render();}
- }else if(tile&&tile!==finished.from)connect(finished.from,tile);
- else render();
+ }else render();
 });
 document.addEventListener('pointercancel',()=>{interacting=false;cancelGesture();});
 document.addEventListener('keydown',event=>{
- if(event.key==='Escape')cancelGesture();
+ if(event.key==='Escape'&&!$('industry-dialog').open)cancelGesture();
  if(['Enter',' '].includes(event.key)){interacting=true;suppressClick=false;}
 });
 document.addEventListener('keyup',()=>{interacting=false;});
@@ -818,7 +818,7 @@ $('import-file').onchange=async event=>{
   const loaded=E.load(JSON.parse(await file.text()));
   if(!confirm('用这份存档替换当前进度？'))return;
   world=loaded;selected=E.START_TILE;selectedEdge=null;selectedFlower=null;storageBlocked=false;
-  accumulator=0;last=performance.now();mapKey='';history=[];recordHistory();save();cancelGesture();fitAll();toast('已恢复存档');
+  accumulator=0;last=performance.now();mapKey='';save();cancelGesture();fitAll();toast('已恢复存档');
  }catch(error){toast('导入失败：'+error.message);}finally{event.target.value='';}
 };
 // Developer cheats: open the page with `?cheat` to reveal a dev section in the menu. Money is added directly
@@ -831,7 +831,7 @@ $('legend-close').onclick=()=>{legendLines.length=0;renderLegend();};
 $('reset').onclick=()=>{
  if(!confirm('重新开始？可先导出当前进度。'))return;
  world=E.newWorld(Math.floor(Math.random()*2**31));selected=E.START_TILE;selectedEdge=null;selectedFlower=null;storageBlocked=false;
- accumulator=0;last=performance.now();mapKey='';history=[];recordHistory();save();cancelGesture();fitAll();
+ accumulator=0;last=performance.now();mapKey='';save();cancelGesture();fitAll();
 };document.addEventListener('visibilitychange',()=>{accumulator=0;last=performance.now();if(document.hidden){save();if(gesture)cancelGesture();}});
 window.addEventListener('pagehide',save);
 // Floating panels fold down to their title bar; the folded set is remembered per browser.
@@ -854,15 +854,15 @@ if(isMobileStack()){
  const open=[...document.querySelectorAll('.panel')].filter(p=>!['tools-panel','goals-panel'].includes(p.id)&&!p.classList.contains('collapsed'));
  for(const panel of open.slice(1))setPanel(panel.id,true);
 }
-loadHistory();recordHistory();render();fitAll();requestAnimationFrame(()=>{if(!fitted)fitAll();});if(welcome)toast(welcome);if(!storageBlocked)save();
+render();fitAll();requestAnimationFrame(()=>{if(!fitted)fitAll();});if(welcome)toast(welcome);if(!storageBlocked)save();
 setInterval(()=>{
  const now=performance.now(),elapsed=Math.min(.5,(now-last)/1000);last=now;
- if(!document.hidden&&!world.paused){
+ if(!document.hidden&&!world.paused&&!$('industry-dialog').open){
   accumulator+=elapsed*speed;
   let ticked=false;
   const cleared={};
   while(accumulator>=E.DT){
-   E.tick(world);recordHistory();accumulator-=E.DT;ticked=true;
+   E.tick(world);accumulator-=E.DT;ticked=true;
    for(const[id,d]of Object.entries(world.stats.at(-1).goals||{})){
     const u=cleared[id]||(cleared[id]={levels:0,reward:0});u.levels+=d.levels;u.reward+=d.reward;}
   }
@@ -871,3 +871,15 @@ setInterval(()=>{
   if(!gesture&&!interacting&&(ticked||now-lastPaint>=100)){render();lastPaint=now;}
  }
 },100);
+
+// Animate only the decorative layer at display cadence; economy and render timing stay unchanged.
+function animateTravelers(now){
+ if(!world.paused&&!document.hidden)travelClock+=Math.min(now-travelLast,80)/1000;
+ travelLast=now;
+ if(decorativeRoads&&!document.hidden&&!world.paused&&!reducedTravelMotion.matches){
+  $('freight').innerHTML=RoadTiles.travelers(decorativeTraffic,travelClock);
+ }
+ requestAnimationFrame(animateTravelers);
+}
+reducedTravelMotion.addEventListener('change',()=>{if(decorativeRoads)$('freight').innerHTML=RoadTiles.travelers(decorativeTraffic,travelClock,{reduced:reducedTravelMotion.matches});});
+requestAnimationFrame(animateTravelers);

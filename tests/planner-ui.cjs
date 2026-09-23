@@ -1,0 +1,53 @@
+const {chromium}=require('C:/Users/fzhan/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const {pathToFileURL}=require('node:url'),path=require('node:path'),assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
+ for(const width of [1440,390]){
+  const context=await browser.newContext({viewport:{width,height:1000}}),page=await context.newPage(),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(pathToFileURL(path.resolve('index.html')).href);
+  await page.evaluate(()=>{world=E.newWorld(1);world.money=1e6;render();});
+  assert.equal(await page.locator('#tech-panel,#chain-panel,#tools-panel').count(),0);
+  await page.locator('#industry-open').click();assert.ok(await page.locator('#industry-dialog').isVisible());
+  assert.equal(await page.locator('[data-industry]').count(),2);
+  assert.ok(await page.locator('.planner-node.undiscovered').count()>0);
+  const tick=await page.evaluate(()=>world.tick);await page.waitForTimeout(2300);assert.equal(await page.evaluate(()=>world.tick),tick);
+  assert.equal(await page.evaluate(()=>world.paused),false);
+  for(let i=0;i<8;i++){await page.keyboard.press('Tab');assert.ok(await page.evaluate(()=>document.getElementById('industry-dialog').contains(document.activeElement)));}
+  assert.equal(await page.locator('#planner-jump option[value="machineWorks"]').count(),0);
+  await page.locator('[data-industry="quarry"]').click();
+  assert.match(await page.locator('#tech-body').innerText(),/石头/);
+  assert.equal(await page.locator('#planner-extra [data-build]').count(),0);
+  assert.ok(await page.locator('.planner-node.undiscovered').evaluateAll(nodes=>nodes.every(n=>n.disabled&&n.textContent==='未发现产业')));
+  await page.locator('#view-tech').click();assert.equal(await page.locator('[data-industry]').count(),2);
+  assert.equal(await page.locator('#planner-jump,#planner-locate,#planner-legend,#planner-balance,.planner-column,.tech-level-summary').count(),0);
+  assert.ok(await page.locator('.planner-node.undiscovered').count()>0);
+  assert.ok(await page.locator('.planner-node.undiscovered').evaluateAll(nodes=>nodes.every(n=>n.tagName==='BUTTON'&&n.disabled&&n.textContent==='未发现科技'&&!n.dataset.industry&&n.tabIndex===-1)));
+  assert.ok(await page.evaluate(()=>document.querySelector('.industry-dialog').getBoundingClientRect().top>=document.querySelector('.topbar').getBoundingClientRect().bottom));
+  assert.equal(await page.locator('.industry-dialog').evaluate(d=>getComputedStyle(d,'::backdrop').backdropFilter),'none');
+  await page.locator('#planner-fit').click();assert.ok(await page.evaluate(()=>document.getElementById('planner-space').offsetWidth<=document.getElementById('planner-viewport').clientWidth+1));
+  await page.screenshot({path:`tmp/planner-${width}-technology.png`});
+  await page.locator('[data-industry="quarry"]').click();
+  const money=await page.evaluate(()=>world.money);await page.locator('#tech-body button').click();assert.equal(await page.evaluate(()=>world.money),money-600);
+  assert.ok(await page.locator('[data-industry="sawmill"]').count()>0);
+  assert.ok(await page.locator('#planner-extra [data-build="quarry"]').isVisible());
+  await page.locator('#view-production').click();await page.locator('#planner-fit').click();
+  await page.screenshot({path:`tmp/planner-${width}-production.png`});
+  await page.locator('#planner-extra [data-build="quarry"]').click();assert.equal(await page.locator('#industry-dialog').isVisible(),false);
+  assert.equal(await page.evaluate(()=>world.money),money-600);assert.match(await page.locator('#build-intent').innerText(),/采石场/);
+  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>buildType),null);
+  const afterClose=await page.evaluate(()=>world.tick);await page.waitForTimeout(2300);assert.ok(await page.evaluate(()=>world.tick)>afterClose);
+  await page.evaluate(()=>{world.paused=true;for(let i=0;i<2;i++){const f=Object.values(world.flowers).find(f=>f.state==='fog');E.command(world,{type:'explore',flower:f.id});}mapKey='';render();});
+  await page.locator('#industry-open').click();await page.locator('#planner-extra [data-build="quarry"]').click();
+  const rock=await page.evaluate(()=>Object.values(world.tiles).find(t=>t.terrain==='rock'&&!t.building).id);
+  await page.locator(`[data-tile="${rock}"]`).dispatchEvent('click');assert.equal(await page.evaluate(id=>world.tiles[id].building?.type,rock),'quarry');
+  await page.locator('#industry-open').click();await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>world.paused),true);
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'industry-open');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.goto(pathToFileURL(path.resolve('docs/ui-components.html')).href);
+  const progress=await page.evaluate(()=>localStorage.getItem('tnt-mvp-v17'));
+  await page.locator('#planner-demo-open').click();assert.equal(await page.locator('#planner-demo [data-industry]').count(),2);
+  await page.locator('#planner-demo-mode').click();assert.equal(await page.locator('#planner-demo [data-industry]').count(),2);
+  await page.locator('#planner-demo-close').click();assert.equal(await page.evaluate(()=>localStorage.getItem('tnt-mvp-v17')),progress);
+  assert.deepEqual(errors,[]);console.log(`Planner ${width}px: graph, research, build, pause/resume, zoom, keyboard and isolated example passed`);await context.close();
+ }
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});

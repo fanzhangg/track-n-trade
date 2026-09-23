@@ -2,6 +2,7 @@
 (function (root) {
  'use strict';
  const items = [
+{"id": "charcoal", "name": "木炭", "group": "goods", "file": "charcoal", "cue": "深灰切面炭块", "use": "扩展生产链"},{"id": "paper", "name": "纸张", "group": "goods", "file": "paper", "cue": "暖白叠页", "use": "扩展生产链"},{"id": "book", "name": "书籍", "group": "goods", "file": "book", "cue": "蓝灰书封与暖白书页", "use": "扩展生产链"},{"id": "machine", "name": "机械", "group": "goods", "file": "machine", "cue": "金属齿轮与底座", "use": "扩展生产链"},{"id": "kiln", "name": "炭窑", "group": "building", "file": "kiln", "cue": "圆窑、烟囱与炭堆", "use": "扩展生产链"},{"id": "paperMill", "name": "造纸坊", "group": "building", "file": "paperMill", "cue": "晾纸架与浅色纸堆", "use": "扩展生产链"},{"id": "printer", "name": "印刷坊", "group": "building", "file": "printer", "cue": "压印机与蓝色书本", "use": "扩展生产链"},{"id": "machineWorks", "name": "机械厂", "group": "building", "file": "machineWorks", "cue": "齿轮、厂房与高烟囱", "use": "扩展生产链"},
   {id:'camp',name:'伐木营',group:'building',file:'camp',cue:'原木堆与木架、树桩和斧头',use:'森林上的原木生产点'},
   {id:'quarry',name:'采石场',group:'building',file:'quarry',cue:'阶梯岩壁、吊架与切割石块',use:'岩地上的石头生产点'},
   {id:'sawmill',name:'锯木厂',group:'building',file:'sawmill',cue:'圆锯、进料原木与出料板材',use:'原木 → 木板'},

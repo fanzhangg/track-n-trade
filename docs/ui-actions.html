@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>统一操作按钮</title>
+<link rel="stylesheet" href="color-tokens.css"><link rel="stylesheet" href="../game.css"><link rel="stylesheet" href="../game-palette.css"><link rel="stylesheet" href="../assets/icons/v1/icons.css">
+<script src="../assets/icons/v1/catalog.js" defer></script><script src="../assets/icons/v1/provenance.js" defer></script><script src="../action-buttons.js" defer></script>
+<style>body{height:auto;overflow:auto;padding:16px;background:var(--surface-canvas)}main{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}h2{font-size:16px;margin:0 0 14px}.state-example{margin:0 0 16px}.state-example>p{font-size:12px;margin:0 0 6px}#feedback{min-height:24px;font-size:12px}@media(max-width:1000px){main{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){main{grid-template-columns:1fr}}</style></head>
+<body><main id="examples"></main><p id="feedback" role="status">可点击、悬停或用 Tab 检查。示例不读写玩家进度。</p>
+<script>addEventListener('DOMContentLoaded',()=>{
+ const actions=[['unlock','解锁','解锁锯木厂','原木 → 木板','$1,200'],['build','建造','建造锯木厂','原木 → 木板','$1,400'],['upgrade','升级','升级工艺','每名工人 +1 件 / 回合','$1,100'],['remove','删除','拆除锯木厂','移除建筑与工人','$1,400']];
+ const states=[['default','可用'],['hover','悬停'],['active','按下'],['focus','键盘焦点'],['disabled','不可用'],['selected','已选中']];
+ document.getElementById('examples').innerHTML=actions.map(([kind,label,title,desc,cost])=>`<section><h2>${label}</h2>${states.map(([state,name])=>`<div class="state-example"><p>${name}${state==='disabled'?' · '+(kind==='remove'?'操作不可用':'金币不足'):''}</p><button data-kind="${kind}" data-preview-state="${state}" ${state==='disabled'?'disabled':''} ${state==='selected'?'aria-pressed="true"':''}><span class="action-copy"><strong class="action-title">${title}</strong><small class="action-description">${desc}</small></span><span class="action-cost">${kind==='remove'?'<small class="action-refund">退回</small>':''}${cost}</span></button></div>`).join('')}</section>`).join('');
+ for(const button of document.querySelectorAll('button')){ActionButtons.enhance(button,{kind:button.dataset.kind,base:'../assets/icons/v1/'});button.onclick=()=>document.getElementById('feedback').textContent=button.querySelector('.action-title').textContent+' · 示例反馈';}
+});</script></body></html>

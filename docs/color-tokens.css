@@ -14,6 +14,9 @@
   --action-hover: #365565;
   --action-pressed: #29424f;
   --action-subtle: #e1eaf0;
+  --action-unlock: #3d6b4f;
+  --action-unlock-hover: #315840;
+  --action-unlock-pressed: #264632;
   --action-upgrade: #ad6044;
   --action-upgrade-hover: #985139;
   --action-upgrade-pressed: #82432f;
@@ -46,5 +49,9 @@
   --goods-tool: #606f78;
   --goods-ore: #465b6c;
   --goods-iron: #54758b;
+  --goods-charcoal: #494c4c;
+  --goods-paper: #a58b62;
+  --goods-book: #456d83;
+  --goods-machine: #977047;
   --road-dirt: #c8aa7e;
 }

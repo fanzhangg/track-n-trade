@@ -5,7 +5,7 @@ const tiles=w=>Object.values(w.tiles), producers=(w,r)=>tiles(w).filter(t=>E.wor
 const maker=r=>E.BUILDINGS.find(b=>E.RECIPES[b].out===r);
 function option(w,command,label,cost){return {command,label,cost};}
 function explore(w){const fog=Object.values(w.flowers).filter(f=>f.state==='fog').sort((a,b)=>E.flowerDistance(a)-E.flowerDistance(b)||a.id.localeCompare(b.id))[0];return option(w,{type:'explore',flower:fog.id},'探索新板块',E.flowerCost(w));}
-function unlock(w,key){const t=E.TECH[key];for(const dep of t.requires)if(!w.tech[dep])return unlock(w,dep);return option(w,{type:'tech',key},'解锁'+t.name,E.techCost(w,key));}
+function unlock(w,key){if(E.techDiscoveryReason(w,key))return explore(w);const t=E.TECH[key];for(const dep of t.requires)if(!w.tech[dep])return unlock(w,dep);return option(w,{type:'tech',key},'解锁'+t.name,E.techCost(w,key));}
 // A transparent, bounded policy, not an optimal player: complete known chains, buy useful capacity, then explore.
 function supply(w,r,to,seen=new Set()){
  const b=maker(r);if(seen.has(b))return null;seen=new Set(seen).add(b);
@@ -22,30 +22,30 @@ function supply(w,r,to,seen=new Set()){
  if(!t.building.workers.length)return option(w,{type:'worker',tile:t.id},'雇用'+E.RECIPES[b].name+'工人',E.workerCost(w,t));
  return null;
 }
+// Buy upgrades only for active outputs with a paying market, never to balance inputs.
 function growth(w){
- const need=E.zero(),have=E.zero(),choices=[];
- for(const t of tiles(w)){const b=t.building;if(!b)continue;if(b.type==='town'){for(const r in b.buys)need[r]+=E.townRate(w,b);}else{const rc=E.RECIPES[b.type];have[rc.out]+=E.rate(w,t);for(const r in rc.in)need[r]+=E.rate(w,t);}}
- for(const r of E.RES){if(have[r]>=need[r])continue;const ps=producers(w,r).filter(t=>t.building.workers.length);if(!ps.length)continue;
-  for(const t of ps)if(t.building.workers.length<E.MAX_WORKERS){const c=option(w,{type:'worker',tile:t.id},'扩产：'+E.RECIPES[t.building.type].name,E.workerCost(w,t));c.gain=Math.min(need[r]-have[r],E.workerPower(w,t.building.type));choices.push(c);}
-  const key=E.craftOf(maker(r)),c=option(w,{type:'tech',key},'工艺：'+E.GOODS[r],E.techCost(w,key));c.gain=Math.min(need[r]-have[r],ps.reduce((n,t)=>n+t.building.workers.length,0));choices.push(c);
+ const choices=[];
+ for(const t of tiles(w)){if(!E.workshop(t.building)||!E.productionState(w,t).active)continue;
+  const r=E.RECIPES[t.building.type].out,markets=tiles(w).filter(u=>u.building?.type==='town'&&u.building.buys[r]&&E.path(w,t.id,u.id));if(!markets.length)continue;
+  const price=Math.max(...markets.map(u=>E.buys(w,u.id)[r].price)),workers=t.building.workers.length;
+  if(workers<E.MAX_WORKERS){const c=option(w,{type:'worker',tile:t.id},'增加产量：'+E.RECIPES[t.building.type].name,E.workerCost(w,t));c.gain=(E.rate(w,t,workers+1)-E.rate(w,t))*price;choices.push(c);}
+  const key=E.craftOf(t.building.type),c=option(w,{type:'tech',key},'升级工艺：'+E.GOODS[r],E.techCost(w,key));c.gain=workers*price;choices.push(c);
  }
+ for(const t of tiles(w).filter(t=>t.building?.type==='town'&&t.building.residents<E.MAX_RESIDENTS)){
+  const sold=Object.values(w.sold[t.id]).reduce((n,v)=>n+v,0);if(!sold)continue;
+  const c=option(w,{type:'resident',tile:t.id},'提高城镇售价',E.residentCost(w,t.id));c.gain=E.income(w)*.15;choices.push(c);
+ }
+ if(!E.techMaxed(w,'era')&&E.techAvailable(w,'era')&&E.income(w)>0){const c=option(w,{type:'tech',key:'era'},'提升时代售价',E.eraCost(w));c.gain=E.income(w)*.15;choices.push(c);}
  return choices.sort((a,b)=>a.cost/a.gain-b.cost/b.gain);
 }
 function candidates(w,maxFlowers){
  let main=null;const towns=tiles(w).filter(t=>t.building?.type==='town').sort((a,b)=>w.flowers[a.flower].order-w.flowers[b.flower].order);
  outer:for(const town of towns)for(const r in town.building.buys){const next=supply(w,r,town);if(next){main=next;break outer;}}
- const grows=growth(w);
- if(!main)main=grows[0]||(w.unlocked<maxFlowers?explore(w):null);
- // With a complete map, local demand and a global era form the next progression loop.
- if(!main){const town=towns.find(t=>t.building.residents<E.MAX_RESIDENTS);if(town)main=option(w,{type:'resident',tile:town.id},'增加居民',E.residentCost(w,town.id));else if(!E.techMaxed(w,'era'))main=option(w,{type:'tech',key:'era'},'提升时代',E.eraCost(w));}
- // Long mountain detours are a reason to strengthen a working market while saving.
- // Only add demand backed by current production; the next pass can then expand supply.
- const alternatives=[];
- if(main&&main.cost>w.money&&main.cost/Math.max(1,E.income(w))>30){
-  const need=E.zero(),have=E.zero();for(const t of tiles(w)){const b=t.building;if(!b)continue;if(b.type==='town'){for(const r in b.buys)need[r]+=E.townRate(w,b);}else{const rc=E.RECIPES[b.type];have[rc.out]+=E.rate(w,t);for(const r in rc.in)need[r]+=E.rate(w,t);}}
-  for(const town of towns)if(town.building.residents<E.MAX_RESIDENTS&&Object.keys(town.building.buys).every(r=>have[r]>=need[r]&&producers(w,r).some(t=>E.path(w,t.id,town.id))))alternatives.push(option(w,{type:'resident',tile:town.id},'扩展已接通市场',E.residentCost(w,town.id)));
- }
- return [main,...grows,...alternatives].filter((v,i,a)=>v&&(v.command.type!=='explore'||w.unlocked<maxFlowers)&&a.findIndex(x=>x&&JSON.stringify(x.command)===JSON.stringify(v.command))===i);
+ const grows=growth(w);if(!main&&w.unlocked<maxFlowers)main=explore(w);
+ // Save for the next discovery; buy a quick-return improvement only if the wait is long.
+ const saving=main&&main.cost>w.money;
+ const alternatives=grows.filter(c=>!main||(saving&&c.cost/Math.max(c.gain,1)<=40&&main.cost/Math.max(E.income(w),1)>30));
+ return [main,...alternatives].filter(v=>v&&(v.command.type!=='explore'||w.unlocked<maxFlowers));
 }
 function* simulation({seed=1,rounds=900,clicks=0,maxFlowers=12}={}){
  const w=E.newWorld(seed),events=[],series=[],waits=[],firstSales={},purchases={};let lastPurchase=0,choicesTotal=0,choiceRounds=0;
@@ -59,7 +59,7 @@ function* simulation({seed=1,rounds=900,clicks=0,maxFlowers=12}={}){
    purchases[category]=(purchases[category]||0)+1;
    events.push({tick,label:buy.label,cost:before-w.money,income:E.income(w),balance:w.money,kind:category,flower:w.unlocked});
   }
-  if(clicks){const active=tiles(w).filter(t=>E.workshop(t.building)&&t.loose[E.RECIPES[t.building.type].out]<E.YARD);for(let i=0;i<clicks&&active.length;i++){const t=active[(tick+i)%active.length];try{E.command(w,{type:'click',tile:t.id});}catch{}}}
+  if(clicks){const active=tiles(w).filter(t=>E.workshop(t.building)&&!E.productionState(w,t).missing.length);for(let i=0;i<clicks&&active.length;i++){const t=active[(tick+i)%active.length];try{E.command(w,{type:'click',tile:t.id});}catch{}}}
   E.tick(w);
   for(const sales of Object.values(w.stats.at(-1).sales))for(const r of E.SELLABLE)if(sales[r]&&!firstSales[r])firstSales[r]=tick+1;
   if(tick%10===0)series.push({tick:tick+1,income:E.income(w)});

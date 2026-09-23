@@ -12,14 +12,14 @@ const assert=require('node:assert/strict');
    if(file==='index.html'){
     if(await page.locator('#mobile-warning-dismiss').isVisible())await page.locator('#mobile-warning-dismiss').click();
     await page.locator('#pause').click();
-    await page.evaluate(()=>{world=E.newWorld(1);E.command(world,{type:'build',tile:E.START_TILE,buildType:'camp'});E.command(world,{type:'connect',from:E.START_TILE,to:E.START_TOWN});E.command(world,{type:'worker',tile:E.START_TILE});world.paused=true;for(let i=0;i<40;i++)E.tick(world);mapKey='';render();});
+    await page.evaluate(()=>{world=E.newWorld(1);world.paused=true;for(let i=0;i<40;i++)E.tick(world);mapKey='';render();});
     const before=await page.evaluate(()=>JSON.stringify({money:world.money,sold:world.sold,clicks:world.clicks}));
     await page.locator('[data-tile="0,-1"]').dispatchEvent('click');
     assert.equal(await page.evaluate(()=>JSON.stringify({money:world.money,sold:world.sold,clicks:world.clicks})),before);
     assert.equal(await page.locator('#produce').count(),0);assert.equal(await page.locator('#goals-body .goal').count(),2);
-    await page.evaluate(()=>setPanel('tech-panel',false));assert.ok(!(await page.locator('#tech-body').innerText()).includes('金手指'));
-    await page.locator('[data-tile="1,0"]').dispatchEvent('click');assert.equal(await page.locator('#produce').count(),1);
-    await page.evaluate(()=>setPanel('tech-panel',true));
+    await page.evaluate(()=>openIndustry());assert.ok(!(await page.locator('#tech-body').innerText()).includes('金手指'));
+    await page.locator('#industry-close').click();await page.locator('[data-tile="1,0"]').dispatchEvent('click');assert.equal(await page.locator('#produce').count(),1);
+
    }
    if(file==='docs/ui-system.html')assert.ok(await page.locator('#building-tiles .bt-samples article').count()>0);
    if(file==='docs/ui-components.html')assert.equal(await page.locator('.goals .goal').count(),2);

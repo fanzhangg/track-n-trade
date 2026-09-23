@@ -17,7 +17,7 @@
 .road.removing{stroke-dasharray:none;opacity:.4}
 .road-control .road-hit{fill:none;stroke:transparent;stroke-width:19;stroke-linecap:butt;pointer-events:stroke;cursor:pointer}
 .road-control:hover .road,.road-control:focus-within .road,.road.selected{stroke:#ae8656!important}
-.road-control .road-hit:focus-visible{outline:none;stroke:var(--action-primary);stroke-width:2;stroke-dasharray:3 3}
+.road-control .road-hit:focus-visible{outline:none;stroke:transparent;stroke-width:19;stroke-dasharray:none}
 #preview .preview{stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;opacity:.55}
 
 .bt-floating{filter:drop-shadow(0 1.2px 1px #303e4330)}

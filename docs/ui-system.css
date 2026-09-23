@@ -24,3 +24,5 @@
 /* Ground projection matches map geometry; glyphs stay upright. */
 .terrain-chip{height:54.6px}
 @media(max-width:600px){.terrain-chip{height:44.85px}}
+
+.next-step{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;font-size:12px}.next-step button{white-space:nowrap}
