@@ -203,7 +203,7 @@ button.detail-button.unlock:not(:disabled):hover{background:var(--action-unlock-
 @media(prefers-reduced-motion:reduce){button{transition:none!important}}
 
 .road-hit:focus,.road-hit:focus-visible{outline:none;stroke:transparent}
-.road-control:has(.road-hit:focus-visible) .road{stroke:var(--action-primary);stroke-width:8}
+.road-control:has(.road-hit:focus-visible) .road{stroke:var(--action-primary);stroke-width:5}
 
 
 /* One action component across details, planning and isolated examples. */
@@ -232,3 +232,12 @@ button.action-button[data-action] .action-reason{display:block;margin-top:3px;fo
 
 .hl.road-target{stroke:var(--action-primary);stroke-width:2.5;stroke-dasharray:5 4}.hl.road-target.hover{stroke:var(--action-primary);stroke-width:4;fill:var(--action-subtle);fill-opacity:.45}.hl[hidden]{display:none}#map.connecting .road-hit{pointer-events:none}
 .hl.road-target.unaffordable{stroke:var(--bottleneck-1)}.hl.road-target.unaffordable.hover{stroke:var(--bottleneck-1);fill:var(--bottleneck-1);fill-opacity:.12}
+/* Road purchases use the existing action button and supply-chain focus treatment. */
+.road-price{overflow:visible;pointer-events:auto}.road-price[hidden]{display:none}
+button.action-button.road-price-button[data-action]{justify-content:center;gap:4px;min-height:34px;height:34px;padding:5px 6px;font-size:13px;font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums}
+button.action-button.road-price-button[data-action]>.tt-icon{--icon-size:16px!important}
+button.action-button.road-price-button[data-action]:disabled{--button-bg:var(--terrain-fog-costly);--button-border:var(--border-subtle);--button-ink:var(--text-disabled);opacity:1}
+#map.road-picking #fog,#map.road-picking #freight,#map.road-picking .road-junction{opacity:.3}
+#map.road-picking .bt-pill,#map.road-picking .tile-crew{display:none}
+
+#map .preview.road-option{stroke:var(--focus-ring);stroke-width:4;stroke-dasharray:7 5;opacity:.8}.road-price-leader{fill:none;stroke:var(--muted);stroke-width:1;pointer-events:none}.road-demo-previews[hidden]{display:none}

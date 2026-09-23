@@ -4,6 +4,18 @@ require('../road-system.js');
 const position=t=>[Math.sqrt(3)*51*(t.q+t.r/2),76.5*t.r];
 const dirs=[[1,0],[0,1],[-1,1],[-1,0],[0,-1],[1,-1]];
 const close=(a,b)=>assert.ok(Math.hypot(a[0]-b[0],a[1]-b[1])<1e-7);
+test('parallel lanes have separate continuous curves and hit paths',()=>{
+ const tiles=Object.fromEntries([0,1,2,3].map(q=>[String(q),{q,r:0,terrain:'grass',building:q===0||q===3?{}:null}]));
+ const edges=['A','B'].flatMap(road=>[0,1,2].map(i=>({id:road+i,road,a:String(i),b:String(i+1)})));
+ const layout=RoadTiles.layout(tiles,edges,position);
+ assert.equal(layout.junctions.length,0);
+ for(const road of ['A','B'])for(let i=0;i<2;i++)close(layout.roads.get(road+i).at(1),layout.roads.get(road+(i+1)).at(0));
+ for(let i=0;i<3;i++){
+  const a=layout.roads.get('A'+i),b=layout.roads.get('B'+i);
+  assert.notEqual(a.hit,b.hit);
+  assert.ok(Math.hypot(...a.at(.5).map((v,j)=>v-b.at(.5)[j]))>9.9);
+ }
+});
 function fixture(indices,building=false){
  const tiles={c:{q:0,r:0,terrain:'grass',building}};
  const edges=indices.map(i=>{tiles[i]={q:dirs[i][0],r:dirs[i][1],terrain:'grass'};return {id:String(i),a:'c',b:String(i)};});

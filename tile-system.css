@@ -12,13 +12,13 @@
 .bt-full-bg{fill:var(--bt-danger-tint);stroke:none}
 .bt-offer.is-full .bt-price{fill:var(--bt-danger)}
 /* One flat material, with no raised edge, highlight or rail texture. */
-.road,.road.flowing,.road.selected,.road.expanded{fill:none;stroke:var(--road-dirt);stroke-width:10;stroke-linecap:round;stroke-linejoin:round;filter:none}
+.road,.road.flowing,.road.selected,.road.expanded{fill:none;stroke:var(--road-dirt);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;filter:none}
 .road.water{stroke:#69969e;stroke-width:5;stroke-dasharray:7 7}
 .road.removing{stroke-dasharray:none;opacity:.4}
-.road-control .road-hit{fill:none;stroke:transparent;stroke-width:19;stroke-linecap:butt;pointer-events:stroke;cursor:pointer}
-.road-control:hover .road,.road-control:focus-within .road,.road.selected{stroke:#ae8656!important}
-.road-control .road-hit:focus-visible{outline:none;stroke:transparent;stroke-width:19;stroke-dasharray:none}
-#preview .preview{stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;opacity:.55}
+.road-control .road-hit{fill:none;stroke:transparent;stroke-width:7;stroke-linecap:butt;pointer-events:stroke;cursor:pointer}
+.road-control:hover .road,.road-control:focus-within .road,.road.selected,.road.hovered{stroke:#ae8656!important;stroke-width:5}
+.road-control .road-hit:focus-visible{outline:none;stroke:transparent;stroke-width:7;stroke-dasharray:none}
+#preview .preview{stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;opacity:.55}
 
 .bt-floating{filter:drop-shadow(0 1.2px 1px #303e4330)}
 .bt-float-bg{fill:var(--surface-panel);stroke:var(--border-control);stroke-width:.6;fill-opacity:.96}

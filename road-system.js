@@ -8,19 +8,27 @@
  const point=p=>p.map(n=>+n.toFixed(3)).join(' ');
  function layout(tiles,edges,position){
   const ports=new Map(),roads=new Map();
+  const groups=new Map(),boundaryGroups=new Map();
+  for(const e of edges){const road=e.road||'legacy';for(const id of [e.a,e.b]){if(!groups.has(id))groups.set(id,new Set());groups.get(id).add(road);}const key=[e.a,e.b].sort().join('|');if(!boundaryGroups.has(key))boundaryGroups.set(key,new Set());boundaryGroups.get(key).add(road);}
   const depth=root.MapGeometry?.depth||1,plane=id=>{const p=position(tiles[id]);return [p[0],p[1]/depth];},project=p=>[p[0],p[1]*depth];
   for(const e of edges){
    const [first,last]=[e.a,e.b].sort(),a=plane(first),b=plane(last),delta=b.map((v,i)=>v-a[i]),length=Math.hypot(...delta)||1;
-   const normal=delta.map(v=>v/length),seed=first+'|'+last,offset=noise('portal:'+seed)*9;
-   const middle=mix(a,b),portal=[middle[0]-normal[1]*offset,middle[1]+normal[0]*offset],handle=12+(noise('handle:'+seed)+1)*2;
+   const normal=delta.map(v=>v/length),seed=first+'|'+last,lanes=[...boundaryGroups.get(seed)].sort(),offset=noise('portal:'+seed)*9+(lanes.indexOf(e.road||'legacy')-(lanes.length-1)/2)*10;
+   const side=normal[0]<0||(normal[0]===0&&normal[1]<0)?-1:1;
+   const middle=mix(a,b),portal=[middle[0]-normal[1]*offset*side,middle[1]+normal[0]*offset*side],handle=12+(noise('handle:'+seed)+1)*2;
    for(const id of [e.a,e.b]){
     if(!ports.has(id))ports.set(id,[]);
-    ports.get(id).push({edge:e.id,mid:project(portal),portal,normal:normal.map(v=>v*(id===first?1:-1)),handle});
+    ports.get(id).push({edge:e.id,road:e.road||'legacy',mid:project(portal),portal,normal:normal.map(v=>v*(id===first?1:-1)),handle});
    }
   }
   function half(id,edge){
-   const tile=tiles[id],center=plane(id),list=ports.get(id),port=list.find(p=>p.edge===edge),p=port.portal;
+   const tile=tiles[id],center=plane(id),port=ports.get(id).find(p=>p.edge===edge),list=ports.get(id).filter(p=>p.road===port.road),p=port.portal;
    const c=[center[0]+noise('tile-x:'+id)*14,center[1]+noise('tile-y:'+id)*10];
+   if(!tile.building&&groups.get(id).size>1&&list.length===2){
+    const ends=list.map(p=>p.portal).sort((a,b)=>a[0]-b[0]||a[1]-b[1]),dx=ends[1][0]-ends[0][0],dy=ends[1][1]-ends[0][1],length=Math.hypot(dx,dy)||1;
+    const lanes=[...groups.get(id)].sort(),offset=(lanes.indexOf(port.road)-(lanes.length-1)/2)*10;
+    c[0]-=dy/length*offset;c[1]+=dx/length*offset;
+   }
    let entry,control;
    // The split quadratic supplies a shared interior point and tangent. Convert
    // its tangent to cubic form, then constrain the other handle to the boundary normal.
@@ -45,6 +53,7 @@
   }
   const junctions=[];
   for(const [id,list] of ports){
+   if(groups.get(id).size>1)continue;
    if(list.length<3||tiles[id].building||tiles[id].terrain==='lake')continue;
    const c=position(tiles[id]);
    const arms=list.filter(p=>!roads.get(p.edge).water&&!roads.get(p.edge).removing).map(p=>{
@@ -129,7 +138,7 @@
     if(budget--<=0)return;
     path.push(part);used.add(part.edge.id);length+=part.length;
     if(length>bestLength){best=path.slice();bestLength=length;}
-    for(const next of outgoing.get(part.to)||[])if(!used.has(next.edge.id))visit(next,path,used,length);
+    for(const next of outgoing.get(part.to)||[])if(!used.has(next.edge.id)&&(!part.edge.road||!next.edge.road||part.edge.road===next.edge.road||layout.tiles[part.to]?.building))visit(next,path,used,length);
     used.delete(part.edge.id);path.pop();
    }
    // Source-first search follows the longest whole line through junctions; cycles are bounded.

@@ -337,29 +337,38 @@ function researchStatus(w,k){
 // between rounds or through a road command, so results are cached per world object and round; road commands drop it.
 const pathCache=new WeakMap();
 function pathState(w){let c=pathCache.get(w);if(c&&c.tick===w.tick)return c;c={tick:w.tick,found:new Map(),edgesOf:{}};pathCache.set(w,c);
- for(const e of Object.values(w.edges)){if(e.removing||e.readyAt>w.tick)continue;(c.edgesOf[e.a]||(c.edgesOf[e.a]=[])).push(e);(c.edgesOf[e.b]||(c.edgesOf[e.b]=[])).push(e);}return c;}
-function path(w,from,to){if(from===to)return [];const c=pathState(w),ck=from+'|'+to;if(c.found.has(ck)){const p=c.found.get(ck);return p&&p.slice();}const p=findPath(c.edgesOf,from,to);c.found.set(ck,p);return p&&p.slice();}
-function findPath(edgesOf,from,to){const dist={[from]:[0,'']},prev={},open=[from];const cmp=(a,b)=>a[0]-b[0]||a[1].localeCompare(b[1]);
- while(open.length){open.sort((a,b)=>cmp(dist[a],dist[b])||a.localeCompare(b));const k=open.shift();if(k===to)break;for(const e of (edgesOf[k]||[]).sort((a,b)=>a.id.localeCompare(b.id))){const n=e.a===k?e.b:e.a,d=[dist[k][0]+1,dist[k][1]+e.id];if(!dist[n]||cmp(d,dist[n])<0){dist[n]=d;prev[n]=[k,e.id];if(!open.includes(n))open.push(n);}}}
- if(!dist[to])return null;const out=[];for(let k=to;k!==from;k=prev[k][0])out.unshift(prev[k][1]);return out;}
+ for(const original of Object.values(w.edges)){if(original.removing||original.readyAt>w.tick)continue;const e=original.road?original:{...original,road:'legacy:'+roadComponent(w,original.id).map(part=>part.id).sort()[0]};(c.edgesOf[e.a]||(c.edgesOf[e.a]=[])).push(e);(c.edgesOf[e.b]||(c.edgesOf[e.b]=[])).push(e);}return c;}
+function path(w,from,to){if(from===to)return [];const c=pathState(w),ck=from+'|'+to;if(c.found.has(ck)){const p=c.found.get(ck);return p&&p.slice();}const p=findPath(c.edgesOf,from,to,w.tiles);c.found.set(ck,p);return p&&p.slice();}
+function findPath(edgesOf,from,to,tiles){
+ const key=(node,road)=>JSON.stringify([node,road]),first=key(from,null),dist={[first]:[0,'']},prev={},open=[[from,null]],cmp=(a,b)=>a[0]-b[0]||a[1].localeCompare(b[1]);let end=null;
+ while(open.length){open.sort((a,b)=>cmp(dist[key(...a)],dist[key(...b)]));const [node,road]=open.shift(),current=key(node,road);if(node===to){end=current;break;}
+  for(const e of (edgesOf[node]||[]).slice().sort((a,b)=>a.id.localeCompare(b.id))){
+   if(road&&e.road&&road!==e.road&&!tiles[node]?.building)continue;
+   const next=e.a===node?e.b:e.a,nextRoad=e.road||null,k=key(next,nextRoad),score=[dist[current][0]+1,dist[current][1]+e.id];
+   if(!dist[k]||cmp(score,dist[k])<0){dist[k]=score;prev[k]=[current,e.id];if(!open.some(state=>key(...state)===k))open.push([next,nextRoad]);}
+  }
+ }
+ if(!end)return null;const out=[];for(let k=end;k!==first;k=prev[k][0])out.unshift(prev[k][1]);return out;
+}
 // Fewest segments across passable terrain, then lowest new terrain cost. Existing roads are free to reuse.
 // Bends have no separate fee; detours cost more when they add new segments.
 function route(w,from,to,independent=false){
- const occupied=new Set(Object.values(w.edges).flatMap(e=>[e.a,e.b]));
+ const occupied=new Map(),seen=new Set();
+ for(const e of Object.values(w.edges)){if(seen.has(e.id))continue;const group=roadComponent(w,e.id),identity=group.map(e=>e.id).sort()[0];for(const part of group){seen.add(part.id);for(const id of [part.a,part.b]){if(!occupied.has(id))occupied.set(id,new Set());occupied.get(id).add(identity);}}}
  const skey=(k,d)=>k+'|'+d,dist={[skey(from,-1)]:[0,0,'']},prev={},open=[[from,-1]];
  const compare=(a,b)=>a[0]-b[0]||a[1]-b[1]||a[2].localeCompare(b[2]);
  let end=null;
  while(open.length){open.sort((a,b)=>compare(dist[skey(...a)],dist[skey(...b)])||skey(...a).localeCompare(skey(...b)));
   const[k,dir]=open.shift();if(k===to){end=[k,dir];break;}const here=w.tiles[k],d0=dist[skey(k,dir)];
   for(let i=0;i<DIRS.length;i++){const[dq,dr]=DIRS[i],t=w.tiles[key(here.q+dq,here.r+dr)];if(!t||!passable(w,t))continue;
-   const eid=edgeId(k,t.id),e=w.edges[eid];if(e?.removing)continue;
-   if(independent&&(e||(t.id!==to&&(t.building||occupied.has(t.id)))))continue;
-   const score=[d0[0]+1,d0[1]+(e?0:segmentCost(w,terrainFactor(here,t,w))),d0[2]+eid];
+   const eid=edgeId(k,t.id),e=w.edges[eid];if(!independent&&e?.removing)continue;
+   if(independent&&t.id!==to&&(t.building||(occupied.get(t.id)?.size||0)>=2))continue;
+   const score=[d0[0]+1,d0[1]+(!independent&&e?0:segmentCost(w,terrainFactor(here,t,w))),d0[2]+eid];
    const sk=skey(t.id,i);if(!dist[sk]||compare(score,dist[sk])<0){dist[sk]=score;prev[sk]=[k,dir];if(!open.some(([a,b])=>a===t.id&&b===i))open.push([t.id,i]);}}}
  if(!end)return null;
  const tiles=[],dirs=[];for(let s=end;s;s=prev[skey(...s)]){tiles.unshift(s[0]);dirs.unshift(s[1]);}
  const segments=[];let cost=0,lakes=0;
- for(let i=1;i<tiles.length;i++){const a=tiles[i-1],b=tiles[i];if(w.edges[edgeId(a,b)])continue;
+ for(let i=1;i<tiles.length;i++){const a=tiles[i-1],b=tiles[i];if(!independent&&w.edges[edgeId(a,b)])continue;
   const factor=terrainFactor(w.tiles[a],w.tiles[b],w),lake=[w.tiles[a].terrain,w.tiles[b].terrain].includes('lake');
   const c=segmentCost(w,factor);
   segments.push({a,b,lake,cost:c,factor});cost+=c;if(lake)lakes++;}
@@ -383,7 +392,7 @@ function connection(w,from,to){
    if(node===to)return {tiles,segments:[],cost:0,lakes:0};
   }
  }
- const r=route(w,from,to,true);if(!r)throw Error('没有独立路线：需要绕开其他道路和中途建筑，可探索更多板块后连接');
+ const r=route(w,from,to,true);if(!r)throw Error('没有独立路线：需要绕开已容纳两条道路的板块和中途建筑，可探索更多板块后连接');
  return r;}
 function roadComponent(w,id){
  const start=w.edges[id];if(!start)return [];
@@ -423,7 +432,7 @@ function command(w,c){const t=w.tiles[c.tile],b=t?.building;const fail=m=>{throw
  }else if(c.type==='worker'){if(!workshop(b))fail('先选择一座已建工坊');if(b.workers.length>=MAX_WORKERS)fail(`每座建筑最多 ${MAX_WORKERS} 名工人，产能要靠新建筑和对应工艺`);const cost=workerCost(w,t);pay(w,cost);b.workers.push({id:id(w),paid:cost});
  }else if(c.type==='fireWorker'){if(!workshop(b))fail('请选择工坊');if(!b.workers.length)fail('这里没有工人');refund(w,b.workers.pop().paid);
  }else if(c.type==='tech'){const u=TECH[c.key];if(!u)fail('未知科技');if(techOwned(w,c.key))fail('已经买过这项科技');if(techMaxed(w,c.key))fail('已经是最高等级');if(!techPrerequisitesMet(w,c.key))fail(`先解锁${u.requires.filter(r=>!w.tech[r]).map(r=>TECH[r].name).join('和')}`);if(techDiscoveryReason(w,c.key))fail(techDiscoveryReason(w,c.key));pay(w,techCost(w,c.key));w.tech[c.key]++;
- }else if(c.type==='connect'){const r=connection(w,c.from,c.to);pay(w,r.cost);for(const s of r.segments){const k=edgeId(s.a,s.b);w.edges[k]={id:k,a:s.a,b:s.b,road:edgeId(c.from,c.to),removing:false,readyAt:w.tick,paid:s.cost};}pathCache.delete(w);
+ }else if(c.type==='connect'){const r=connection(w,c.from,c.to);pay(w,r.cost);for(const s of r.segments){const base=edgeId(s.a,s.b),road=edgeId(c.from,c.to),k=w.edges[base]?base+'#'+road:base;w.edges[k]={id:k,a:s.a,b:s.b,road,removing:false,readyAt:w.tick,paid:s.cost};}pathCache.delete(w);
  }else if(c.type==='demolish'){if(!b||b.type==='town')fail('请选择工坊');refund(w,b.paid+b.workers.reduce((n,m)=>n+m.paid,0));t.building=null;
  }else if(c.type==='removeRoad'){const group=roadComponent(w,c.edge);if(!group.length)fail('请选择道路');for(const e of group)e.removing=true;pathCache.delete(w);
  }else if(c.type==='restoreRoad'){for(const e of roadComponent(w,c.edge))e.removing=false;pathCache.delete(w);
@@ -537,7 +546,7 @@ function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
   if(b.type==='town'){if(!int(b.residents)||b.residents<1||b.residents>MAX_RESIDENTS||!int(b.paid)||!b.buys||!Object.entries(b.buys).every(([r,p])=>SELLABLE.includes(r)&&int(p)&&p>0)||Object.keys(b.buys).length<1||Object.keys(b.buys).length>2)throw Error('城镇无效');if(!w.sold[k])throw Error('城镇无效');qty(w.sold[k]);continue;}
   if(!RECIPES[b.type]||!RECIPES[b.type].fits.includes(t.terrain)||!Array.isArray(b.workers)||b.workers.length>MAX_WORKERS||!int(b.paid))throw Error('建筑无效');if(b.type!=='camp'&&!w.tech[b.type])throw Error('建筑未解锁');for(const m of b.workers){unique(m.id);if(!int(m.paid))throw Error('金额无效');}}
  for(const k of Object.keys(w.sold))if(w.tiles[k]?.building?.type!=='town')throw Error('销售记录无效');
- for(const[k,e]of Object.entries(w.edges)){const a=w.tiles[e.a],b=w.tiles[e.b];if(!a||!b||!adjacent(a,b)||!passable(w,a)||!passable(w,b)||k!==e.id||k!==edgeId(e.a,e.b)||!int(e.readyAt)||!int(e.paid))throw Error('道路引用无效');}
+ for(const[k,e]of Object.entries(w.edges)){const a=w.tiles[e.a],b=w.tiles[e.b];if(!a||!b||!adjacent(a,b)||!passable(w,a)||!passable(w,b)||k!==e.id||(k!==edgeId(e.a,e.b)&&(!e.road||k!==edgeId(e.a,e.b)+'#'+e.road))||!int(e.readyAt)||!int(e.paid))throw Error('道路引用无效');}
  for(const s of w.shipments){unique(s.id);if(!RES.includes(s.r)||!w.tiles[s.node]||!w.tiles[s.destination]||(s.edge&&(!w.edges[s.edge]||![w.edges[s.edge].a,w.edges[s.edge].b].includes(s.from)||![w.edges[s.edge].a,w.edges[s.edge].b].includes(s.to)||s.from===s.to||s.remaining!==1)))throw Error('货物引用无效');if(s.key!==null&&typeof s.key!=='string')throw Error('货物需求无效');}
  qty(w.manual.out);if(!int(w.manual.gross)||!w.manual.sales||!Object.entries(w.manual.sales).every(([k,v])=>w.tiles[k]?.building?.type==='town'&&RES.every(r=>int(v[r]))))throw Error('手工收购无效');if(!w.manual.tiles||!Object.entries(w.manual.tiles).every(([k,n])=>w.tiles[k]&&int(n)))throw Error('手工产量无效');
  if(w.stats.length>WINDOW)throw Error('统计窗口无效');for(const s of w.stats){if(!int(s.tick)||s.tick>w.tick||!s.out||!RES.every(r=>int(s.out[r]))||!s.tiles||!s.edges||!int(s.income)||!int(s.gross))throw Error('统计数据无效');}

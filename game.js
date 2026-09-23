@@ -102,7 +102,11 @@ function explore(fid) {
 function tileClick(key) {
  if (suppressClick) { suppressClick = false; return; }
  if (buildType) return place(buildType, key);
- if (connectFrom) return connect(connectFrom, key);
+ if (connectFrom) {
+  if(roadOptions().get(key)?.cost!==undefined){selected=key;selectedEdge=null;selectedFlower=null;render();}
+  else cancelGesture();
+  return;
+ }
  selected = key; selectedEdge = null; selectedFlower = null;
  if (E.workshop(world.tiles[key].building)) produce(key); else render();
 }
@@ -296,19 +300,24 @@ function buildMap() {
  }
  for (const g of svg.querySelectorAll('[data-flower]')) {
   const pick = () => { if (suppressClick) { suppressClick = false; return; } selectedFlower = g.dataset.flower; selected = null; selectedEdge = null; render(); };
-  g.addEventListener('click', e => { if (e.target.closest('[data-fog-unlock]')) { e.stopPropagation(); if (afford(E.flowerCost(world))) explore(g.dataset.flower); } else pick(); });
-  g.addEventListener('keydown', e => { if (!['Enter',' '].includes(e.key)) return; e.preventDefault(); e.stopPropagation(); if (e.target.closest('[data-fog-unlock]')) { if (afford(E.flowerCost(world))) explore(g.dataset.flower); } else pick(); });
+  g.addEventListener('click', e => { if(connectFrom)return; if (e.target.closest('[data-fog-unlock]')) { e.stopPropagation(); if (afford(E.flowerCost(world))) explore(g.dataset.flower); } else pick(); });
+  g.addEventListener('keydown', e => { if (!['Enter',' '].includes(e.key)||connectFrom) return; e.preventDefault(); e.stopPropagation(); if (e.target.closest('[data-fog-unlock]')) { if (afford(E.flowerCost(world))) explore(g.dataset.flower); } else pick(); });
  }
  applyView();
 }
 let roadOptionsKey='',roadOptionsCache=new Map();
+function roadTradePair(a,b){
+ const supplies=(producer,consumer)=>{const recipe=E.RECIPES[producer?.type];return !!recipe&&!!(consumer.type==='town'?consumer.buys[recipe.out]:E.RECIPES[consumer.type]?.in[recipe.out]);};
+ return supplies(a,b)||supplies(b,a);
+}
 function roadOptions(){
  if(!connectFrom)return new Map();
- const key=JSON.stringify([connectFrom,Object.values(world.tiles).map(t=>[t.id,t.terrain,t.building?.id,t.building?.type]),Object.values(world.edges).map(e=>[e.id,e.road,e.removing]),world.tech]);
+ const key=JSON.stringify([connectFrom,Object.values(world.tiles).map(t=>[t.id,t.terrain,t.building?.id,t.building?.type,t.building?.buys]),Object.values(world.edges).map(e=>[e.id,e.road,e.removing]),world.tech]);
  if(key!==roadOptionsKey){
   roadOptionsKey=key;roadOptionsCache=new Map();
   for(const t of Object.values(world.tiles))if(t.building&&t.id!==connectFrom){
-   try{const route=E.connection(world,connectFrom,t.id);roadOptionsCache.set(t.id,route.segments.length?{cost:route.cost}:{reason:'已连接'});}
+   if(!roadTradePair(world.tiles[connectFrom].building,t.building))continue;
+   try{const route=E.connection(world,connectFrom,t.id);roadOptionsCache.set(t.id,route.segments.length?{cost:route.cost,route}:{reason:'已连接'});}
    catch(error){roadOptionsCache.set(t.id,{reason:error.message});}
   }
  }
@@ -319,9 +328,6 @@ function renderHighlight() {
  const ring = (t, cls) => { const [x,y] = position(t); return `<polygon class="hl ${cls}" points="${hexPoints(x,y,49)}"/>`; };
  let html = '';
  if (buildType) for (const t of Object.values(world.tiles)) if (canPlace(buildType, t)) html += ring(t, 'legal');
- if(connectFrom)for(const [id,option] of roadOptions())if(option.cost!==undefined){
-  const [x,y]=position(world.tiles[id]);html+=`<polygon class="hl legal road-target ${afford(option.cost)?'affordable':'unaffordable'} ${hovered===id||document.activeElement?.dataset.tile===id?'hover':''}" data-road-target="${id}" points="${hexPoints(x,y,49)}"><title>${afford(option.cost)?'可连接':'金币不足'} · ${coins(option.cost)}</title></polygon>`;
- }
  if (!connectFrom&&hovered && world.tiles[hovered]) html += ring(world.tiles[hovered], 'hover');
  if (selected && world.tiles[selected]) html += ring(world.tiles[selected], 'selected');
  $('highlight').innerHTML = html;
@@ -352,6 +358,7 @@ function tileView(t, st) {
  return {type:b.type, name:names[b.type], made:[{id:rc.out, n}], used:[],
   starved:[], store:[]};
 }
+let hoveredRoad=null;
 let decorativeRoads=null,decorativeTraffic=null,travelClock=0,travelLast=performance.now();
 const reducedTravelMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function renderMap() {
@@ -359,6 +366,7 @@ function renderMap() {
  const options=roadOptions();
  const st = windowStats();
  const roadLayout=RoadTiles.layout(world.tiles,Object.values(world.edges),position);
+ const hoveredRoads=new Set(hoveredRoad?E.roadComponent(world,hoveredRoad).map(e=>e.id):[]);
  const selectedRoads=new Set(selectedEdge?E.roadComponent(world,selectedEdge).map(e=>e.id):[]);
  for (const g of svg.querySelectorAll('[data-flower]')) {
   g.classList.toggle('selected', g.dataset.flower === selectedFlower);
@@ -372,8 +380,9 @@ function renderMap() {
   action.setAttribute('aria-label', ok?`解锁迷雾板块，费用 ${coins(cost)}`:`解锁迷雾板块，费用 ${coins(cost)}，金币不足`);
  }
  renderHighlight();
- const focus=world.tiles[selected]?.building&&!buildType&&!connectFrom?chainOf(world.tiles[selected],st):null;
+ const focus=connectFrom?{nodes:new Set([connectFrom,...[...options].filter(([,o])=>o.cost!==undefined).map(([id])=>id)]),edges:new Set()}:world.tiles[selected]?.building&&!buildType?chainOf(world.tiles[selected],st):null;
  svg.classList.toggle('chain',!!focus);
+ svg.classList.toggle('road-picking',!!connectFrom);
  for (const g of svg.querySelectorAll('[data-tile]')) {
   const t=world.tiles[g.dataset.tile], b=t.building;
   g.classList.toggle('selected', t.id===selected);
@@ -412,12 +421,43 @@ function renderMap() {
  if(selected&&world.tiles[selected]?.building){const ui=svg.querySelector(`[data-tile-ui="${selected}"]`);if(ui&&ui.nextSibling)ui.parentNode.appendChild(ui);}
  $('roads').innerHTML=roadLayout.junctions.map(d=>`<path class="road-junction" d="${d}"/>`).join('')+[...roadLayout.roads.values()].map(e => {
   const on=focus&&focus.edges.has(e.id);
-  return `<g class="road-control ${on?'chain':''}"><path d="${e.d}" class="road ${e.removing?'removing':''} ${selectedRoads.has(e.id)?'selected':''} ${e.water?'water':''} ${on?'chain':''}"/><path d="${e.hit}" class="road-hit" data-edge="${e.id}" tabindex="0" role="button" aria-label="${e.water?'航道':'道路'}${e.removing?'，拆除中':''}" aria-pressed="${selectedRoads.has(e.id)}" fill="none" stroke="transparent" stroke-width="22" pointer-events="stroke"/></g>`;
+  return `<g class="road-control ${on?'chain':''}"><path d="${e.d}" class="road ${e.removing?'removing':''} ${selectedRoads.has(e.id)?'selected':''} ${hoveredRoads.has(e.id)?'hovered':''} ${e.water?'water':''} ${on?'chain':''}"/><path d="${e.hit}" class="road-hit" data-edge="${e.id}" tabindex="0" role="button" aria-label="${e.water?'航道':'道路'}${e.removing?'，拆除中':''}" aria-pressed="${selectedRoads.has(e.id)}" fill="none" stroke="transparent" stroke-width="7" pointer-events="stroke"/></g>`;
  }).join('');
  decorativeRoads=roadLayout;
  decorativeTraffic=RoadTiles.traffic(roadLayout,world.stats.at(-1)?.traffic||[],travelClock,decorativeTraffic,(from,to)=>E.path(world,from,to));
  $('freight').innerHTML=RoadTiles.travelers(decorativeTraffic,travelClock,{reduced:reducedTravelMotion.matches});
-
+ renderRoadPrices(options);
+}
+function renderRoadPrices(options){
+ let layer=$('road-prices');if(!layer){layer=document.createElementNS('http://www.w3.org/2000/svg','g');layer.id='road-prices';svg.appendChild(layer);}
+ const targets=connectFrom?[...options].filter(([,o])=>o.cost!==undefined):[],keep=new Set(targets.map(([id])=>id));
+ const occupied=connectFrom?[connectFrom,...keep].map(id=>{const [x,y]=position(world.tiles[id]);return {x:x-29,y:y-41,w:58,h:59};}):[];
+ const overlaps=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+ let previews='';
+ for(const child of [...layer.children])if(!keep.has(child.dataset.roadPrice))child.remove();
+ for(const [id,option] of targets){
+  let node=[...layer.children].find(el=>el.dataset.roadPrice===id);
+  if(!node){
+   node=document.createElementNS('http://www.w3.org/2000/svg','foreignObject');node.dataset.roadPrice=id;node.classList.add('road-price');node.setAttribute('width','88');node.setAttribute('height','44');
+   const wrap=document.createElement('div'),button=document.createElement('button');button.type='button';button.className='action-button road-price-button';button.dataset.action='build';
+   button.innerHTML=icon('coin')+'<span class="road-price-value"></span>';wrap.appendChild(button);node.appendChild(wrap);layer.appendChild(node);
+   button.onclick=event=>{event.stopPropagation();if(connectFrom&&!suppressClick)connect(connectFrom,id);};
+   node.addEventListener('pointerdown',event=>event.stopPropagation());
+   node.addEventListener('click',event=>event.stopPropagation());
+  }
+  const road=E.edgeId(connectFrom,id),edges=option.route.segments.map(e=>({...e,road,id:E.edgeId(e.a,e.b)+'#preview'}));
+  const layout=RoadTiles.layout(world.tiles,[...Object.values(world.edges),...edges],position),parts=edges.map(e=>layout.roads.get(e.id));
+  previews+=`<g data-road-preview="${id}">${parts.map(e=>`<path class="preview road-option" d="${e.d}"/>`).join('')}</g>`;
+  const anchors=parts.flatMap(e=>[.5,.25,.75].map(t=>e.at(t))).sort((a,b)=>Math.hypot(...a.map((v,i)=>v-parts[Math.floor(parts.length/2)].at(.5)[i]))-Math.hypot(...b.map((v,i)=>v-parts[Math.floor(parts.length/2)].at(.5)[i])));
+  const places=[0,42,84,126,168].flatMap(lift=>anchors.map(([x,y])=>({x:x-44,y:y-45-lift,w:88,h:40,anchor:[x,y]})));
+  const place=places.find(p=>!occupied.some(b=>overlaps(p,b)))||places.at(-1);occupied.push(place);
+  previews+=`<path class="road-price-leader" d="M${place.x+44} ${place.y+34}L${place.anchor.join(' ')}"/>`;
+  node.setAttribute('x',place.x);node.setAttribute('y',place.y);
+  const button=node.querySelector('button'),label=`连接${names[world.tiles[id].building.type]} · ${coins(option.cost)}`;
+  button.querySelector('.road-price-value').textContent=coins(option.cost);button.disabled=!afford(option.cost);
+  button.title=label+(button.disabled?` · 还差 ${coins(option.cost-world.money)}`:'');button.setAttribute('aria-label',button.title);
+ }
+ $('preview').innerHTML=previews;
 }
 function purchaseLabel(title, cost, description='') {
  return `<span class="action-copy"><strong class="action-title">${title}</strong>${description?`<small class="action-description">${description}</small>`:''}</span><span class="action-cost">${coins(cost)}</span>`;
@@ -501,7 +541,12 @@ function renderSelection() {
  box.dataset.selectionKey=selectionKey;
  let html='';
  const t=world.tiles[selected],f=world.flowers[selectedFlower],st=windowStats();
- if (selectedEdge && world.edges[selectedEdge]) {
+ if(connectFrom&&t?.building){
+  const b=t.building;
+  html=`<h2>${names[b.type]}</h2>`+(b.type==='town'
+   ?`<p class="detail-caption">不限量收购</p>${ledgerTable(['货物','单价 / 件'],Object.entries(E.buys(world,t.id)).map(([r,d])=>`<tr>${goodCell(r)}<td>${coins(d.price)}</td></tr>`))}`
+   :workshopSupply(t,st)+`<p class="detail-caption">${buildingEffect(b.type)}</p>`);
+ } else if (selectedEdge && world.edges[selectedEdge]) {
   const e=world.edges[selectedEdge];
   const group=E.roadComponent(world,e.id),paid=group.reduce((sum,part)=>sum+part.paid,0);
   const endpoints=E.roadEndpoints(group).map(id=>names[world.tiles[id]?.building?.type]||'路口').join(' ↔ ');
@@ -657,7 +702,7 @@ function renderToolbar() {
  $('build-intent').textContent=buildType?`待建：${names[buildType]} · 点选${E.RECIPES[buildType].fits.map(f=>names[f]).join('/')}地块`:connectFrom?'点选另一座建筑以自动修路':'';
  if(connectFrom){
   const routes=[...roadOptions().values()].filter(o=>o.cost!==undefined),count=routes.filter(o=>afford(o.cost)).length;
-  $('build-intent').textContent=routes.length?`蓝色：${count} 座可连接 · 红色：${routes.length-count} 座金币不足`:'暂无可连接建筑 · 可建造或探索更多板块';
+  $('build-intent').textContent=routes.length?'点击道路上方价格修路':'暂无可连接建筑 · 可建造或探索更多板块';
  }
 }
 function plannerZoom(scale){
@@ -759,15 +804,32 @@ function preview(event) {
  }
 }
 document.addEventListener('pointerdown',()=>{interacting=true;suppressClick=false;},true);
+// Dismiss before map handlers can select, produce or explore on the same click.
+document.addEventListener('click',event=>{
+ if(!connectFrom)return;
+ if(suppressClick){suppressClick=false;event.preventDefault();event.stopPropagation();return;}
+ if(event.target.closest('[data-road-price], #selection-panel'))return;
+ const tile=svg.contains(event.target)?event.target.closest('[data-tile]')?.dataset.tile||tileAt(event.clientX,event.clientY):null;
+ if(tile&&roadOptions().get(tile)?.cost!==undefined)return;
+ event.preventDefault();event.stopPropagation();cancelGesture();
+},true);
 document.addEventListener('pointerup',()=>{setTimeout(()=>{interacting=false;},0);},true);
 svg.addEventListener('pointerdown',event=>{
  if(event.button!==0||gesture)return;
  // Map drags pan. Road building starts explicitly from a building detail action.
  const tile=event.target.closest('[data-tile]')?.dataset.tile||tileAt(event.clientX,event.clientY);
- if(buildType||connectFrom)return;
+ if(buildType||event.target.closest('[data-road-price]'))return;
  const edge=event.target.closest('[data-edge]')?.dataset.edge;
  gesture={kind:'pan',x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,pointerId:event.pointerId};
 });
+function highlightRoad(id){
+ hoveredRoad=id;const ids=new Set(id?E.roadComponent(world,id).map(e=>e.id):[]);
+ svg.querySelectorAll('#roads .road-control').forEach(g=>g.querySelector('.road').classList.toggle('hovered',ids.has(g.querySelector('[data-edge]').dataset.edge)));
+}
+svg.addEventListener('pointermove',event=>{if(!connectFrom&&!buildType)highlightRoad(event.target.closest('[data-edge]')?.dataset.edge||null);});
+svg.addEventListener('pointerleave',()=>highlightRoad(null));
+svg.addEventListener('focusin',event=>{const id=event.target.closest('[data-edge]')?.dataset.edge;if(id)highlightRoad(id);});
+
 svg.addEventListener('keydown',event=>{
  const edge=event.target.closest('[data-edge]')?.dataset.edge;
  if(!edge||!['Enter',' '].includes(event.key)||buildType||connectFrom)return;
@@ -779,7 +841,7 @@ svg.addEventListener('click',event=>{
   // Road hit paths sit above tiles; resolve the intended building from the map position.
   if(event.target.closest('[data-tile]'))return;
   const tile=tileAt(event.clientX,event.clientY);
-  if(tile&&world.tiles[tile]?.building)connect(connectFrom,tile);
+  if(tile&&roadOptions().get(tile)?.cost!==undefined)tileClick(tile);
   return;
  }
  const edge=event.target.closest('[data-edge]')?.dataset.edge;
@@ -807,7 +869,7 @@ document.addEventListener('pointermove',event=>{
 document.addEventListener('pointerup',event=>{
  if(!gesture||event.pointerId!==gesture.pointerId)return;
  const finished=gesture;gesture=null;
- $('drag-label').style.display='none';$('preview').innerHTML='';
+ $('drag-label').style.display='none';if(!connectFrom)$('preview').innerHTML='';
  svg.classList.remove('panning');
  if(finished.kind==='pan'){if(finished.moved)suppressClick=true;return;}
  if(!finished.moved){
