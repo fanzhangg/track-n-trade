@@ -368,15 +368,27 @@ function tileAt(clientX, clientY) {
 }
 // What a tile's pills show. Buildings: last round's output, and every warehouse. Towns: what each good
 // earns per round (30-round average, so all-or-nothing eating does not flicker) and each warehouse.
-function tileView(t, st) {
+// Trace actual sales back through this round's recorded supply links.
+function earningBuildings() {
+ const last=world.stats.at(-1), earning=new Set();
+ if(!last)return earning;
+ for(const [id,goods] of Object.entries(last.revenue||{}))if(Object.values(goods).some(n=>n>0))earning.add(id);
+ const flows=last.traffic||[];
+ let changed=true;
+ while(changed){changed=false;for(const flow of flows){
+  if(earning.has(flow.destination)&&!earning.has(flow.node)){earning.add(flow.node);changed=true;}
+ }}
+ return earning;
+}
+function tileView(t, st, earning=earningBuildings()) {
  const b = t.building, last = world.stats.at(-1);
  if (b.type === 'town') {
   const d = E.buys(world, t.id);
-  return {type:'town', name:'城镇', attention:!Object.values(last?.sales[t.id]||{}).some(n=>n>0),attentionLabel:'待连接供货产业',attentionSeed:t.id, undeveloped:!Object.values(world.sold[t.id]||{}).some(n=>n>0), offers:Object.entries(d).map(([id, x]) => ({id, price:x.price, used:last?.sales[t.id]?.[id] || 0, income:Math.round(townRevenue(t.id,id))})),
+  return {type:'town', name:'城镇', inactive:!earning.has(t.id), attention:!Object.values(last?.sales[t.id]||{}).some(n=>n>0),attentionLabel:'待连接供货产业',attentionSeed:t.id, undeveloped:!Object.values(world.sold[t.id]||{}).some(n=>n>0), offers:Object.entries(d).map(([id, x]) => ({id, price:x.price, used:last?.sales[t.id]?.[id] || 0, income:Math.round(townRevenue(t.id,id))})),
    store:[]};
  }
- const rc = E.RECIPES[b.type], n = last?.tiles[t.id] || 0, ins = Object.keys(rc.in);
- return {type:b.type, name:names[b.type], attentionLabel:!E.productionState(world,t).active?stateOf(t):'待连接收购市场',attentionSeed:t.id,attention:!b.construction&&(!E.productionState(world,t).active||!townTiles().some(u=>u.building.buys[rc.out]&&E.path(world,t.id,u.id))), made:[{id:rc.out, n}], used:[],
+ const rc = E.RECIPES[b.type], n = last?.tiles[t.id] || 0, ins = Object.keys(rc.in), active = E.productionState(world,t).active;
+ return {type:b.type, name:names[b.type], inactive:!b.construction&&(!active||!earning.has(t.id)),status:!active?stateOf(t):!earning.has(t.id)?'尚未产生金钱收益':'生产中', attentionLabel:!active?stateOf(t):'待连接收购市场',attentionSeed:t.id,attention:!b.construction&&(!active||!townTiles().some(u=>u.building.buys[rc.out]&&E.path(world,t.id,u.id))), made:[{id:rc.out, n}], used:[],
   starved:[], store:[]};
 }
 let hoveredRoad=null;
@@ -385,7 +397,7 @@ const reducedTravelMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function renderMap() {
  buildMap();
  const options=roadOptions();
- const st = windowStats();
+ const st = windowStats(), earning = earningBuildings();
  const resourceHints=new Set();
  for(const terrain of ['forest','rock','ore']){
   const candidates=Object.values(world.tiles).filter(t=>!t.building&&t.terrain===terrain&&unlockedBuildings().some(type=>canPlace(type,t)&&afford(E.buildingCost(world,type))));
@@ -422,7 +434,7 @@ function renderMap() {
   let content='',ambient='';
   if (b) {
    // Production and stock pills, expanded into the full two rows while the tile is selected. See docs/ui-system.html「地图反馈」.
-   content=BuildingTiles.render({...tileView(t,st),pills:true,expanded:false});
+   content=BuildingTiles.render({...tileView(t,st,earning),pills:true,expanded:false});
    if(b.construction)content+=BuildingTiles.constructionMeter(E.buildingProgress(world,t));
  g.setAttribute('aria-label',names[b.type]+' ('+t.id+')'+(b.construction?'，建造中':''));
    if(connectFrom){const option=options.get(t.id);g.setAttribute('aria-label',`${names[b.type]} (${t.id})，${t.id===connectFrom?'修路起点':option?.cost!==undefined?`${afford(option.cost)?'可连接':'金币不足'}，${coins(option.cost)}`:option?.reason||'不可连接'}`);}

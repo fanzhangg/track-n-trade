@@ -67,7 +67,7 @@
 .bt-pill{filter:drop-shadow(0 1px 1px #303e431f)}
 .bt-pill .bt-float-bg{fill:var(--surface-panel);fill-opacity:1;stroke:var(--border-subtle);stroke-width:.6}
 /* Production and stock pills. A problem turns its pill solid red with white text and icons stay as they are. */
-.bt-flow-num{font:700 10px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums}
+.bt-flow-num{font:600 10px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums}
 .bt-pill.is-bad .bt-float-bg{fill:#d63a2f;stroke:#fff;stroke-width:.65;stroke-opacity:.8;fill-opacity:1}
 .bt-pill.is-bad{filter:drop-shadow(0 1px 1px #5a1a152b)}
 .bt-pill.is-bad .bt-flow-num{fill:#fff}
@@ -75,12 +75,12 @@
 .bt-pill.is-bad .bt-cap{fill:#ffffffc0}
 .bt-pill-sep{fill:none;stroke:var(--border-subtle);stroke-width:.65;stroke-linecap:round}
 .bt-pill.is-bad .bt-pill-sep{stroke:#ffffff66}
-.bt-arrow{fill:none;stroke:var(--text-secondary,#69736e);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+.bt-arrow{fill:none;stroke:var(--text-secondary,#69736e);stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
 .bt-pill.is-bad .bt-arrow{stroke:#ffffffb0}
 .bt-flow-num.bt-bad{fill:#d63a2f}
 .bt-row-label{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-secondary)}
 
-/* Untraded towns advertise prices in slate; active income stays warm white. */
+/* Pending production and untraded towns share slate capsules; active income stays warm white. */
 .bt-pill.is-undeveloped .bt-float-bg{fill:var(--action-primary);stroke:var(--action-subtle)}
 .bt-pill.is-undeveloped .bt-flow-num{fill:var(--surface-panel)}
 .bt-pill.is-undeveloped .bt-cap{fill:#ffffffd9}

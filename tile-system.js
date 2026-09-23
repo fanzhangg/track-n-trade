@@ -63,14 +63,14 @@
  // made:[{id,n}], used:[{id,n}] (buildings); offers:[{id,used,income}] (towns); starved:[input ids] (expanded only);
  // store:[{id,count,cap,role:'in'|'out'|'buy'}]
  const WAREHOUSE='<path d="M.5 4.6 5 .8l4.5 3.8V9.5H.5Z" fill="#8c7a62"/><path d="M1.6 4.9 5 2l3.4 2.9" fill="none" stroke="#c9b58f" stroke-width=".8"/><rect x="3.1" y="5.6" width="3.8" height="3.9" fill="#f3ead8"/><path d="M3.1 6.9h3.8M3.1 8.2h3.8" stroke="#8c7a62" stroke-width=".5"/>';
- function pillTile({type,name,made=[],used=[],offers=[],starved=[],store=[],status='',expanded=false,undeveloped=false,attention=false,attentionLabel='待连接产业',attentionSeed=''},base){
+ function pillTile({type,name,made=[],used=[],offers=[],starved=[],store=[],status='',inactive=false,expanded=false,undeveloped=false,attention=false,attentionLabel='待连接产业',attentionSeed=''},base){
   expanded=false; // Selection highlights relationships; numerical detail lives in the side panel.
   const icon=(id,x,y,size)=>id==='warehouse'?`<g transform="translate(${x} ${y}) scale(${size/10})">${WAREHOUSE}</g>`:root.TradeIcons.svgIcon(id,{base,x,y,size});
-  const town=type==='town',w10=t=>labelWidth(t)*10/12,w8=t=>labelWidth(t)*8/12,ICON=10,GAP=2,PAD=5,H=expanded?20:16;
+  const town=type==='town',w10=t=>labelWidth(t)*10/12,w8=t=>labelWidth(t)*8/12,ICON=10,GAP=2.5,PAD=7,H=expanded?20:18;
   const num=n=>Math.round(n).toLocaleString('zh-CN');
   const SEP={sep:true},ARROW={arrow:true},SPACE={space:true};
   // item: {icon, text, pre, bad} | {sep} | {arrow} | {label}
-  const itemW=c=>c.space?3:c.sep?1:c.arrow?7:c.label?w8(c.label):(c.pre?w10(c.pre):0)+(c.icon?ICON+(c.text?1:0):0)+(c.text?w10(c.text):0)+(c.cap?1.5+w8(c.cap):0);
+  const itemW=c=>c.space?3:c.sep?1:c.arrow?4:c.label?w8(c.label):(c.pre?w10(c.pre):0)+(c.icon?ICON+(c.text?1:0):0)+(c.text?w10(c.text):0)+(c.cap?1.5+w8(c.cap):0);
   const rowW=items=>items.reduce((n,c)=>n+itemW(c)+(c.sep?GAP*2:0),0)+GAP*Math.max(0,items.length-1);
   const pill=(items,y,bad,aria,price=false,rows=[items])=>{
    const width=Math.max(...rows.map(row=>rowW(row)))+PAD*2,left=-width/2,height=rows.length*H+(rows.length-1)*2;
@@ -80,7 +80,7 @@
    for(const c of row){
     if(c.space){x+=itemW(c)+GAP;continue;}
     if(c.sep){x+=GAP;h+=`<path class="bt-pill-sep" d="M${x} ${cy-3}v6"/>`;x+=1+GAP*2;continue;}
-    if(c.arrow){h+=`<path class="bt-arrow" transform="translate(${x+.5} ${cy})" d="M0 0h6m-2-2 2 2-2 2" aria-hidden="true"/>`;x+=itemW(c)+GAP;continue;}
+    if(c.arrow){h+=`<path class="bt-arrow" transform="translate(${x+.5} ${cy})" d="M0 -2.5 2.5 0 0 2.5" aria-hidden="true"/>`;x+=itemW(c)+GAP;continue;}
     if(c.label){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="bt-row-label">${c.label}</text>`;x+=itemW(c)+GAP;continue;}
     const cls=`bt-flow-num ${c.bad?'bt-bad':''}`;
     if(c.pre){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="${cls}">${c.pre}</text>`;x+=w10(c.pre);}
@@ -120,10 +120,12 @@
   if(town){
    const rows=offers.map(o=>[{icon:o.id},ARROW,undeveloped?{icon:'coin',text:num(o.price),cap:'/件'}:{pre:'+',icon:'coin',text:num(o.income)}]);
    if(rows.length)html+=pill([],12,!undeveloped&&prodBad,undeveloped?'收购资源与单价':'每回合收入',undeveloped,rows);
+   if(inactive)html+=pill([{text:'未工作'}],12+rows.length*(H+2),false,'未工作',true);
    const stockRows=outs.filter(s=>s.count>0&&s.count>=s.cap).map(s=>[{icon:'warehouse'},SEP,slot(s)]);
    if(stockRows.length)html+=pill([],12+rows.length*(H+2),true,'仓库',false,stockRows);
   }else{
-   if(expanded)html+=pill(prod,15,prodBad,'本回合产出');
+   if(inactive)html+=pill([{text:'未工作'}],12,false,'未工作',true);
+   else if(expanded)html+=pill(prod,15,prodBad,'本回合产出');
    if(stock&&stockBad)html+=pill(stock,expanded?15+H+2:12,true,'仓库');
   }
   return html+'</g>';
