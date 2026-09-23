@@ -134,6 +134,22 @@ function pop(key, n, r) {
  $('pops').appendChild(g); setTimeout(() => g.remove(), 900);
 }
 
+// Actual tick events only: do not replay history on render, resume, or save loading.
+function showRoundProduction(sample) {
+ const duration=Math.min(1500,E.DT/speed*900);
+ for(const t of Object.values(world.tiles)){
+  const b=t.building;if(!b)continue;
+  const town=b.type==='town';
+  const amount=town?Object.values(sample.revenue[t.id]||{}).reduce((sum,n)=>sum+n,0):(sample.tiles[t.id]||0)-(sample.manualTiles?.[t.id]||0);
+  if(amount<=0)continue;
+  const layer=$('pops');if(!layer)continue;
+  const old=layer.querySelector('[data-production-tile="'+t.id+'"]');if(old){clearTimeout(old.timer);old.remove();}
+  const [x,y]=position(t),node=document.createElementNS('http://www.w3.org/2000/svg','g');
+  node.dataset.productionTile=t.id;node.setAttribute('transform','translate('+x+','+y+')');node.style.setProperty('--production-duration',duration+'ms');
+  node.innerHTML=BuildingTiles.productionPop(town?'coin':E.RECIPES[b.type].out,amount);
+  layer.appendChild(node);node.timer=setTimeout(()=>node.remove(),duration);
+ }
+}
 function windowStats() {
  const S = world.stats;
  const empty = {span:0, rate:() => 0, flow:() => 0, goodFlow:() => 0, inflow:() => 0, outflow:() => 0, income:0, sales:() => 0};
@@ -415,7 +431,7 @@ function renderMap() {
   scenery.classList.toggle('chain-dim',!!focus&&!focus.nodes.has(t.id));
   const ui=svg.querySelector(`[data-tile-ui="${t.id}"]`);
   ui.classList.toggle('chain-dim',!!focus&&!focus.nodes.has(t.id));
-  const tileContent=ui.querySelector('.tile-content');if(tileContent._markup!==content){tileContent.innerHTML=content;tileContent._markup=content;}
+  const tileContent=ui.querySelector('.tile-content');if(tileContent._markup!==content){const phase=tileContent.querySelector('.needs-attention')?.getAnimations()[0]?.currentTime;tileContent.innerHTML=content;tileContent._markup=content;const motion=tileContent.querySelector('.needs-attention')?.getAnimations()[0];if(motion&&phase!=null)motion.currentTime=phase;}
   const holder=ui.querySelector('.tile-crew');
   const c=b?.type==='town'?{n:b.residents,blocked:!Object.values(world.stats.at(-1)?.sales[t.id]||{}).some(n=>n>0),beat:Math.max(.25,E.DT/speed)}:b?crew(t):null;
   const key=c?`${b.type}|${c.n}|${c.blocked}|${c.beat}|${world.paused}`:'';
@@ -942,7 +958,7 @@ setInterval(()=>{
   let ticked=false;
   const cleared={};
   while(accumulator>=E.DT){
-   const finishing=E.projects(world).filter(p=>p.remaining===1);E.tick(world);accumulator-=E.DT;ticked=true;if(finishing.length)toast(finishing.map(p=>p.name+' '+p.kind+'完成').join(' · '));
+   const finishing=E.projects(world).filter(p=>p.remaining===1);E.tick(world);showRoundProduction(world.stats.at(-1));accumulator-=E.DT;ticked=true;if(finishing.length)toast(finishing.map(p=>p.name+' '+p.kind+'完成').join(' · '));
    for(const[id,d]of Object.entries(world.stats.at(-1).goals||{})){
     const u=cleared[id]||(cleared[id]={levels:0,reward:0});u.levels+=d.levels;u.reward+=d.reward;}
   }
