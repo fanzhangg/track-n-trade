@@ -118,8 +118,6 @@ function produce(key) {
  try {
   world = E.apply(world, {type:'click', tile:key});
   pop(key, world.tiles[key].loose[r] - before, r);
-  const g = svg.querySelector(`[data-tile="${key}"]`);
-  g.classList.remove('bump'); void g.getBoundingClientRect(); g.classList.add('bump');
   render();
  } catch (error) {
   const now = performance.now();
@@ -128,26 +126,24 @@ function produce(key) {
  }
 }
 function pop(key, n, r) {
- const [x, y] = position(world.tiles[key]), g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
- g.setAttribute('class', 'pop'); g.setAttribute('transform', `translate(${x + 14},${y - 28})`);
- g.innerHTML = `<text text-anchor="middle" class="pop-text click" fill="${goodColor(r)}">${n < 0 ? '−' : '+'}${Math.abs(n)}</text>`;
- $('pops').appendChild(g); setTimeout(() => g.remove(), 900);
+ if(n<=0)return;
+ const layer=$('pops');if(!layer)return;
+ const duration=Math.min(1500,E.DT/speed*900);
+ const old=layer.querySelector('[data-production-tile="'+key+'"]');if(old){clearTimeout(old.timer);old.remove();}
+ const [x,y]=position(world.tiles[key]),node=document.createElementNS('http://www.w3.org/2000/svg','g');
+ node.dataset.productionTile=key;node.setAttribute('transform','translate('+x+','+y+')');node.style.setProperty('--production-duration',duration+'ms');
+ node.innerHTML=BuildingTiles.productionPop(r,n);
+ layer.appendChild(node);node.timer=setTimeout(()=>node.remove(),duration);
 }
 
 // Actual tick events only: do not replay history on render, resume, or save loading.
 function showRoundProduction(sample) {
- const duration=Math.min(1500,E.DT/speed*900);
  for(const t of Object.values(world.tiles)){
   const b=t.building;if(!b)continue;
   const town=b.type==='town';
   const amount=town?Object.values(sample.revenue[t.id]||{}).reduce((sum,n)=>sum+n,0):(sample.tiles[t.id]||0)-(sample.manualTiles?.[t.id]||0);
   if(amount<=0)continue;
-  const layer=$('pops');if(!layer)continue;
-  const old=layer.querySelector('[data-production-tile="'+t.id+'"]');if(old){clearTimeout(old.timer);old.remove();}
-  const [x,y]=position(t),node=document.createElementNS('http://www.w3.org/2000/svg','g');
-  node.dataset.productionTile=t.id;node.setAttribute('transform','translate('+x+','+y+')');node.style.setProperty('--production-duration',duration+'ms');
-  node.innerHTML=BuildingTiles.productionPop(town?'coin':E.RECIPES[b.type].out,amount);
-  layer.appendChild(node);node.timer=setTimeout(()=>node.remove(),duration);
+  pop(t.id,amount,town?'coin':E.RECIPES[b.type].out);
  }
 }
 function windowStats() {

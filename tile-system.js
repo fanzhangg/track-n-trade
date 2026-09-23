@@ -5,7 +5,7 @@
   return 'animation-delay:-'+([...String(seed)].reduce((n,c)=>n+c.charCodeAt(0),0)%50/10)+'s';
  }
  function productionPop(good,n,base='assets/icons/v1/'){
-  return `<g class="production-pop" role="img" aria-label="本回合 +${n}"><g class="production-pop-motion">${root.TradeIcons.svgIcon(good,{base,x:-23,y:-52,size:13})}<text x="-6" y="-42">+${esc(n)}</text></g></g>`;
+  return `<g class="production-pop" role="img" aria-label="获得 +${esc(n)}"><g class="production-pop-motion">${root.TradeIcons.svgIcon(good,{base,x:-23,y:-52,size:13})}<text x="-6" y="-42">+${esc(n)}</text></g></g>`;
  }
  function ambient({terrain,preview=false,id="lake",attention=false},base='assets/icons/v1/terrain/'){
   if(!['grass','forest','rock','ore','mountain','lake'].includes(terrain))return '';
