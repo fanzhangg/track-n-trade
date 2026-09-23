@@ -35,7 +35,7 @@
   --terrain-forest: #75b87d;
   --terrain-rock: #d9c79e;
   --terrain-ore: #e3a16e;
-  --terrain-mountain: #90acc0;
+  --terrain-mountain: #a0a5a6;
   --terrain-lake: #63bdd8;
   --terrain-town: #f1ca69;
   --terrain-fog: #bfc5c8;
@@ -46,12 +46,12 @@
   --goods-log: #9a5936;
   --goods-board: #9a6d27;
   --goods-stone: #756f62;
-  --goods-tool: #606f78;
-  --goods-ore: #465b6c;
+  --goods-tool: #596c60;
+  --goods-ore: #895843;
   --goods-iron: #54758b;
-  --goods-charcoal: #494c4c;
-  --goods-paper: #a58b62;
-  --goods-book: #456d83;
-  --goods-machine: #977047;
+  --goods-charcoal: #4d4857;
+  --goods-paper: #8d7650;
+  --goods-book: #345571;
+  --goods-machine: #94603d;
   --road-dirt: #c8aa7e;
 }

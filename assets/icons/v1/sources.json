@@ -1,5 +1,5 @@
 {
-  "version": "3.0-redrawn",
+  "version": "5.0-rounded-resources",
   "library": "Project illustration set, inspired by Kenney City Kit / Survival Kit",
   "assets": [
     {
@@ -116,83 +116,83 @@
     },
     {
       "id": "log",
-      "file": "redrawn/log.png",
-      "pack": "Project · City Kit inspired 2D redraw",
-      "source": "Built-in imagegen; redrawn/prompts.json#log",
-      "license": "Project asset; not a Kenney source copy",
-      "width": 1254,
-      "height": 1254,
+      "file": "resources/log-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#log",
+      "license": "Project generated artwork",
+      "width": 1478,
+      "height": 1064,
       "bounds": {
-        "x": 101,
-        "y": 251,
-        "width": 1061,
-        "height": 787
+        "x": 161,
+        "y": 124,
+        "width": 1197,
+        "height": 809
       },
-      "sha256": "0b23438fb40260657270cce40e90fdca095f5b1c0950c1ed55086e94a5f2d0af"
+      "sha256": "cb845165fdd459274fd763a01b4ee4c28197c4319ba2808ad66e16a0e817d9a8"
     },
     {
       "id": "board",
-      "file": "redrawn/board.png",
-      "pack": "Project · City Kit inspired 2D redraw",
-      "source": "Built-in imagegen; redrawn/prompts.json#board",
-      "license": "Project asset; not a Kenney source copy",
-      "width": 1254,
-      "height": 1254,
+      "file": "resources/board-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#board",
+      "license": "Project generated artwork",
+      "width": 1507,
+      "height": 1044,
       "bounds": {
-        "x": 192,
-        "y": 235,
-        "width": 973,
-        "height": 838
+        "x": 96,
+        "y": 81,
+        "width": 1313,
+        "height": 904
       },
-      "sha256": "919c7519c1ff4e21d9b1aa6157a7839959d3144e836b339e78c1e65cee048f70"
+      "sha256": "70522f5ab85954791dd09ebe5dfad89bec0b7ec38bf6c4c22fe05e07bdfe87fa"
     },
     {
       "id": "stone",
-      "file": "redrawn/stone.png",
-      "pack": "Project · City Kit inspired 2D redraw",
-      "source": "Built-in imagegen; redrawn/prompts.json#stone",
-      "license": "Project asset; not a Kenney source copy",
+      "file": "resources/stone-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#stone",
+      "license": "Project generated artwork",
       "width": 1254,
       "height": 1254,
       "bounds": {
-        "x": 140,
-        "y": 227,
-        "width": 985,
-        "height": 810
+        "x": 105,
+        "y": 226,
+        "width": 1047,
+        "height": 830
       },
-      "sha256": "e677eca6ad312a0b532e675e1e980e6ffbb83fc74d520a3833d3d750d2b35c8f"
+      "sha256": "80d6a7e5ba6c4c885dcab37d637f08ba77f5a8d348176997c5bd6d4242d8f6b9"
     },
     {
       "id": "tool",
-      "file": "redrawn/tool.png",
-      "pack": "Project · City Kit inspired 2D redraw",
-      "source": "Built-in imagegen; redrawn/prompts.json#tool",
-      "license": "Project asset; not a Kenney source copy",
+      "file": "resources/tool-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#tool",
+      "license": "Project generated artwork",
       "width": 1254,
       "height": 1254,
       "bounds": {
-        "x": 170,
-        "y": 143,
-        "width": 917,
-        "height": 1000
+        "x": 115,
+        "y": 165,
+        "width": 1028,
+        "height": 984
       },
-      "sha256": "a6b9b1d9da64405673f897d933f2fb90a24c92427e515ead74713c0dd5547d5e"
+      "sha256": "0b8e3349e8b14d3a019eb97cb7154f94b5e404f0850a04fc8e3543e984050a16"
     },
     {
       "id": "ore",
-      "file": "redrawn/ore.png",
-      "pack": "Project · City Kit inspired 2D redraw",
-      "source": "Built-in imagegen; redrawn/prompts.json#ore",
-      "license": "Project asset; not a Kenney source copy",
+      "file": "resources/ore-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#ore",
+      "license": "Project generated artwork",
       "width": 1254,
       "height": 1254,
       "bounds": {
-        "x": 184,
-        "y": 126,
-        "width": 899,
-        "height": 1002
+        "x": 111,
+        "y": 181,
+        "width": 1042,
+        "height": 881
       },
-      "sha256": "f08232f227862464f802875e7a9751f3099ee771ba89cb234a5db0e1139315f1"
+      "sha256": "b15f233b3b2674be30d32aa2f34a0e3ca1d0fb831f045503fab630df32e59a08"
     },
     {
       "id": "coin",
@@ -500,19 +500,19 @@
     },
     {
       "id": "iron",
-      "file": "redrawn/iron.png",
-      "pack": "Project · City Kit inspired 2D redraw",
-      "source": "Built-in imagegen; redrawn/prompts.json#iron",
-      "license": "Project asset; not a Kenney source copy",
-      "width": 1254,
-      "height": 1254,
+      "file": "resources/iron-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#iron",
+      "license": "Project generated artwork",
+      "width": 1484,
+      "height": 1060,
       "bounds": {
-        "x": 134,
-        "y": 306,
-        "width": 1002,
-        "height": 748
+        "x": 133,
+        "y": 204,
+        "width": 1237,
+        "height": 735
       },
-      "sha256": "284c2ac257be77cc7ab1f78ecc78d19eeab50ccca802db803581b51a0313f318"
+      "sha256": "ddd722708d6cd4ebfba1b1263b0f6bfbd0c84fb6f0ab266f4a10122552bcfc86"
     },
     {
       "id": "worker",
@@ -548,67 +548,67 @@
     },
     {
       "id": "charcoal",
-      "file": "redrawn/charcoal.svg",
-      "pack": "Project · production chain extension",
-      "source": "Project-authored SVG",
-      "license": "Project asset",
-      "width": 128,
-      "height": 128,
+      "file": "resources/charcoal-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#charcoal",
+      "license": "Project generated artwork",
+      "width": 1254,
+      "height": 1254,
       "bounds": {
-        "x": 5,
-        "y": 0,
-        "width": 116,
-        "height": 120
+        "x": 130,
+        "y": 189,
+        "width": 1035,
+        "height": 880
       },
-      "sha256": "2510ab7c8f3a6008c91c2ea0046d6634da2fb34e4bbc7b89d2d2c29463c1452d"
+      "sha256": "826c2a20d395e4d371435c46b1357ccc270d259751788d8e31266535d672c64a"
     },
     {
       "id": "paper",
-      "file": "redrawn/paper.svg",
-      "pack": "Project · production chain extension",
-      "source": "Project-authored SVG",
-      "license": "Project asset",
-      "width": 128,
-      "height": 128,
+      "file": "resources/paper-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#paper",
+      "license": "Project generated artwork",
+      "width": 1254,
+      "height": 1254,
       "bounds": {
-        "x": 5,
-        "y": 0,
-        "width": 116,
-        "height": 120
+        "x": 236,
+        "y": 106,
+        "width": 791,
+        "height": 1057
       },
-      "sha256": "af6bcf33f5beb136fb0b5778bff6e54e8caf9e649a3a6cca6035960cbda0394f"
+      "sha256": "81660a11dc40ccbd3f4f0b1e3c98d58839fba74add1ff46f763986df042c816e"
     },
     {
       "id": "book",
-      "file": "redrawn/book.svg",
-      "pack": "Project · production chain extension",
-      "source": "Project-authored SVG",
-      "license": "Project asset",
-      "width": 128,
-      "height": 128,
+      "file": "resources/book-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#book",
+      "license": "Project generated artwork",
+      "width": 1254,
+      "height": 1254,
       "bounds": {
-        "x": 5,
-        "y": 0,
-        "width": 116,
-        "height": 120
+        "x": 230,
+        "y": 87,
+        "width": 819,
+        "height": 1106
       },
-      "sha256": "9218b31fd958df1e8d0656a14f72d64dedc598deaadfab865bd3ebe089c3a70f"
+      "sha256": "f710022a2c20bf621004d766b6c4a547b42f1d19d247bd28ef2b4d7eed899225"
     },
     {
       "id": "machine",
-      "file": "redrawn/machine.svg",
-      "pack": "Project · production chain extension",
-      "source": "Project-authored SVG",
-      "license": "Project asset",
-      "width": 128,
-      "height": 128,
+      "file": "resources/machine-rounded.png",
+      "pack": "Project · Rounded miniature resources",
+      "source": "Built-in image_gen; resources/prompts.json#machine",
+      "license": "Project generated artwork",
+      "width": 1254,
+      "height": 1254,
       "bounds": {
-        "x": 5,
-        "y": 0,
-        "width": 116,
-        "height": 120
+        "x": 103,
+        "y": 92,
+        "width": 1048,
+        "height": 1071
       },
-      "sha256": "d64a58dc69e7c7b0b584c5743fed0a3836eeb67f6dd8973bc6eccf64bb9cf73b"
+      "sha256": "abeb5ed1b9b5893e644b03cd047b02a4485913c6c0cfa50096a55e674f5b8345"
     },
     {
       "id": "kiln",

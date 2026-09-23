@@ -1,0 +1,16 @@
+{
+  "version": "5.0-rounded-resources",
+  "style": "Rounded miniature objects, broad low-poly planes, gently bevelled edges, upper-left light, matte finish, shallow three-quarter view, transparent background, no cast shadow, no face, no outline, no decorative base. One silhouette and at most one identifying detail per resource. Palette hex values are art-direction targets, not exact generated pixel constraints.",
+  "resources": [
+    {"id":"log","name":"原木","color":"陶土棕","base":"#AB643F","light":"#E9BC79","dark":"#76462F","shape":"短粗圆柱，左前方大圆端","detail":"一圈宽年轮","avoid":"多根堆叠、细树皮、枝叶","ratio":"1.4:1"},
+    {"id":"board","name":"木板","color":"蜂蜜赭黄","base":"#D5A04E","light":"#F0CE86","dark":"#987035","shape":"两块错位宽板，圆钝长方形","detail":"一条清晰层间凹口","avoid":"原木圆端、白色板材、密集木纹","ratio":"1.45:1"},
+    {"id":"stone","name":"石头","color":"暖灰褐","base":"#ABA493","light":"#D4CDBB","dark":"#7C786E","shape":"单块宽底圆顶巨石","detail":"三块大明暗面","avoid":"尖峰、碎石堆、裂纹","ratio":"1.2:1"},
+    {"id":"tool","name":"石头工具","color":"鼠尾草灰绿 + 棕柄","base":"#829885","light":"#B6C3A4","dark":"#596C60","shape":"大横锤头与粗短柄的 T 形","detail":"圆钝石锤头","avoid":"金属刃、绑绳、细长柄","ratio":"0.95:1"},
+    {"id":"ore","name":"铁矿石","color":"铁锈红褐","base":"#B87558","light":"#DCA47E","dark":"#754C43","shape":"高低双峰矿块，上窄下宽","detail":"一块深褐矿脉面","avoid":"蓝色宝石、发光晶体、石头圆顶","ratio":"0.9:1"},
+    {"id":"iron","name":"铁","color":"冷银蓝","base":"#8CAABA","light":"#D0E0DF","dark":"#577485","shape":"单枚宽梯形锭，顶窄底宽","detail":"宽亮顶面","avoid":"条形薄板、多个叠锭、镜面反光","ratio":"1.4:1"},
+    {"id":"charcoal","name":"木炭","color":"深炭紫灰","base":"#4D4857","light":"#837C8A","dark":"#302E3A","shape":"两块错位短炭，双瓣不规则轮廓","detail":"宽斜切口","avoid":"铁锈红、尖峰、细碎裂纹","ratio":"1.15:1"},
+    {"id":"paper","name":"纸张","color":"暖象牙白","base":"#F0E2BA","light":"#FFF5DB","dark":"#B9A37D","shape":"单张竖向纸页，右上大卷角","detail":"弯曲卷角","avoid":"扁平叠页、文字、卷轴棍","ratio":"0.8:1"},
+    {"id":"book","name":"书籍","color":"靛蓝","base":"#52799E","light":"#86A9C3","dark":"#345571","shape":"厚书竖向圆角矩形，弧形书脊","detail":"下侧象牙白页口","avoid":"文字、封面徽章、皮带扣","ratio":"0.8:1"},
+    {"id":"machine","name":"机械","color":"赤铜","base":"#B87E53","light":"#E0B482","dark":"#80563D","shape":"六个圆钝齿的粗厚环形齿轮","detail":"大而通透的中心孔","avoid":"小齿、底座、螺栓、金币亮黄","ratio":"1:1"}
+  ]
+}
