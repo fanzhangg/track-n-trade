@@ -21,6 +21,14 @@ for(const [buttonId,iconId] of [['import','ui-import'],['export','ui-export']]){
 const fmt = n => Math.round(n).toLocaleString('zh-CN');
 const per = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
 const coins = E.formatMoney;
+const signed = n => (n < 0 ? '−' : '+') + coins(Math.abs(n));
+// The engine's steady income (E.steady) is a shadow run; recompute only when something was bought or every 50 rounds.
+let steadyCache = {key:null, value:0};
+function steadyIncome() {
+ const key = `${world.spent}:${world.tech.fleet}:${Math.floor(world.tick / 50)}:${Object.keys(world.edges).length}`;
+ if (steadyCache.key !== key) steadyCache = {key, value:E.steady(world)};
+ return steadyCache.value;
+}
 const position = t => [Math.sqrt(3) * 51 * (t.q + t.r / 2), 76.5 * t.r];
 let world = E.newWorld(Math.floor(Math.random() * 2 ** 31));
 let selected = E.START_TILE, selectedEdge = null, selectedFlower = null, buildType = null, connectFrom = null;
@@ -312,6 +320,7 @@ function townFlowSection(t, st) {
   const kinds = [...new Set(srcs.map(u => names[u.tile.building.type]))].join('、');
   const cap = srcs.reduce((n, u) => n + u.rate, 0);
   let note = `${coins(d.price)}`;
+  if (srcs.length) { const near = srcs.slice().sort((a, b) => a.hops - b.hops)[0], net = d.price - near.hops * E.TOLL - E.WAGE[near.tile.building.type]; note += ` · 每件到手 <b class="${net <= 0 ? 'warn' : ''}">${coins(net)}</b>`; }
   note += srcs.length ? ` · 来自 ${countOf(srcs.length, kinds)} · 最近 ${Math.min(...srcs.map(u => u.hops))} 段 · 产 ${cap}` : ' · 没有连到来源';
   if (stuck) note += ` · <b class="warn">积压 ${stuck}</b>`;
   let v = null;
@@ -595,7 +604,7 @@ function renderSelection() {
   const c=crew(t), full=n>=E.MAX_WORKERS;
   const dots=Array.from({length:c.n},(_,i)=>`<span class="wmeeple" style="${beatStyle(c,i)}">${icon('worker')}</span>`).join('');
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:names[r];
-  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div><div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(purchaseLabel(`雇第 ${n+1} 名工人`,next,`每回合自动多 ${E.workerPower(world,b.type)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
+  html=`<h2>${icon(b.type,b.type+'-c')}${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2><div class="subtitle">${names[t.terrain]} · ${recipe}</div><div class="state ${state==='生产中'?'':'wait'}">${state}</div><div class="crew"><div class="crew-top"><span>工人 ${n}</span><b>${E.workerPower(world,b.type)>1?`${n} × ${E.workerPower(world,b.type)} = `:''}${rate} 件/回合</b></div>${n?`<div class="slots ${c.blocked?'blocked':''} ${world.paused?'halted':''}">${dots}</div>`:'<div class="slots empty-crew">没有工人</div>'}</div><div class="actions">${full?'':button(purchaseLabel(`雇第 ${n+1} 名工人`,next,`每回合自动多 ${E.workerPower(world,b.type)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon(r,'')}手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div><h3>近 30 回合每回合</h3><div class="metrics"><div><span>产出 / 产能</span><b>${per(tileRate(t))} / ${rate} 件</b></div><div><span>工资</span><b>−${coins(E.WAGE[b.type])} / 件</b></div><div><span>${names[r]} 产出 / 运出</span><b>${per(tileRate(t))} / ${per(st.outflow(t.id,r))} 件</b></div><div><span>${names[r]} 堆场</span><b class="${t.loose[r]>=E.YARD?'warn':''}">${t.loose[r]} / ${E.YARD}</b></div>${Object.keys(rc.in).map(i=>`<div><span>${names[i]} 堆场</span><b class="${t.loose[i]<1?'warn':''}">${t.loose[i]} / ${E.YARD}</b></div>`).join('')}</div>`;
   html=html.replace('<h3>近 30 回合每回合</h3>',flowSection(t,st)+'<h3>近 30 回合每回合</h3>');
   html+=`<details class="more" data-key="manage"><summary>管理建筑</summary><div class="actions"><button id="connect-accessible">从这里修路</button>${n?button(`辞退一名工人<small>退回 ${coins(b.workers[n-1].paid)}</small>`,{type:'fireWorker',tile:t.id}):''}${button(`拆除建筑<small>退回 ${coins(paid)}</small>`,{type:'demolish',tile:t.id})}</div></details>`;
  } else if (t) {
@@ -660,6 +669,7 @@ function renderLegend() {
 // starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
 function techCards() {
  const cards = [{id:'finger', name:'金手指', icon:'worker', tier:1, kind:'economy', desc:'手工点击：点工坊出货，点城镇加需求。每次至少这么多，工人和居民多了还会跟着涨', craft:'tools', per:n=>`每次点击至少 ${n} 件`},
+  {id:'fleet', name:'车队', icon:'road', tier:1, kind:'economy', desc:'每段路每回合每个方向能过的件数。货在段首排队就是运力不够', craft:'fleet', per:n=>`每段路每回合每方向 ${E.CART_BASE+n-1} 件`},
   {id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
  for (const b of E.BUILDINGS) {
   const t = E.TECH[b], rc = E.RECIPES[b];
@@ -772,7 +782,8 @@ function renderToolbar() {
 }
 function render() {
  const st=windowStats();
- $('money').textContent=coins(world.money);$('income').textContent=`+${coins(st.income)}/回合`;
+ $('money').textContent=coins(world.money);$('money').classList.toggle('negative',world.money<0);
+ $('income').textContent=`稳态 ${signed(steadyIncome())}/回合 · 近 30 回合 ${signed(st.income)}`;
  $('pause').innerHTML=icon(world.paused?'ui-play':'ui-pause')+(world.paused?'继续':'暂停');$('speed').textContent=speed+'×';
  $('cancel').hidden=!buildType&&!connectFrom;
  renderToolbar();
