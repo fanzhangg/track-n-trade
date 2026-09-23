@@ -9,6 +9,11 @@ button.primary{background:var(--action-primary);border-color:var(--action-primar
 button.primary:hover{background:var(--action-hover);border-color:var(--action-hover)}
 button.primary:active{background:var(--action-pressed);border-color:var(--action-pressed)}
 button.primary small{color:var(--surface-panel)}
+button.upgrade{background:var(--action-upgrade);border-color:var(--action-upgrade);color:var(--surface-panel)}
+button.upgrade:hover:not(:disabled){background:var(--action-upgrade-hover);border-color:var(--action-upgrade-hover)}
+button.upgrade:active:not(:disabled){background:var(--action-upgrade-pressed);border-color:var(--action-upgrade-pressed)}
+button.upgrade:disabled{background:var(--action-upgrade);border-color:var(--action-upgrade)}
+button.upgrade small{color:var(--surface-panel)}
 button:focus-visible,summary:focus-visible,[role=button]:focus-visible{outline-color:var(--focus-ring)}
 button.danger{color:var(--bottleneck-1)}
 .money-hud strong,.resource.coins strong,.coins b,.reward,.strip .reward,.head-extra,.goal .gnum,.brand,.panel-title,aside h3{color:var(--text-primary)}

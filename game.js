@@ -682,7 +682,7 @@ function renderTech() {
   } else if (c.craft) {
    const cost=E.techCost(world,c.craft), maxed=E.techMaxed(world,c.craft);
    cls=maxed?'owned':afford(cost)?'owned ready':'owned costly';
-   body=`<div class="craft-now">${c.per(level+1)}</div>`+(maxed?`<div class="owned-mark">${icon('check')}已是最高</div>`:button(`${c.next?c.next(level+1):`升级到 Lv.${level+2}`}<small>${coins(cost)} · ${c.per(level+2)}</small>`,{type:'tech',key:c.craft},true,!afford(cost),costly(cost)));
+   body=`<div class="craft-now">${c.per(level+1)}</div>`+(maxed?`<div class="owned-mark">${icon('check')}已是最高</div>`:button(`${c.next?c.next(level+1):`升级到 Lv.${level+2}`}<small>${coins(cost)} · ${c.per(level+2)}</small>`,{type:'tech',key:c.craft},true,!afford(cost),`upgrade ${costly(cost)}`));
   } else {
    cls='owned'; body=`<div class="owned-mark">${icon('check')}已开通</div>`;
   }
