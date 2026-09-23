@@ -38,11 +38,11 @@ window.IndustryButtons=(()=>{
  function control({title,action,level='',icon,kind,state,cost,progress,reason='',inspect=false,selected=false,attributes='',className='',base='assets/icons/v1/'},E){
   const ico=(id,size)=>TradeIcons.icon(id,{base,size,decorative:true}),complete=state==='complete';
   const percent=progress?Math.floor(progress.done/progress.duration*100):0;
-  const description=action+(level?' · '+level:'');
+  const description=action+(level?' · '+level:'')+(progress?' · 点击加速':'');
   const label=title+'，'+description+(progress?'，'+percent+'%':complete?'':'，'+E.formatMoney(cost))+(reason?'，'+reason:'');
   const tail=progress?percent+'%':complete?ico('ui-checkmark',18):ico('coin',18)+escape(E.formatMoney(cost).slice(1));
   const badge=kind==='unlock'?ico('ui-locked',11):kind==='upgrade'?'↑':'+';
-  return `<button type="button" class="industry-button ${className}" data-industry-kind="${kind}" data-industry-state="${state}" ${attributes} ${selected?'aria-pressed="true"':''} ${!inspect&&state!=='ready'?'disabled':''} aria-label="${escape(label)}" title="${escape(description+(reason?' · '+reason:''))}" style="--industry-progress:${percent}%"><span class="industry-symbol">${ico(icon,30)}<span class="industry-action-badge" aria-hidden="true">${badge}</span></span><span class="industry-copy"><strong>${escape(title)}</strong><small class="industry-action-label">${escape(description)}</small></span><span class="industry-end"><span class="industry-value">${tail}</span></span>${progress?`<span class="industry-progress" role="progressbar" aria-label="${escape(title+' '+action)}进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><i></i></span>`:''}</button>`;
+  return `<button type="button" class="industry-button ${className}" data-industry-kind="${kind}" data-industry-state="${state}" ${attributes} ${selected?'aria-pressed="true"':''} ${!inspect&&state!=='ready'&&state!=='progress'?'disabled':''} aria-label="${escape(label)}" title="${escape(description+(reason?' · '+reason:''))}" style="--industry-progress:${percent}%"><span class="industry-symbol">${ico(icon,30)}<span class="industry-action-badge" aria-hidden="true">${badge}</span></span><span class="industry-copy"><strong>${escape(title)}</strong><small class="industry-action-label">${escape(description)}</small></span><span class="industry-end"><span class="industry-value">${tail}</span></span>${progress?`<span class="industry-progress" role="progressbar" aria-label="${escape(title+' '+action)}进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><i></i></span>`:''}</button>`;
  }
  function tech(E,w,key,options={}){
   const t=E.TECH[key],p=E.techProgress(w,key),complete=E.techOwned(w,key)||E.techMaxed(w,key),cost=E.techCost(w,key);

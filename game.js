@@ -56,13 +56,13 @@ function act(command, message) {
   return true;
  } catch (error) { toast(error.message); return false; }
 }
-const messages = {build:'已开始建造',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',resident:'已加一名居民',tech:'已开始研究，关闭产业面板后继续推进',removeRoad:'下一回合拆除，全额退款',restoreRoad:'已撤销拆除'};
+const messages = {build:'已开始建造',worker:'已雇一名工人',fireWorker:'已辞退一名工人，全额退款',demolish:'已拆除，全额退款',resident:'已加一名居民',tech:'已开始研究，继续点击可免费加速',removeRoad:'下一回合拆除，全额退款',restoreRoad:'已撤销拆除'};
 function bindCommands(root) {
  for (const b of root.querySelectorAll('[data-command]')) b.onclick = () => {
   const c = JSON.parse(b.dataset.command);
   if (c.type === 'explore') return explore(c.flower);
   if (c.type === 'place') { const keep = selectedFlower; selectedFlower = null; if (!act(c, messages.place)) selectedFlower = keep; else focusFlower(c.flower); return; }
-  act(c, messages[c.type] ?? '已更新');
+  act(c, c.type==='tech'&&E.techProgress(world,c.key)?undefined:(messages[c.type] ?? '已更新'));
   if($('industry-dialog').open){$('planner-notice').textContent='';($('tech-body').querySelector('button:not(:disabled)')||$('planner-graph').querySelector(`[data-industry="${industrySelected}"]`)).focus({preventScroll:true});}
  };
 }
@@ -114,10 +114,11 @@ function tileClick(key) {
 function produce(key) {
  const t = world.tiles[key], b = t.building;
  if(!E.workshop(b))return;
+ const constructing=!!b.construction;
  const r = E.RECIPES[b.type].out, before = t.loose[r];
  try {
   world = E.apply(world, {type:'click', tile:key});
-  pop(key, world.tiles[key].loose[r] - before, r);
+  if(!constructing)pop(key, world.tiles[key].loose[r] - before, r);
   render();
  } catch (error) {
   const now = performance.now();
@@ -594,7 +595,7 @@ function renderSelection() {
  else if (t?.building?.type==='town') {
   html=townPanel(t)+disclosure('era','时代科技',IndustryGraph.detail(E,world,'era')+`<div class="actions">${detailTechAction('era',`进入${E.ERAS[world.tech.era+1]||E.ERAS[world.tech.era]}`)}</div>`);
  } else if (t?.building?.construction) {
- const p=E.buildingProgress(world,t);html='<h2>'+names[t.building.type]+'</h2>'+IndustryButtons.build(E,world,t.building.type,{progress:p})+'<p>完工后可雇工生产。</p>'+button(refundLabel('取消建造',t.building.paid),{type:'demolish',tile:t.id},false,false,'danger');
+ const p=E.buildingProgress(world,t);html='<h2>'+names[t.building.type]+'</h2>'+IndustryButtons.build(E,world,t.building.type,{progress:p,attributes:"data-command='"+JSON.stringify({type:'click',tile:t.id})+"'"})+'<p>点击建筑或按钮加速，完工后可雇工生产。</p>'+button(refundLabel('取消建造',t.building.paid),{type:'demolish',tile:t.id},false,false,'danger');
  } else if (t?.building) {
   const b=t.building,next=E.workerCost(world,t),rc=E.RECIPES[b.type],r=rc.out,n=b.workers.length;
   const paid=b.paid+b.workers.reduce((n,m)=>n+m.paid,0);
@@ -699,7 +700,7 @@ function renderTech() {
  const state=IndustryGraph.status(E,world,industrySelected),command={type:'tech',key:state.key};
  const control=IndustryButtons.tech(E,world,state.key,{attributes:"data-command='"+JSON.stringify(command)+"'"});
  const reason=state.reason||(!state.available?E.TECH[state.key].requires.filter(k=>!world.tech[k]).map(k=>E.TECH[k].name).join('、'):'');
- $('tech-body').innerHTML='<div class="node" data-tech="'+industrySelected+'">'+control+IndustryGraph.detail(E,world,industrySelected)+(state.pending?'<p class="detail-caption">关闭产业规划后继续研究</p>':'')+(reason?'<p class="tip">'+reason+'</p>':'')+(state.kind==='poor'?'<p class="tech-shortfall">还差 '+coins(state.cost-world.money)+'</p>':'')+'</div>';
+ $('tech-body').innerHTML='<div class="node" data-tech="'+industrySelected+'">'+control+IndustryGraph.detail(E,world,industrySelected)+(state.pending?'<p class="detail-caption">自动推进已暂停，点击按钮仍可加速</p>':'')+(reason?'<p class="tip">'+reason+'</p>':'')+(state.kind==='poor'?'<p class="tech-shortfall">还差 '+coins(state.cost-world.money)+'</p>':'')+'</div>';
  decorateDetailButtons($('tech-body'));
  bindCommands($('tech-body'));
 }
@@ -716,7 +717,7 @@ function renderToolbar() {
  const list=$('project-list'),markup=jobs.map(p=>IndustryButtons.tech(E,world,p.key,{inspect:true,attributes:'data-progress-tech="'+p.key+'"'})).join('');
  if(list.innerHTML!==markup){const focus=list.contains(document.activeElement)?document.activeElement.dataset.progressTech:null;list.innerHTML=markup;if(focus)list.querySelector('[data-progress-tech="'+focus+'"]')?.focus({preventScroll:true});}
  list.hidden=!jobs.length;
- for(const btn of list.querySelectorAll('[data-progress-tech]'))btn.onclick=()=>{industrySelected=E.TECH[btn.dataset.progressTech].building||btn.dataset.progressTech;openIndustry();setIndustryMode('tech');selectIndustry(industrySelected,true);};
+ for(const btn of list.querySelectorAll('[data-progress-tech]'))btn.onclick=()=>act({type:'tech',key:btn.dataset.progressTech});
  $('build-intent').hidden=!buildType&&!connectFrom;
  $('build-intent').textContent=buildType?`待建：${names[buildType]} · 点选${E.RECIPES[buildType].fits.map(f=>names[f]).join('/')}地块`:connectFrom?'点选另一座建筑以自动修路':'';
  if(connectFrom){
@@ -743,7 +744,7 @@ function renderPlanner(){
  }
  industryLayout=graph;$('planner-graph').innerHTML=graph.html;
  $('planner-graph').style.width=graph.width+'px';$('planner-graph').style.height=graph.height+'px';plannerZoom(industryScale);
- for(const node of $('planner-graph').querySelectorAll('[data-industry]'))node.onclick=()=>{selectIndustry(node.dataset.industry);$('planner-graph').querySelector(`[data-industry="${industrySelected}"]`).focus({preventScroll:true});};
+ for(const node of $('planner-graph').querySelectorAll('[data-industry]'))node.onclick=()=>{const id=node.dataset.industry,key=E.techProgress(world,id)?id:E.craftOf(id);if(E.techProgress(world,key))act({type:'tech',key});selectIndustry(id);$('planner-graph').querySelector(`[data-industry="${industrySelected}"]`).focus({preventScroll:true});};
  renderTech();
  const b=industrySelected,rc=E.RECIPES[b],owned=b==='camp'||world.tech[b]>0,ins=rc?Object.keys(rc.in):[],deps=E.TECH[b]?.requires||[];
  const go=(key,label)=>`<button class="tech-flow-item" data-planner-focus="${E.TECH[key]?.building||key}">${detailIcon(E.TECH[key]?.building||E.TECH[key]?.icon||key,28)}<span>${label}</span></button>`;
