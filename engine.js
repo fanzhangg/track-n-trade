@@ -369,7 +369,8 @@ function connection(w,from,to){
  if(!passable(w,w.tiles[to]))throw Error(w.tiles[to].terrain==='lake'?'湖上修路需要航道科技':'山上修不了路');
  const r=route(w,from,to);if(!r)throw Error(Object.values(w.tiles).some(t=>t.terrain==='lake')&&!w.tech.waterway?'这两点之间没有可铺设的路线（湖需要航道科技）':'这两点之间没有可铺设的路线');
  return r;}
-function pay(w,cost){if(w.money<cost)throw Error(`金币不足：需要 ${cost}，现有 ${w.money}`);w.money-=cost;w.spent+=cost;}
+const formatMoney = n => '$'+Math.round(n).toLocaleString('zh-CN');
+function pay(w,cost){if(w.money<cost)throw Error(`金币不足：需要 ${formatMoney(cost)}，现有 ${formatMoney(w.money)}`);w.money-=cost;w.spent+=cost;}
 // Cheapest road from any workshop to a town that buys its output, or 0 once something earns or no such pair exists.
 function firstRoad(w){if(earning(w))return 0;let best=0;const any=Object.values(w.tiles).some(t=>workshop(t.building));
  for(const u of Object.values(w.tiles)){let r,extra=0;
@@ -377,7 +378,7 @@ function firstRoad(w){if(earning(w))return 0;let best=0;const any=Object.values(
   for(const t of Object.values(w.tiles)){if(t.building?.type!=='town'||!t.building.buys[r])continue;const x=route(w,u.id,t.id);if(x&&(!best||x.cost+extra<best))best=x.cost+extra;}}
  return best;}
 // No dead start: while nothing earns yet, a purchase that would leave less than that first road costs is refused.
-function reserve(w,cost){const need=firstRoad(w);if(need&&w.money-cost<need)throw Error(`先把路修到城镇（要 ${need} 金币），买了这个就修不起路了`);}
+function reserve(w,cost){const need=firstRoad(w);if(need&&w.money-cost<need)throw Error(`先把路修到城镇（要 ${formatMoney(need)}），买了这个就修不起路了`);}
 function refund(w,paid){const back=Math.round(paid*REFUND);w.money+=back;return back;}
 // True once any building can deliver its output to a town that buys it: from then on income never drops to zero.
 function earning(w){return Object.values(w.tiles).some(t=>workshop(t.building)&&Object.values(w.tiles).some(u=>u.building?.type==='town'&&u.building.buys[RECIPES[t.building.type].out]&&path(w,t.id,u.id)));}
@@ -393,7 +394,7 @@ function previewRoute(w,f){const temp=copy(w);temp.serial+=1000;materialize(temp
 function command(w,c){const t=w.tiles[c.tile],b=t?.building;const fail=m=>{throw Error(m);};
  if(c.type==='build'){if(!RECIPES[c.buildType])fail('未知建筑');if(c.buildType!=='camp'&&!w.tech[c.buildType])fail(`先在科技树里解锁${RECIPES[c.buildType].name}`);if(!t||t.building)fail('这里已有建筑');if(!RECIPES[c.buildType].fits.includes(t.terrain))fail('这种建筑不适合这块地');const cost=buildingCost(w,c.buildType);
   // The first camp is the plan itself: it only has to leave the road from this forest to a log-buying town.
-  if(c.buildType==='camp'&&!Object.values(w.tiles).some(x=>workshop(x.building))&&!earning(w)){let need=0;for(const u of Object.values(w.tiles)){if(u.building?.type!=='town'||!u.building.buys.log)continue;const x=route(w,t.id,u.id);if(x&&(!need||x.cost<need))need=x.cost;}if(need&&w.money-cost<need)fail(`建在这里之后修不起到城镇的路（要 ${need} 金币）`);}else reserve(w,cost);pay(w,cost);t.building={id:id(w),type:c.buildType,paid:cost,workers:[]};
+  if(c.buildType==='camp'&&!Object.values(w.tiles).some(x=>workshop(x.building))&&!earning(w)){let need=0;for(const u of Object.values(w.tiles)){if(u.building?.type!=='town'||!u.building.buys.log)continue;const x=route(w,t.id,u.id);if(x&&(!need||x.cost<need))need=x.cost;}if(need&&w.money-cost<need)fail(`建在这里之后修不起到城镇的路（要 ${formatMoney(need)}）`);}else reserve(w,cost);pay(w,cost);t.building={id:id(w),type:c.buildType,paid:cost,workers:[]};
  }else if(c.type==='click'){if(!b)fail('点击工坊才能生产');
   // A town click asks for half a round more of every good it buys; the demand pool caps it like a yard caps output.
   if(b.type==='town'){const d=buys(w,t.id);let total=0;for(const r in d){const n=Math.min(clickPower(w,t),d[r].pool-b.demand[r]);if(n<=0)continue;b.demand[r]+=n;total+=n;}if(!total)fail('需求还没用完，多修路多产货');w.clicks++;return;}
@@ -534,7 +535,7 @@ function validate(w){const int=n=>Number.isSafeInteger(n)&&n>=0;
  qty(w.initial);qty(w.production);qty(w.consumption);const total=totals(w);for(const r of RES)if(total[r]!==w.initial[r]+w.production[r]-w.consumption[r])throw Error('资源账本不守恒');return true;}
 function apply(w,c){const next=copy(w);command(next,c);validate(next);return next;}
 function load(saved){const next=copy(saved);if(next&&next.tollDue==null)next.tollDue=0;if(next&&next.tollPaid==null)next.tollPaid=0;if(next&&next.lastNovel==null)next.lastNovel=0;validate(next);return next;}
-const api={RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,CART_BASE,TOLL,FAR_BONUS,ROAD_ROUNDS,BUILDING_ROUNDS,BUILDING_GROWTH,cartSize,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
+const api={formatMoney,RES,SELLABLE,GOODS,BASE_PRICE,DT,TPS,WINDOW,YARD,POOL_TICKS,PRICE,WORKER,WORKER_GROWTH,MAX_WORKERS,TECH,ERAS,craftOf,RECIPES,BUILDINGS,RAW,TERRAINS,TERRAIN_NAME,TERRAIN_FACTOR,ROAD_BASE,CART_BASE,TOLL,FAR_BONUS,ROAD_ROUNDS,BUILDING_ROUNDS,BUILDING_GROWTH,cartSize,TOWN_RATE,MAX_RESIDENTS,PAYBACK,GROWTH,START_MONEY,START_TILE,START_TOWN,START_DESIGN,FLOWER_BASE,FLOWER_PAIR,TUTORIAL,CANDIDATES,GEN,rawDeficit,boughtGoods,terrainsOn,chainGaps,rawOf,goodsFrom,DIRS,GOALS,GOAL_REWARD_ROUNDS,GOAL_REWARD_FLOOR,goalTarget,goalFloor,goalReward,goalProgress,
  copy,zero,add,workshop,newWorld,edgeId,adjacent,hexDist,flowerCenter,flowerTiles,flowerCost,flowerDistance,slotTerrain,generateFlower,validDesign,rng,path,route,connection,command,tick,totals,validate,apply,load,demands,allocated,buffer,transit,pipeline,available,buildingCost,workerCost,firstRoad,techCost,techOwned,techAvailable,techMaxed,workerPower,clickPower,eraPower,goodValue,workersOf,craftCost,eraCost,edgeCost,segmentCost,anchored,residentCost,townRate,income,buys,recentSales,terrainFactor,passable,rate,value,saleValue,earning,previewRoute,producible,nextGoods};
 if(typeof module!=='undefined')module.exports=api;root.TradeEngine=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

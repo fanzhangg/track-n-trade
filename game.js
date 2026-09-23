@@ -20,7 +20,7 @@ for(const [buttonId,iconId] of [['import','ui-import'],['export','ui-export']]){
 }
 const fmt = n => Math.round(n).toLocaleString('zh-CN');
 const per = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
-const coins = n => `${Math.round(n).toLocaleString('zh-CN')} 金币`;
+const coins = E.formatMoney;
 const position = t => [Math.sqrt(3) * 51 * (t.q + t.r / 2), 76.5 * t.r];
 let world = E.newWorld(Math.floor(Math.random() * 2 ** 31));
 let selected = E.START_TILE, selectedEdge = null, selectedFlower = null, buildType = null, connectFrom = null;
@@ -256,7 +256,7 @@ function bottleneck(t, st, chain) {
    const mine = E.saleValue(world, t.id, r), who = u => u.building.type === 'town' ? '城镇' : names[u.building.type];
    const ranked = rivals.map(u => ({u, v:u.building.type === 'town' ? u.building.buys[i] : E.saleValue(world, u.id, E.RECIPES[u.building.type].out)})).sort((a, b) => b.v - a.v);
    const above = ranked.find(x => x.v > mine), peer = ranked.find(x => x.v === mine);
-   if (above) return level(`${maker}的${names[i]}先给了出价 ${above.v} 的${who(above.u)}，这里只值 ${mine}`, `再建一座${maker}，或给这里找更高价的买家`, i);
+   if (above) return level(`${maker}的${names[i]}先给了出价 ${coins(above.v)} 的${who(above.u)}，这里只值 ${coins(mine)}`, `再建一座${maker}，或给这里找更高价的买家`, i);
    if (peer) return level(`${maker}的${names[i]}要和出价相同的${who(peer.u)}轮流分`, `再建一座${maker}，或给${maker}加工人`, i);
    return level(`${names[i]}还在路上，${srcs[0].hops} 段路要走 ${srcs[0].hops} 回合`, `修一条更短的路`, i);
   }
@@ -294,7 +294,7 @@ function flowSection(t, st) {
  html += '<div class="farrow"></div>';
  const towns = chain.down.filter(d => d.town), shops = chain.down.filter(d => !d.town);
  const parts = [];
- if (towns.length) parts.push(`卖给 ${countOf(towns.length, '城镇')} · ${towns.map(d => `$${d.price} 收 ${per(d.taken)}`).join(' · ')}`);
+ if (towns.length) parts.push(`卖给 ${countOf(towns.length, '城镇')} · ${towns.map(d => `${coins(d.price)} 收 ${per(d.taken)}`).join(' · ')}`);
  if (shops.length) parts.push(`供 ${shops.map(d => `${names[d.tile.building.type]}用 ${per(d.taken)}`).join('、')}`);
  const outNote = parts.length ? parts.join('；') : '没有去处';
  const stuck = t.loose[r] >= E.YARD && !madeLastRound(t);
@@ -311,7 +311,7 @@ function townFlowSection(t, st) {
   const srcs = chain.up.filter(u => u.r === r), got = st.sales(t.id, r), stuck = backlog(t.id, r);
   const kinds = [...new Set(srcs.map(u => names[u.tile.building.type]))].join('、');
   const cap = srcs.reduce((n, u) => n + u.rate, 0);
-  let note = `$${d.price}`;
+  let note = `${coins(d.price)}`;
   note += srcs.length ? ` · 来自 ${countOf(srcs.length, kinds)} · 最近 ${Math.min(...srcs.map(u => u.hops))} 段 · 产 ${cap}` : ' · 没有连到来源';
   if (stuck) note += ` · <b class="warn">积压 ${stuck}</b>`;
   let v = null;
@@ -321,7 +321,7 @@ function townFlowSection(t, st) {
    if (cap < d.rate) v = {level:'warn', cause:`${names[r]}供给只有需求的 ${Math.round(cap / d.rate * 100)}%`, action:`给${kinds}加工人、升工艺，或再连一座`};
    else {
     const rival = townTiles().filter(u => u.id !== t.id && u.building.buys[r] > d.price && srcs.some(x => E.path(world, x.tile.id, u.id))).map(u => u.building.buys[r]).sort((a, b) => b - a)[0];
-    v = {level:'warn', cause:rival ? `${kinds}的${names[r]}先给了出价 $${rival} 的城镇，这里只出 $${d.price}` : `${kinds}的${names[r]}被同价的城镇轮流分走`, action:`再建一座${kinds}，或加居民抬高这里的需求`};
+    v = {level:'warn', cause:rival ? `${kinds}的${names[r]}先给了出价 ${coins(rival)} 的城镇，这里只出 ${coins(d.price)}` : `${kinds}的${names[r]}被同价的城镇轮流分走`, action:`再建一座${kinds}，或加居民抬高这里的需求`};
    }
   }
   if (v && !verdict) verdict = {...v, key:r};
@@ -504,7 +504,7 @@ function renderMap() {
    const earning=Object.entries(E.buys(world,t.id)).reduce((n,[r,d])=>n+st.sales(t.id,r)*d.price,0);
    const linked=connectedTowns().includes(t.id);
    const offers=Object.entries(E.buys(world,t.id)).map(([id,d])=>({id,price:d.price,backlog:backlog(t.id,id),full:backlog(t.id,id)>0,income:linked?st.sales(t.id,id)*d.price:null}));
-   content=BuildingTiles.render({type:'town',name:'城镇',level:E.eraPower(world),residents:b.residents,offers,status:linked?`+${fmt(earning)}金/回合`:'未连路',alert:!linked});
+   content=BuildingTiles.render({type:'town',name:'城镇',level:E.eraPower(world),residents:b.residents,offers,status:linked?`+${coins(earning)}/回合`:'未连路',alert:!linked});
   } else if (b) {
    const rc=E.RECIPES[b.type],stall=stallOf(t),count=t.loose[rc.out];
    const status=stall||(count>=E.YARD?'满仓 · 待运出':!b.workers.length?'点击生产':'生产中');
@@ -560,7 +560,7 @@ function button(label, command, primary=false, disabled=false, cls='') {
 function townPanel(t) {
  const st=windowStats(), key=t.id, buys=E.buys(world,key), linked=connectedTowns().includes(key), b=t.building;
  const earning=Object.entries(buys).reduce((n,[r,d])=>n+st.sales(key,r)*d.price,0), next=E.residentCost(world,key), rate=E.townRate(world,b), full=b.residents>=E.MAX_RESIDENTS, era=E.eraPower(world);
- let html=`<h2>${icon('town','town-c')}城镇</h2><div class="subtitle">${E.ERAS[world.tech.era]} · 每种货每回合收 ${rate} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${fmt(earning)}</b><small>金币 / 回合</small></div>`;
+ let html=`<h2>${icon('town','town-c')}城镇</h2><div class="subtitle">${E.ERAS[world.tech.era]} · 每种货每回合收 ${rate} 件</div><div class="state ${linked?'':'wait'}">${linked?'正在收购':'尚未连路'}</div><div class="coins"><span>来自本镇</span><b>+${coins(earning)}</b><small>/ 回合</small></div>`;
  html+=`<div class="crew"><div class="crew-top"><span>居民 ${b.residents}</span><b>${b.residents} × ${E.TOWN_RATE*era} = ${rate} 件/回合</b></div><div class="slots residents">${Array.from({length:b.residents},(_,i)=>`<span class="resident bt-person-beat ${world.paused||!Object.values(world.stats.at(-1)?.sales[key]||{}).some(n=>n>0)?'is-idle':''}" style="--beat:${Math.max(.25,E.DT/speed)}s;animation-delay:-${i*.15}s">${icon('resident')}</span>`).join('')}</div></div>`;
  html+=townFlowSection(t,st);
  html+=`<div class="actions">${full?'':button(`加第 ${b.residents+1} 名居民<small>${coins(next)} · 每种货每回合多收 ${E.TOWN_RATE*era} 件</small>`,{type:'resident',tile:t.id},true,!afford(next),costly(next))}<button id="produce" class="produce">${icon('town','')}手工收购 每种货 ${E.clickPower(world,t)} 件<small>点城镇加需求，货会立刻派来</small></button></div>`;
@@ -622,11 +622,12 @@ function renderGoals() {
  const now=performance.now(), reward=E.goalReward(world);
  $('goals-body').innerHTML=`<ul class="goals">${E.GOALS.map(g=>{
   const p=E.goalProgress(world,g), done=goalFlash[g.id]>now;
-  const num=done?`达成 ${goalNum(p.floor)}`:`${goalNum(Math.min(p.cur,p.target))} / ${fmt(p.target)}`;
+  const number=g.id==='income'?coins:goalNum;
+  const num=done?`达成 ${number(p.floor)}`:`${number(Math.min(p.cur,p.target))} / ${number(p.target)}`;
   return `<li class="goal ${done?'done':''}"><svg class="icon" aria-hidden="true"><use href="#icon-${done?'check':g.icon}"/></svg>`
    +`<span class="glbl">${g.label}</span>`
-   +`<span class="gval"><b class="gnum">${num}</b><span class="gunit">${g.unit}</span></span>`
-   +`<span class="gpay">+${fmt(reward)} 金币</span>`
+   +`<span class="gval"><b class="gnum">${num}</b>${g.id==='income'?'':`<span class="gunit">${g.unit}</span>`}</span>`
+   +`<span class="gpay">+${coins(reward)}</span>`
    +`<span class="progress"><span style="width:${(done?1:p.ratio)*100}%"></span></span></li>`;
  }).join('')}</ul>`;
 }
@@ -637,9 +638,9 @@ function announceGoals(cleared) {
  for(const[id,d]of Object.entries(cleared)){
   const g=E.GOALS.find(g=>g.id===id), tier=world.goals[id];
   goalFlash[id]=performance.now()+1600;
-  legendLines.unshift(`<div class="legend-line"><b>${g.label} ${fmt(E.goalTarget(g,tier-1))} ${g.unit}</b>`
-   +`<span class="legend-step">下一级 ${fmt(E.goalTarget(g,tier))} ${g.unit}</span>`
-   +`<span class="legend-reward">+${fmt(d.reward)} 金币</span></div>`);
+  legendLines.unshift(`<div class="legend-line"><b>${g.label} ${g.id==='income'?coins(E.goalTarget(g,tier-1)):`${fmt(E.goalTarget(g,tier-1))} ${g.unit}`}</b>`
+   +`<span class="legend-step">下一级 ${g.id==='income'?coins(E.goalTarget(g,tier)):`${fmt(E.goalTarget(g,tier))} ${g.unit}`}</span>`
+   +`<span class="legend-reward">+${coins(d.reward)}</span></div>`);
  }
  legendLines.length=Math.min(legendLines.length,6);
  renderLegend();
@@ -713,7 +714,7 @@ function renderChain() {
   edges+=`<path class="e ${locked?'locked':''}" d="M${B.x+BS/2},${B.y} L${O.x-GS/2},${O.y}"/>`;
   nodes+=`<g class="${locked?'locked':''}"><title>${rc.name} · ${rc.fits.map(t=>names[t]).join('/')}</title>${TradeIcons.svgIcon(b,{x:B.x-BS/2,y:B.y-BS/2,size:BS})}<text class="lbl" x="${B.x}" y="${B.y+BS/2+11}" text-anchor="middle">${rc.name}</text></g>`;
   const inc=earned(rc.out), price=E.BASE_PRICE[rc.out];
-  nodes+=`<g class="${locked?'locked':''}"><title>${names[rc.out]}${price?` · 基准价 ${price}${inc>0?` · +${fmt(inc)}/回合`:''}`:' · 没有城镇收，只能炼铁'}</title><circle class="g ${locked?'locked':''} ${inc>0?'earning':''}" cx="${O.x}" cy="${O.y}" r="${GS/2+3}"/>${TradeIcons.svgIcon(rc.out,{x:O.x-GS/2,y:O.y-GS/2,size:GS})}<text class="gsub ${inc>0?'earning':''}" x="${O.x}" y="${O.y+GS/2+13}" text-anchor="middle">${names[rc.out]}</text></g>`;
+  nodes+=`<g class="${locked?'locked':''}"><title>${names[rc.out]}${price?` · 基准价 ${coins(price)}${inc>0?` · +${coins(inc)}/回合`:''}`:' · 没有城镇收，只能炼铁'}</title><circle class="g ${locked?'locked':''} ${inc>0?'earning':''}" cx="${O.x}" cy="${O.y}" r="${GS/2+3}"/>${TradeIcons.svgIcon(rc.out,{x:O.x-GS/2,y:O.y-GS/2,size:GS})}<text class="gsub ${inc>0?'earning':''}" x="${O.x}" y="${O.y+GS/2+13}" text-anchor="middle">${names[rc.out]}</text></g>`;
  }
  $('chain-body').innerHTML=`<svg class="chain" viewBox="0 0 ${W} ${H}" role="img" aria-label="生产链">${edges}${nodes}</svg>`;
 }
@@ -733,10 +734,10 @@ function renderGrowth() {
   goodLines+=`<path class="good-area" style="fill:${goodColor(r)}" d="M${upper.join('L')}L${lower.join('L')}Z"/>`;
   base=top;
  }
- const legend=[`<span><i style="background:#b8743a"></i>合计 +${fmt(last.income)}</span>`,...sold.map(r=>`<span><i style="background:${goodColor(r)}"></i>${names[r]} +${fmt(last.goods[r])}</span>`)].join('');
+ const legend=[`<span><i style="background:#b8743a"></i>合计 +${coins(last.income)}</span>`,...sold.map(r=>`<span><i style="background:${goodColor(r)}"></i>${names[r]} +${coins(last.goods[r])}</span>`)].join('');
  $('growth-body').innerHTML=`
   <svg class="growth-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="每回合收入随时间变化">
-   <text class="chart-label" x="${PAD}" y="14">每回合收入 · 峰值 ${fmt(maxIncome)}</text>
+   <text class="chart-label" x="${PAD}" y="14">每回合收入 · 峰值 ${coins(maxIncome)}</text>
    <line class="axis" x1="${PAD}" y1="${H-8}" x2="${W-PAD}" y2="${H-8}"/>
    ${goodLines}
    <path class="income-line" d="${line(p=>p.income)}"/>
@@ -766,7 +767,7 @@ function renderToolbar() {
 }
 function render() {
  const st=windowStats();
- $('money').textContent=world.money.toLocaleString('zh-CN');$('income').textContent=`+${fmt(st.income)}/回合`;
+ $('money').textContent=coins(world.money);$('income').textContent=`+${coins(st.income)}/回合`;
  $('pause').innerHTML=icon(world.paused?'ui-play':'ui-pause')+(world.paused?'继续':'暂停');$('speed').textContent=speed+'×';
  $('cancel').hidden=!buildType&&!connectFrom;
  renderToolbar();
@@ -893,7 +894,7 @@ $('import-file').onchange=async event=>{
 // and not counted in `earned`, so income stats stay honest. Nothing here touches engine.js.
 if(new URLSearchParams(location.search).has('cheat')){
  $('dev-menu').hidden=false;
- $('cheat-money').onclick=()=>{world.money+=1_000_000;save();render();toast('作弊：+1,000,000 金币');};
+ $('cheat-money').onclick=()=>{world.money+=1_000_000;save();render();toast('作弊：+$1,000,000');};
 }
 $('legend-close').onclick=()=>{legendLines.length=0;renderLegend();};
 $('reset').onclick=()=>{

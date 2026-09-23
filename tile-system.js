@@ -33,7 +33,7 @@
   let html=`<g class="building-tile-ui" pointer-events="none"><title>${esc(name)}${status?' · '+esc(status):''}</title><ellipse class="bt-site" cx="0" cy="14" rx="28" ry="11"/><g class="bt-miniature">${icon(type,-24,-24,48)}</g>`;
   if(type==='town'){
    // Before a road arrives the price is the decision; once linked, what the town actually pays per round is.
-   const label=o=>o.income!=null?'+'+Math.round(o.income):'$'+o.price;
+   const label=o=>o.income!=null?'+$'+Math.round(o.income).toLocaleString('zh-CN'):'$'+Math.round(o.price).toLocaleString('zh-CN');
    const widths=offers.map(o=>Math.max(56,34+labelWidth(label(o))));
    const width=frameWidth=Math.max(56,widths.reduce((sum,w)=>sum+w,0));
    html+=`<g class="bt-floating"><rect class="bt-float-bg" x="${-width/2}" y="25" width="${width}" height="28" rx="5"/>`;

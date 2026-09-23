@@ -54,13 +54,13 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <h2>开局与前十分钟</h2>
 <div class="grid">
 <div>
-<p>新档开始时你有 <strong>2 000 金币</strong> 和一朵起始板块：中间一格草地，周围一格森林（上面已经有一座伐木营）、两格岩地、一格草地、一格贴着山的铁矿、一座山。<strong>没有城镇，没有路。</strong>周围六个方向全是迷雾。</p>
+<p>新档开始时你有 <strong>$2,000</strong> 和一朵起始板块：中间一格草地，周围一格森林（上面已经有一座伐木营）、两格岩地、一格草地、一格贴着山的铁矿、一座山。<strong>没有城镇，没有路。</strong>周围六个方向全是迷雾。</p>
 <ol class="steps">
 <li><strong>点伐木营。</strong>每点一下出一根原木，堆在伐木营的堆场里。堆场最多 20 件，满了就点不动。</li>
-<li><strong>揭开第一块板块。</strong>六朵相邻的迷雾板块都标着 500 金币，任选一朵。第一块板块里一定有一座只收原木的城镇。</li>
+<li><strong>揭开第一块板块。</strong>六朵相邻的迷雾板块都标着 $500，任选一朵。第一块板块里一定有一座只收原木的城镇。</li>
 <li><strong>旋转再放下。</strong>预览里地图会画出从伐木营到新城镇最短的路和造价。转到一个修得起、路又短的朝向，点「放下板块」。</li>
 <li><strong>修第一条路。</strong>按住伐木营拖到城镇，松手付钱。下一回合起原木自己上路，到城镇门口就卖掉，金币进账。</li>
-<li><strong>雇第一名工人。</strong>选中伐木营，点「雇工人」（400 金币）。从此伐木营每回合自动出 1 根原木，你不用再点。</li>
+<li><strong>雇第一名工人。</strong>选中伐木营，点「雇工人」（$400）。从此伐木营每回合自动出 1 根原木，你不用再点。</li>
 <li><strong>接着往下走。</strong>地图是随机生成的，没有既定路线。右侧「目标」面板里五条轨道一直在跑——产出、运量、卖出、收入、板块——想推哪条就推哪条，达标即完成，下一级直接翻倍。</li>
 </ol>
 </div>
@@ -95,7 +95,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 </ul>
 <div class="table"><table>
 <tr><th>第 n 次解锁</th><th class="num">1</th><th class="num">2</th><th class="num">3</th><th class="num">4</th><th class="num">5</th><th>6 及以后</th></tr>
-<tr><td>价格（金币）</td><td class="num">500</td><td class="num">2 000</td><td class="num">5 000</td><td class="num">15 000</td><td class="num">40 000</td><td><code>40 000 × 1.5^(n−5)</code>，即 60 000、90 000、135 000……</td></tr>
+<tr><td>价格</td><td class="num">$500</td><td class="num">$2,000</td><td class="num">$5,000</td><td class="num">$15,000</td><td class="num">$40,000</td><td><code>$40,000 × 1.5^(n−5)</code>，即 $60,000、$90,000、$135,000……</td></tr>
 </table></div>
 <h3>预览、旋转、放下</h3>
 <ul>
@@ -148,21 +148,21 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <p>六种建筑、六种货。每座建筑只有一种产出；加工建筑的配方统一是<strong>每种输入各一件，出一件</strong>。</p>
 <div class="table"><table>
 <tr><th>建筑</th><th>建在</th><th>输入</th><th>产出</th><th class="num">建造价</th><th class="num">第一名工人</th><th>怎么解锁</th></tr>
-<tr><td>伐木营</td><td>森林</td><td>无</td><td>原木</td><td class="num">1 200</td><td class="num">400</td><td>开局即有</td></tr>
-<tr><td>采石场</td><td>岩地</td><td>无</td><td>石头</td><td class="num">1 600</td><td class="num">600</td><td>科技 1 200</td></tr>
-<tr><td>锯木厂</td><td>草地</td><td>原木</td><td>木板</td><td class="num">2 400</td><td class="num">1 000</td><td>科技 3 000</td></tr>
-<tr><td>石匠铺</td><td>草地</td><td>原木 + 石头</td><td>石头工具</td><td class="num">2 000</td><td class="num">1 000</td><td>科技 8 000，需先有锯木厂与采石场科技</td></tr>
-<tr><td>矿山</td><td>铁矿</td><td>无</td><td>铁矿石</td><td class="num">2 000</td><td class="num">600</td><td>科技 5 000，需先有石匠铺科技</td></tr>
-<tr><td>铁厂</td><td>草地</td><td>铁矿石 + 原木</td><td>铁</td><td class="num">3 000</td><td class="num">1 000</td><td>科技 40 000，需先有矿山科技</td></tr>
+<tr><td>伐木营</td><td>森林</td><td>无</td><td>原木</td><td class="num">$1,200</td><td class="num">$400</td><td>开局即有</td></tr>
+<tr><td>采石场</td><td>岩地</td><td>无</td><td>石头</td><td class="num">$1,600</td><td class="num">$600</td><td>科技 $1,200</td></tr>
+<tr><td>锯木厂</td><td>草地</td><td>原木</td><td>木板</td><td class="num">$2,400</td><td class="num">$1,000</td><td>科技 $3,000</td></tr>
+<tr><td>石匠铺</td><td>草地</td><td>原木 + 石头</td><td>石头工具</td><td class="num">$2,000</td><td class="num">$1,000</td><td>科技 $8,000，需先有锯木厂与采石场科技</td></tr>
+<tr><td>矿山</td><td>铁矿</td><td>无</td><td>铁矿石</td><td class="num">$2,000</td><td class="num">$600</td><td>科技 $5,000，需先有石匠铺科技</td></tr>
+<tr><td>铁厂</td><td>草地</td><td>铁矿石 + 原木</td><td>铁</td><td class="num">$3,000</td><td class="num">$1,000</td><td>科技 $40,000，需先有矿山科技</td></tr>
 </table></div>
 <div class="table"><table>
 <tr><th>货物</th><th>谁产</th><th class="num">基础价</th><th>谁要</th></tr>
-<tr><td>原木</td><td>伐木营</td><td class="num">20</td><td>城镇、锯木厂、石匠铺、铁厂。<strong>三条链的公共原料</strong></td></tr>
-<tr><td>石头</td><td>采石场</td><td class="num">30</td><td>城镇、石匠铺</td></tr>
-<tr><td>木板</td><td>锯木厂</td><td class="num">50</td><td>城镇</td></tr>
-<tr><td>石头工具</td><td>石匠铺</td><td class="num">120</td><td>城镇</td></tr>
+<tr><td>原木</td><td>伐木营</td><td class="num">$20</td><td>城镇、锯木厂、石匠铺、铁厂。<strong>三条链的公共原料</strong></td></tr>
+<tr><td>石头</td><td>采石场</td><td class="num">$30</td><td>城镇、石匠铺</td></tr>
+<tr><td>木板</td><td>锯木厂</td><td class="num">$50</td><td>城镇</td></tr>
+<tr><td>石头工具</td><td>石匠铺</td><td class="num">$120</td><td>城镇</td></tr>
 <tr><td>铁矿石</td><td>矿山</td><td class="num">—</td><td>只有铁厂要。<strong>没有城镇收铁矿石</strong></td></tr>
-<tr><td>铁</td><td>铁厂</td><td class="num">150</td><td>城镇</td></tr>
+<tr><td>铁</td><td>铁厂</td><td class="num">$150</td><td>城镇</td></tr>
 </table></div>
 <ul>
 <li>基础价是教学城镇的收购价。沙盒城镇按距离加价（第四节）。</li>
@@ -202,7 +202,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <li><strong>怎么修：</strong>按住地图上一座建筑，拖到另一座建筑或城镇，松手。途中会显示这条路的造价，钱不够时拒绝。选中建筑后面板里也有「选择要连接的建筑」按钮，适合触屏。</li>
 <li><strong>只能在有货可运的两点之间修路：</strong>一方产某种货，另一方收这种货（城镇收购，或加工建筑把它当输入）。城镇和城镇之间不能修，锯木厂和采石场之间也不能修（锯木厂不要石头）。</li>
 <li><strong>路线自动选：</strong>系统在可通行地形上找造价最低的路线，<strong>复用已有路段不收费</strong>，所以路网会自然长成一棵树。</li>
-<li><strong>造价：</strong>每一段 <code>250 × 地形系数</code>，系数取两端地形中较高的那个（草地和城镇 1，森林、岩地、铁矿 2，湖 3）。例如伐木营（森林）到相邻草地这一段 500 金币，草地到城镇 250 金币。</li>
+<li><strong>造价：</strong>每一段 <code>$250 × 地形系数</code>，系数取两端地形中较高的那个（草地和城镇 1，森林、岩地、铁矿 2，湖 3）。例如伐木营（森林）到相邻草地这一段 $500，草地到城镇 $250。</li>
 <li><strong>道路只负责连通。</strong>没有运力上限、没有等级。一件货每回合走一段，一段路同一回合可以过任意多件货。路越长货到得越晚，但吞吐不会卡在路上。</li>
 <li>新修的路段<strong>下一回合</strong>开始通货。</li>
 <li>每件货走段数最少的路线；已经上路的货不会掉头。</li>
@@ -231,7 +231,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <li><strong>收购速度：</strong>每种货每回合收 <code>2 × (1 + 等级)</code> 件。新城镇是 0 级，每种货每回合收 2 件。</li>
 <li><strong>需求池：</strong>没收到货的份额会攒起来，最多攒 20 回合的量（0 级 40 件）。池里有多少就能一次收多少，之后按每回合的速度继续收。池用完时地图上价格旁写<span class="amber">「收不下了」</span>。</li>
 <li>货到城镇门口<strong>自动卖出</strong>，金币立即入账，没有接单操作。</li>
-<li><strong>扩建：</strong>选中城镇，点「扩建」。每升一级，每种货每回合多收 2 件。价格 = <code>2 × Σ收购价 × 30 × 1.5^当前等级</code>。例如只收原木 20 的城镇，第一次扩建 1 200 金币，第二次 1 800，第三次 2 700。收工具 120 和木板 30 的城镇第一次扩建 9 000。任何一次扩建，如果新增的收购量都用满，30 回合回本。</li>
+<li><strong>扩建：</strong>选中城镇，点「扩建」。每升一级，每种货每回合多收 2 件。价格 = <code>2 × Σ收购价 × 30 × 1.5^当前等级</code>。例如只收原木 $20 的城镇，第一次扩建 $1,200，第二次 $1,800，第三次 $2,700。收工具 $120 和木板 $30 的城镇第一次扩建 $9,000。任何一次扩建，如果新增的收购量都用满，30 回合回本。</li>
 <li>城镇不能拆、不能移动、不会自己升级。</li>
 </ul>
 <h3>为什么总要二选一</h3>
@@ -244,23 +244,23 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <h3>一次性科技</h3>
 <div class="table"><table>
 <tr><th>科技</th><th class="num">价格</th><th>前置</th><th>效果</th></tr>
-<tr><td>采石场</td><td class="num">1 200</td><td>无</td><td>可以在岩地建采石场</td></tr>
-<tr><td>锯木厂</td><td class="num">3 000</td><td>无</td><td>可以在草地建锯木厂，原木 → 木板</td></tr>
-<tr><td>石匠铺</td><td class="num">8 000</td><td>锯木厂、采石场</td><td>可以在草地建石匠铺，原木 + 石头 → 石头工具</td></tr>
-<tr><td>航道</td><td class="num">8 000</td><td>锯木厂</td><td>湖上可以铺路（每段 750）</td></tr>
-<tr><td>矿山</td><td class="num">5 000</td><td>石匠铺</td><td>可以在铁矿建矿山</td></tr>
-<tr><td>铁厂</td><td class="num">40 000</td><td>矿山</td><td>可以在草地建铁厂，铁矿石 + 原木 → 铁</td></tr>
+<tr><td>采石场</td><td class="num">$1,200</td><td>无</td><td>可以在岩地建采石场</td></tr>
+<tr><td>锯木厂</td><td class="num">$3,000</td><td>无</td><td>可以在草地建锯木厂，原木 → 木板</td></tr>
+<tr><td>石匠铺</td><td class="num">$8,000</td><td>锯木厂、采石场</td><td>可以在草地建石匠铺，原木 + 石头 → 石头工具</td></tr>
+<tr><td>航道</td><td class="num">$8,000</td><td>锯木厂</td><td>湖上可以铺路（每段 $750）</td></tr>
+<tr><td>矿山</td><td class="num">$5,000</td><td>石匠铺</td><td>可以在铁矿建矿山</td></tr>
+<tr><td>铁厂</td><td class="num">$40,000</td><td>矿山</td><td>可以在草地建铁厂，铁矿石 + 原木 → 铁</td></tr>
 </table></div>
 <h3>可重复科技（每级翻倍）</h3>
 <div class="table"><table>
 <tr><th>科技</th><th class="num">第 1 级</th><th class="num">第 2 级</th><th class="num">第 3 级</th><th>前置</th><th>效果</th></tr>
-<tr><td>金手指</td><td class="num">2 000</td><td class="num">4 000</td><td class="num">8 000</td><td>无</td><td>每次点击多 1 件</td></tr>
-<tr><td>伐木营工艺</td><td class="num">2 000</td><td class="num">4 000</td><td class="num">8 000</td><td>无</td><td>每座伐木营的每名工人每回合多 1 件</td></tr>
-<tr><td>采石场工艺</td><td class="num">2 500</td><td class="num">5 000</td><td class="num">10 000</td><td>采石场</td><td>同上，对采石场</td></tr>
-<tr><td>锯木厂工艺</td><td class="num">4 000</td><td class="num">8 000</td><td class="num">16 000</td><td>锯木厂</td><td>同上，对锯木厂</td></tr>
-<tr><td>矿山工艺</td><td class="num">4 000</td><td class="num">8 000</td><td class="num">16 000</td><td>矿山</td><td>同上，对矿山</td></tr>
-<tr><td>石匠铺工艺</td><td class="num">8 000</td><td class="num">16 000</td><td class="num">32 000</td><td>石匠铺</td><td>同上，对石匠铺</td></tr>
-<tr><td>铁厂工艺</td><td class="num">12 000</td><td class="num">24 000</td><td class="num">48 000</td><td>铁厂</td><td>同上，对铁厂</td></tr>
+<tr><td>金手指</td><td class="num">$2,000</td><td class="num">$4,000</td><td class="num">$8,000</td><td>无</td><td>每次点击多 1 件</td></tr>
+<tr><td>伐木营工艺</td><td class="num">$2,000</td><td class="num">$4,000</td><td class="num">$8,000</td><td>无</td><td>每座伐木营的每名工人每回合多 1 件</td></tr>
+<tr><td>采石场工艺</td><td class="num">$2,500</td><td class="num">$5,000</td><td class="num">$10,000</td><td>采石场</td><td>同上，对采石场</td></tr>
+<tr><td>锯木厂工艺</td><td class="num">$4,000</td><td class="num">$8,000</td><td class="num">$16,000</td><td>锯木厂</td><td>同上，对锯木厂</td></tr>
+<tr><td>矿山工艺</td><td class="num">$4,000</td><td class="num">$8,000</td><td class="num">$16,000</td><td>矿山</td><td>同上，对矿山</td></tr>
+<tr><td>石匠铺工艺</td><td class="num">$8,000</td><td class="num">$16,000</td><td class="num">$32,000</td><td>石匠铺</td><td>同上，对石匠铺</td></tr>
+<tr><td>铁厂工艺</td><td class="num">$12,000</td><td class="num">$24,000</td><td class="num">$48,000</td><td>铁厂</td><td>同上，对铁厂</td></tr>
 </table></div>
 <ul>
 <li>科技<strong>不能退款</strong>，这是唯一花出去就收不回的钱（板块也是）。</li>
@@ -273,7 +273,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <h3>钱从哪来</h3>
 <ul>
 <li><strong>卖货：</strong>货到城镇门口按收购价入账。这是唯一持续的收入。</li>
-<li><strong>目标奖励：</strong>每达成一级目标入账半回合收入（最少 100 金币）。这笔钱永远买不起最便宜的一段路，只是拍拍肩膀。</li>
+<li><strong>目标奖励：</strong>每达成一级目标入账半回合收入（最少 $100）。这笔钱永远买不起最便宜的一段路，只是拍拍肩膀。</li>
 <li><strong>退款：</strong>拆建筑、辞退工人、拆路都退回实付全款。</li>
 </ul>
 <p>目标不是一张清单，是五条一直在跑的轨道。它们衡量的是你的引擎，不是你的存款——手上的金币只是在途的货，不计分。五条同时判定，达标即完成，没有顺序、没有前置、也没有要领取的东西；完成一级，目标数字立刻换成下一级。</p>
@@ -282,7 +282,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <tr><td>每回合产出</td><td>件</td><td class="num">4</td><td>翻倍</td></tr>
 <tr><td>每回合运量（一件货走一段路记 1）</td><td>件段</td><td class="num">4</td><td>翻倍</td></tr>
 <tr><td>每回合卖出</td><td>件</td><td class="num">4</td><td>翻倍</td></tr>
-<tr><td>每回合收入</td><td>金币</td><td class="num">20</td><td>翻倍</td></tr>
+<tr><td>每回合收入</td><td>$</td><td class="num">$20</td><td>翻倍</td></tr>
 <tr><td>已解锁板块</td><td>块</td><td class="num">1</td><td>加一</td></tr>
 </table></div>
 <p>为什么是翻倍：买东西一律按「几回合的当前收入」计价（一段路 1 回合、一座建筑 2 回合、一块板块 5 回合），所以把收入从 20 做到 40，和从 2 000 做到 4 000，花的功夫是一样的——只有指数阶梯才能让每一级一样难。板块反过来：它的价格本来每两块就翻倍，所以加一块就已经是指数步长了。</p>
@@ -340,7 +340,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <ul>
 <li>游戏<strong>自动保存</strong>在浏览器本地，顶栏「更多」里能看到保存状态。清除浏览器数据会丢档。</li>
 <li>「导出存档」下载一个 JSON 文件，「导入存档」读回来。存档里包含种子和解锁次序，所以换设备后板块内容也一样。</li>
-<li>「重新开始」清空当前档，重新给你一朵起始板块和 2 000 金币。</li>
+<li>「重新开始」清空当前档，重新给你一朵起始板块和 $2,000。</li>
 <li>旧版本（v0.11 及更早）的存档格式不兼容，不会被读取。</li>
 </ul>
 </section>
@@ -367,11 +367,11 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
 <div class="card"><h3>产量</h3>
 <ul><li>点击：<code>1 + 金手指等级</code> 件</li><li>工人：<code>1 + 工艺等级</code> 件 / 回合</li><li>加工缓冲：每种输入 <code>min(20, 5 × 工人数)</code></li></ul></div>
 <div class="card"><h3>价格</h3>
-<ul><li>开局 2 000 金币</li><li>建筑：伐木营 1 200 · 采石场 1 600 · 锯木厂 2 400 · 石匠铺 2 000 · 矿山 2 000 · 铁厂 3 000</li><li>工人起价：伐木营 400 · 采石场 600 · 矿山 600 · 锯木厂 / 石匠铺 / 铁厂 1 000；同座每多一名 ×1.3</li><li>道路每段 250 × 系数（1 / 2 / 3）</li><li>板块：500 · 2 000 · 5 000 · 15 000 · 40 000 · 之后 ×1.5</li></ul></div>
+<ul><li>开局 $2,000</li><li>建筑：伐木营 $1,200 · 采石场 $1,600 · 锯木厂 $2,400 · 石匠铺 $2,000 · 矿山 $2,000 · 铁厂 $3,000</li><li>工人起价：伐木营 $400 · 采石场 $600 · 矿山 $600 · 锯木厂 / 石匠铺 / 铁厂 $1,000；同座每多一名 ×1.3</li><li>道路每段 $250 × 系数（1 / 2 / 3）</li><li>板块：$500 · $2,000 · $5,000 · $15,000 · $40,000 · 之后 ×1.5</li></ul></div>
 <div class="card"><h3>城镇</h3>
-<ul><li>每种货每回合收 <code>2 × (1 + 等级)</code> 件</li><li>需求池 20 回合的量</li><li>扩建 <code>2 × Σ收购价 × 30 × 1.5^等级</code></li><li>基础价：原木 20 · 石头 30 · 木板 50 · 石头工具 120 · 铁 150</li><li>沙盒加价：每远一朵花 +10%，第二种货 ×0.6</li></ul></div>
+<ul><li>每种货每回合收 <code>2 × (1 + 等级)</code> 件</li><li>需求池 20 回合的量</li><li>扩建 <code>2 × Σ收购价 × 30 × 1.5^等级</code></li><li>基础价：原木 $20 · 石头 $30 · 木板 $50 · 石头工具 $120 · 铁 $150</li><li>沙盒加价：每远一朵花 +10%，第二种货 ×0.6</li></ul></div>
 <div class="card"><h3>科技</h3>
-<ul><li>采石场 1 200 · 锯木厂 3 000 · 石匠铺 8 000 · 航道 8 000 · 矿山 5 000 · 铁厂 40 000</li><li>金手指 2 000 起，每级 ×2</li><li>工艺起价：伐木营 2 000 · 采石场 2 500 · 锯木厂 4 000 · 矿山 4 000 · 石匠铺 8 000 · 铁厂 12 000，每级 ×2</li></ul></div>
+<ul><li>采石场 $1,200 · 锯木厂 $3,000 · 石匠铺 $8,000 · 航道 $8,000 · 矿山 $5,000 · 铁厂 $40,000</li><li>金手指 $2,000 起，每级 ×2</li><li>工艺起价：伐木营 $2,000 · 采石场 $2,500 · 锯木厂 $4,000 · 矿山 $4,000 · 石匠铺 $8,000 · 铁厂 $12,000，每级 ×2</li></ul></div>
 <div class="card"><h3>退款</h3>
 <ul><li>建筑、工人、道路：100%</li><li>科技、板块、城镇扩建：不退</li></ul></div>
 </div>
@@ -392,7 +392,7 @@ i.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px so
  const hex=(q,r,fill,label,op)=>{const[x,y]=px(q,r);svg.appendChild(el('polygon',{points:pts(x,y,s-1),fill,stroke:'#17212b','stroke-width':.8,opacity:op??1}));if(label)svg.appendChild(el('text',{x,y:y+4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#17212b'},label));};
  // Neighbouring flowers as fog.
  for(const[a,b]of[[3,-1],[2,-3],[-1,-2],[-3,1],[-2,3],[1,2]]){hex(a,b,COL.fog,'',.55);for(const[dq,dr]of DIRS)hex(a+dq,b+dr,COL.fog,'',.55);}
- const price=[[3,-1],[2,-3],[-1,-2],[-3,1],[-2,3],[1,2]];for(const[a,b]of price){const[x,y]=px(a,b);svg.appendChild(el('text',{x,y:y+4,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#f4efe3'},'500'));}
+ const price=[[3,-1],[2,-3],[-1,-2],[-3,1],[-2,3],[1,2]];for(const[a,b]of price){const[x,y]=px(a,b);svg.appendChild(el('text',{x,y:y+4,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#f4efe3'},'$500'));}
  // Start flower: centre grass, ring forest(camp), rock, grass, rock, ore, mountain.
  const ring=['forest','rock','grass','rock','ore','mountain'];
  hex(0,0,COL.grass,NAME.grass);
