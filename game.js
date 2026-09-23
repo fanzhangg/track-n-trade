@@ -122,16 +122,16 @@ function tileClick(key) {
  if (buildType) return place(buildType, key);
  if (connectFrom) return connect(connectFrom, key);
  selected = key; selectedEdge = null; selectedFlower = null;
- if (world.tiles[key].building) produce(key); else render();
+ if (E.workshop(world.tiles[key].building)) produce(key); else render();
 }
-// A click on a workshop makes goods; a click on a town asks for more of every good it buys. Both pop "+n".
+// Only workshops perform manual production. Town selection never changes the economy.
 function produce(key) {
- const t = world.tiles[key], b = t.building, town = b.type === 'town';
- const r = town ? null : E.RECIPES[b.type].out, before = town ? {...t.loose} : t.loose[r];
+ const t = world.tiles[key], b = t.building;
+ if(!E.workshop(b))return;
+ const r = E.RECIPES[b.type].out, before = t.loose[r];
  try {
   world = E.apply(world, {type:'click', tile:key});
-  if (town) { const after = world.tiles[key].loose; for (const g in before) if (after[g] < before[g]) pop(key, after[g] - before[g], g); }
-  else pop(key, world.tiles[key].loose[r] - before, r);
+  pop(key, world.tiles[key].loose[r] - before, r);
   const g = svg.querySelector(`[data-tile="${key}"]`);
   g.classList.remove('bump'); void g.getBoundingClientRect(); g.classList.add('bump');
   render();
@@ -486,7 +486,7 @@ function townPanel(t) {
  return `<h2>城镇 ${BuildingTiles.formatLevel(E.eraPower(world))}</h2>`+supplyCaption(s)
  +`<section class="ledger-section"><h3>收购收益</h3>${ledgerTable(['货物','单价<small>/件</small>','收购<small>件/回合</small>','收入<small>/回合</small>'],market,`<tfoot><tr><th colspan="3">总收入 /回合</th><td>${s.n?coins(total):'—'}</td></tr></tfoot>`)}</section>
  <section class="ledger-section"><h3>供货与库存 <small>件 / 回合</small></h3>${ledgerTable(['货物','运入','可收购','库存<small>件 · 当前</small>'],stock)}<p class="ledger-note">${goods.map(([r])=>names[r]+' ← '+supplyRelation(chain.up.filter(u=>u.r===r))).join('<br>')}</p></section>
- <p class="detail-caption">居民 ${b.residents} / ${E.MAX_RESIDENTS}</p><div class="actions detail-actions">${b.residents<E.MAX_RESIDENTS?button(purchaseLabel('增加居民',next,`每种货每回合多收 ${E.TOWN_RATE*E.eraPower(world)} 件`),{type:'resident',tile:t.id},true,!afford(next),costly(next)):''}<button id="produce">手工收购 每种货 ${E.clickPower(world,t)} 件</button></div>`;
+ <p class="detail-caption">居民 ${b.residents} / ${E.MAX_RESIDENTS}</p><div class="actions detail-actions">${b.residents<E.MAX_RESIDENTS?button(purchaseLabel('增加居民',next,`每种货每回合多收 ${E.TOWN_RATE*E.eraPower(world)} 件`),{type:'resident',tile:t.id},true,!afford(next),costly(next)):''}</div>`;
 }
 function flowerPanel(f) {
  if (f.state === 'fog') {
@@ -515,7 +515,6 @@ function renderSelection() {
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:`生产${names[r]}`;
   html=`<h2>${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2><p class="detail-recipe">${recipe}</p>`
    +workshopSupply(t,st)
-   +`<p class="detail-caption">维护费 −${coins(E.upkeep(b))} / 回合</p>`
    +detailNotice(issue)
    +`<div class="actions detail-actions">${n<E.MAX_WORKERS?button(purchaseLabel('雇用工人',next,`每回合多产 ${E.workerPower(world,b.type)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next)):''}<button id="produce">手工生产 ${E.clickPower(world,t)} 件${names[r]}</button></div>`;
 
@@ -585,16 +584,15 @@ function renderLegend() {
 // The tech tree is one card per building, plus the era and the waterway. A card
 // starts as an unlock; once owned, the same button becomes the craft upgrade for that type.
 function techCards() {
- const cards = [{id:'finger', name:'金手指', icon:'worker', tier:1, kind:'economy', desc:'手工点击：点工坊出货，点城镇从仓库多卖。每次至少这么多，工人和居民多了还会跟着涨', craft:'tools', per:n=>`每次点击至少 ${n} 件`},
-  {id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
+ const cards = [{id:'era', name:'时代', icon:'town', tier:1, kind:'economy', desc:'全图所有城镇的居民。时代越高，每名居民每回合收得越多', craft:'era', per:n=>`每名居民每种货每回合 ${E.TOWN_RATE*n} 件`, title:n=>E.ERAS[n], next:n=>`进入${E.ERAS[n]}`}];
  for (const b of E.BUILDINGS) {
   const t = E.TECH[b], rc = E.RECIPES[b];
   const ins = Object.keys(rc.in).map(r => names[r]).join(' + ');
   cards.push({id:b, name:names[b], icon:b, tier:t ? t.tier : 1, kind:'building', unlock:t ? b : null, craft:E.craftOf(b),
-   desc:t ? t.desc : `在${names[rc.fits[0]]}建，产${names[rc.out]}`, per:n=>`每名工人每回合 ${n} 件`});
+   desc:t ? t.desc : `在${names[rc.fits[0]]}建，产${names[rc.out]}`, per:n=>`每名工人每回合 ${n} 件 · 手工每次 ${n} 件`});
  }
  cards.push({id:'waterway', name:E.TECH.waterway.name, icon:'waterway', tier:E.TECH.waterway.tier, kind:'waterway', unlock:'waterway', desc:E.TECH.waterway.desc});
- return cards;
+ return cards.filter(c=>E.TECH[c.craft||c.unlock]);
 }
 function renderTech() {
  const key=Object.keys(E.TECH).map(k=>`${world.tech[k]||0}${E.techAvailable(world,k)?'a':''}${E.techCost(world,k)}${afford(E.techCost(world,k))?'$':''}`).join('');
@@ -698,7 +696,7 @@ function renderToolbar() {
  $('tech-ready').textContent=ready?`${ready} 项可买`:'';
 }
 function render() {
- $('money').textContent=coins(world.money);$('money').classList.toggle('negative',world.money<0);
+ $('money').textContent=coins(world.money);
  $('income').textContent=signed(windowStats().income)+'/回合';
  $('pause').innerHTML=icon(world.paused?'ui-play':'ui-pause')+(world.paused?'继续':'暂停');$('speed').textContent=speed+'×';
  $('cancel').hidden=!buildType&&!connectFrom;
@@ -788,7 +786,7 @@ document.addEventListener('pointerup',event=>{
   // building it produces, on bare ground it just selects the tile.
   if(finished.kind==='connect'){selectedFlower=null;suppressClick=true;
    if(finished.edge&&world.edges[finished.edge]){selectedEdge=finished.edge;selected=null;render();}
-   else{selected=finished.from;selectedEdge=null;if(world.tiles[finished.from].building)produce(finished.from);else render();}}
+   else{selected=finished.from;selectedEdge=null;if(E.workshop(world.tiles[finished.from].building))produce(finished.from);else render();}}
   return;
  }
  suppressClick=true;
