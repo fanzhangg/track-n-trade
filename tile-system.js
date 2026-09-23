@@ -10,10 +10,19 @@
   const shape='<circle class="bt-state-base" r="6"/><path class="bt-state-ink" d="M0-3v3.5m0 2v.2"/>';
   return `<g class="bt-state bt-state-${kind}" transform="translate(${x} ${y})" role="img" aria-label="${esc(label)}"><title>${esc(label)}</title>${shape}</g>`;
  }
+ function formatLevel(level){
+  if(!Number.isSafeInteger(level)||level<1)return '';
+  if(level>=4000)return [...formatLevel(Math.floor(level/1000))].map(c=>c+'̅').join('')+formatLevel(level%1000);
+  let text='';
+  for(const [value,symbol] of [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]){
+   text+=symbol.repeat(Math.floor(level/value));level%=value;
+  }
+  return text;
+ }
  function levelBadge(level,x,y){
   if(!Number.isSafeInteger(level)||level<1)return '';
-  const width=Math.max(12,String(level).length*5+4);
-  return `<g class="bt-level" transform="translate(${x} ${y})" role="img" aria-label="当前等级 ${level}"><title>当前等级 ${level}</title><rect class="bt-level-base" x="${-width/2}" y="-6" width="${width}" height="12" rx="6"/><text class="bt-level-number" text-anchor="middle" dominant-baseline="central">${level}</text></g>`;
+  const text=formatLevel(level), width=Math.max(12,labelWidth(text)*2/3+4);
+  return `<g class="bt-level" transform="translate(${x} ${y})" role="img" aria-label="当前等级 ${text}"><title>当前等级 ${text}</title><rect class="bt-level-base" x="${-width/2}" y="-6" width="${width}" height="12" rx="6"/><text class="bt-level-number" text-anchor="middle" dominant-baseline="central">${text}</text></g>`;
  }
  const labelWidths=new Map();
  let labelContext;
@@ -57,6 +66,6 @@
   const start=-(count-1)*6;
   return `<g class="bt-people bt-people-${kind} ${!active||paused?'is-idle':''}">${Array.from({length:count},(_,i)=>{const x=start+i*12;return `<g class="bt-person"><ellipse class="bt-person-shadow" cx="${x}" cy="-23" rx="5.6" ry="2"/><g class="bt-person-beat" style="--beat:${beat}s;animation-delay:-${(clock+i*beat/count)%beat}s">${root.TradeIcons.svgIcon(kind,{base,x:x-8.5,y:-41,size:17})}</g></g>`;}).join('')}</g>`;
  }
- root.BuildingTiles={render,people,marker,levelBadge};
+ root.BuildingTiles={render,people,marker,levelBadge,formatLevel};
  root.AmbientTiles={render:ambient};
 })(window);
