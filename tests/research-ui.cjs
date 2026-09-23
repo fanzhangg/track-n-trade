@@ -39,7 +39,7 @@ const assert=require('node:assert/strict');
   });
   assert.match(await page.locator('#selection').innerText(),/每回合多产 6 件/);
   await page.locator('#selection button').filter({hasText:'雇用工人'}).click();
-  assert.match(await page.locator('#selection').innerText(),/水力机械 \+3 件\/回合.*专业分工 \+3 件\/回合/);
+  await page.locator('#selection [data-key="bonuses"]>summary').click();assert.match(await page.locator('#selection').innerText(),/水力机械[\s\S]*\+3[\s\S]*件／回合[\s\S]*专业分工[\s\S]*\+3[\s\S]*件／回合/);
   assert.equal(await page.evaluate(()=>E.rate(world,world.tiles['0,0'])),12);
   assert.match(await page.evaluate(()=>E.researchStatus(world,'specialization')),/1 \/ 1 座加工工坊满 3 人/);
   await page.screenshot({path:path.resolve('tmp',`research-${width}-production.png`)});

@@ -45,3 +45,12 @@ test('automatic routing detours around other roads and intermediate buildings',(
  const group=E.roadComponent(w,Object.keys(w.edges)[0]);
  assert.ok(group.length<Object.keys(w.edges).length);
 });
+
+test('a blocked independent route gives feedback and spends nothing',()=>{
+ const w=E.newWorld(1);w.money=10000;
+ w.tiles={};w.edges={};
+ for(let q=0;q<3;q++)w.tiles[`${q},0`]={id:`${q},0`,q,r:0,terrain:'grass',building:{type:'camp'}};
+ const before=E.copy(w);
+ assert.throws(()=>E.command(w,{type:'connect',from:'0,0',to:'2,0'}),/没有独立路线/);
+ assert.deepEqual(w,before);
+});

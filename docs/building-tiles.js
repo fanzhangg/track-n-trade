@@ -55,12 +55,20 @@
  let taps=0,paused=false;for(const [id,label]of [['bt-worker-demo','工人生产'],['bt-resident-demo','居民收购']])document.getElementById(id).onclick=()=>{const el=document.getElementById(id);el.classList.remove('bt-tap');void el.offsetWidth;el.classList.add('bt-tap');document.getElementById('bt-interaction-feedback').textContent=label+'反馈 · '+(++taps)+' 次';};document.getElementById('bt-motion').onclick=e=>{paused=!paused;section.querySelectorAll('.bt-interaction-demo .bt-people').forEach(el=>el.classList.toggle('is-idle',paused));e.target.textContent=paused?'继续动画':'暂停动画';};
  // Use the prototype's road geometry; draw the road beneath models and labels.
  const roadSvg=section.querySelector('.bt-road-demo svg');
- const roadTiles={a:{id:'a',terrain:'forest',building:{type:'camp'},x:0,y:0},b:{id:'b',terrain:'grass',x:88.335,y:0},c:{id:'c',terrain:'grass',building:{type:'sawmill'},x:44.167,y:76.5*MapGeometry.depth}};
- const layout=RoadTiles.layout(roadTiles,[{id:'ab',a:'a',b:'b'},{id:'bc',a:'b',b:'c'},{id:'ac',a:'a',b:'c'}],t=>[t.x,t.y]);
+ const roadTiles={a:{id:'a',terrain:'forest',building:{type:'camp'},x:0,y:0},b:{id:'b',terrain:'grass',x:88.335,y:0},c:{id:'c',terrain:'grass',building:{type:'sawmill'},x:44.167,y:76.5*MapGeometry.depth},d:{id:'d',terrain:'grass',building:{type:'sawmill'},x:132.502,y:76.5*MapGeometry.depth}};
+ const layout=RoadTiles.layout(roadTiles,[{id:'ab',a:'a',b:'b'},{id:'bd',a:'b',b:'d'},{id:'ac',a:'a',b:'c'}],t=>[t.x,t.y]);
  roadSvg.setAttribute('viewBox','-65 -65 265 220');
  roadSvg.innerHTML=Object.values(roadTiles).map(t=>`<polygon points="${points()}" transform="translate(${t.x} ${t.y})" fill="var(--terrain-${t.terrain})"/>`).join('')+[...layout.roads.values()].map(r=>`<g class="road-control"><path class="road" d="${r.d}"/><path class="road-hit" d="${r.hit}" data-route="${r.id==='ac'?'direct':'via'}" tabindex="0" role="button" aria-label="选择曲线道路"/></g>`).join('')+`<g>${BuildingTiles.render({...samples[0],pills:true},'../assets/icons/v1/')}</g><g transform="translate(44.167 ${76.5*MapGeometry.depth})">${BuildingTiles.render({...samples[3],pills:true},'../assets/icons/v1/')}</g>`+`<g class="road-travelers" aria-hidden="true"></g>`;
+ roadSvg.insertAdjacentHTML('beforeend',`<g transform="translate(132.502 ${76.5*MapGeometry.depth})">${BuildingTiles.render({...samples[2],pills:true},'../assets/icons/v1/')}</g>`);
+ document.getElementById('bt-road-feedback').textContent='两条连接共用伐木营端点，通往不同建筑；选中一条时，另一条保持原样。';
  const roadTitle=section.querySelector('.bt-road-demo').previousElementSibling;
  roadTitle.textContent='连续曲线穿过空地，在院地中心 (0,7) 接入；院地覆盖路头，与模型脚部贴合。下例同时检查横向、斜向接入和空地转弯。优先走完同向连续最长线路，只有未覆盖分支补充动画；短路同样有运货反馈。下方示例支持反转流向和暂停。';
+ const organicDemo=document.createElement('div');organicDemo.className='bt-chain-cases';organicDemo.id='organic-road-samples';
+ organicDemo.innerHTML=[['轻微蜿蜒',[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0]]],['转弯与斜向',[[0,0],[1,0],[1,1],[2,1],[3,1],[4,1]]]].map(([label,coords],sample)=>{
+  const tiles=Object.fromEntries(coords.map(([q,r],i)=>['organic'+sample+'-'+i,{id:'organic'+sample+'-'+i,q,r,terrain:'grass',building:i===0||i===coords.length-1?{type:'sawmill'}:null}]));
+  const ids=Object.keys(tiles),edges=ids.slice(1).map((b,i)=>({id:'o'+i,a:ids[i],b})),lay=RoadTiles.layout(tiles,edges,MapGeometry.position);
+  return `<article><b>${label}</b><svg viewBox="-55 -45 560 170" aria-label="${label}自然道路示例">${Object.values(tiles).map(t=>{const [x,y]=MapGeometry.position(t);return `<polygon points="${MapGeometry.points(x,y,50)}" fill="var(--terrain-grass)" stroke="var(--border-subtle)" stroke-width=".7"/><circle cx="${x}" cy="${y}" r="1.5" fill="var(--text-muted)"/>`;}).join('')}${[...lay.roads.values()].map(e=>`<path class="road" d="${e.d}"/>`).join('')}${[ids[0],ids.at(-1)].map(id=>{const [x,y]=MapGeometry.position(tiles[id]);return `<g transform="translate(${x} ${y})">${BuildingTiles.render({...samples[3],pills:true},'../assets/icons/v1/')}</g>`;}).join('')}</svg><p>小点表示板块中心；曲线固定，不随刷新变化。</p></article>`;
+ }).join('');roadSvg.closest('.bt-road-demo').after(organicDemo);
  const travelDemo=document.createElement('div');
  travelDemo.className='bt-chain-cases';travelDemo.id='transport-preview';
  travelDemo.innerHTML=`<article><b>陆路 · 三段长路仅一只小驴</b><svg viewBox="-20 -40 220 85" aria-label="小驴运货装饰示例"><path class="road" d="M0 12 Q90 -6 180 12"/><g class="travel-demo-land" aria-hidden="true"></g></svg></article><article style="background:var(--terrain-lake)"><b>航道 · 三段长航道仅一艘船</b><svg viewBox="-20 -40 220 85" aria-label="航船装饰示例"><path d="M0 12 Q90 -6 180 12" class="road water"/><g class="travel-demo-water" aria-hidden="true"></g></svg></article>`;
@@ -80,7 +88,7 @@
  function travelFrame(now){
   if(!travelPaused&&!document.hidden)travelTime+=Math.min(now-travelLast,80)/1000;travelLast=now;
   const clock=reducedTravel.matches?0:travelTime;
-  roadTraffic=RoadTiles.traffic(layout,[{edge:'ab',from:'a'},{edge:'bc',from:'b'},{edge:'ac',from:'a'}],clock,roadTraffic);
+  roadTraffic=RoadTiles.traffic(layout,[{edge:'ab',from:'a'},{edge:'bd',from:'b'},{edge:'ac',from:'a'}],clock,roadTraffic);
   roadSvg.querySelector('.road-travelers').innerHTML=RoadTiles.travelers(roadTraffic,clock,{reduced:reducedTravel.matches});
   for(const water of [false,true]){
    const i=water?1:0;demoTraffic[i]=RoadTiles.traffic((demoShort?shortLayouts:demoLayouts)[i],Array.from({length:demoShort?1:3},(_,j)=>({edge:'demo'+j,from:'node'+(demoReverse?j+1:j)})),clock,demoTraffic[i]);

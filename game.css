@@ -229,3 +229,6 @@ button.action-button[data-action] .action-refund{font-size:11px;font-weight:400;
 @media(prefers-reduced-motion:reduce){button.action-button[data-action]{transition:none}}
 
 button.action-button[data-action] .action-reason{display:block;margin-top:3px;font-size:11px;font-weight:400;color:inherit}
+
+.hl.road-target{stroke:var(--action-primary);stroke-width:2.5;stroke-dasharray:5 4}.hl.road-target.hover{stroke:var(--action-primary);stroke-width:4;fill:var(--action-subtle);fill-opacity:.45}.hl[hidden]{display:none}#map.connecting .road-hit{pointer-events:none}
+.hl.road-target.unaffordable{stroke:var(--bottleneck-1)}.hl.road-target.unaffordable.hover{stroke:var(--bottleneck-1);fill:var(--bottleneck-1);fill-opacity:.12}

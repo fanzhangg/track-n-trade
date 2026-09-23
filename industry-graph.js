@@ -51,7 +51,7 @@
  }
 
  // Shared by the planner and isolated design samples; never mutates the world.
- function detail(E,w,id,base='assets/icons/v1/',interactive=true){
+ function detail(E,w,id,base='assets/icons/v1/',interactive=true,context={}){
   const ico=(key,size=32)=>root.TradeIcons.icon(key,{base,size,decorative:true});
   const arrow='<span class="tech-flow-arrow" aria-hidden="true">→</span>';
   const tile=(key,label,value='',focus='')=>{const enabled=interactive&&focus&&(focus==='camp'||w.tech[focus]>0||E.techAvailable(w,focus));const tag=enabled?'button':'div';return '<'+tag+' class="tech-flow-item"'+(enabled?' data-planner-focus="'+focus+'"':'')+'>'+ico(key)+'<span>'+escape(label)+'</span>'+(value?'<b>'+escape(value)+'</b>':'')+'</'+tag+'>';};
@@ -59,9 +59,21 @@
   const rc=E.RECIPES[id];
   if(rc){
    const ins=Object.keys(rc.in),owned=id==='camp'||w.tech[id]>0,amount=w.tech[E.craftOf(id)]+1;
-   const inputs=ins.map(r=>tile(r,E.GOODS[r],'',E.BUILDINGS.find(b=>E.RECIPES[b].out===r))).join('<span class="tech-flow-plus" aria-hidden="true">+</span>');
-   const recipe='<div class="tech-recipe-flow" aria-label="生产流程">'+(ins.length?'<div class="tech-flow-inputs">'+inputs+'</div>'+arrow:'')+tile(id,rc.name)+arrow+tile(rc.out,E.GOODS[rc.out])+'</div>';
-   return '<section class="tech-visual">'+recipe+(owned?'<div class="tech-yield"><span>'+ico('worker',24)+'每人／回合</span><div><b>'+amount+'</b>'+arrow+'<b class="tech-yield-next">'+(amount+1)+'</b>'+ico(rc.out,28)+'</div><small>基础产量 · 手工产量同步 +1</small></div>':'')+'</section>';
+   const state=context.tile?E.productionState(w,context.tile):null;
+   const inputs=ins.map(r=>{const maker=E.BUILDINGS.find(b=>E.RECIPES[b].out===r);return '<div class="tech-input">'+tile(r,E.GOODS[r],'',maker)+(state?'<small class="connection-status '+(state.sources[r]?'':'waiting')+'">'+ico(state.sources[r]?'ui-checkmark':'ui-plus',12)+(state.sources[r]?'已接通':'待连接'+E.RECIPES[maker].name)+'</small>':'')+'</div>';}).join('<span class="tech-flow-plus" aria-hidden="true">+</span>');
+   const recipe='<div class="tech-recipe-flow" aria-label="生产流程">'+(ins.length?'<div class="tech-flow-inputs">'+inputs+'</div>'+arrow:'')+(ins.length?'':tile(id,rc.name))+(!ins.length?arrow:'')+tile(rc.out,E.GOODS[rc.out])+'</div>';
+   const buildings=context.tile?[context.tile]:Object.values(w.tiles).filter(t=>t.building?.type===id);
+   const crew=buildings.reduce((n,t)=>n+t.building.workers.length,0),capacity=buildings.length*E.MAX_WORKERS;
+   const rate=buildings.reduce((n,t)=>n+(E.productionState(w,t).active?E.rate(w,t):0),0);
+   const scope=context.tile?'当前建筑':'全部同类工坊';
+   const run=state?(state.active?'生产中':crew?'待连接':'待雇工'):buildings.length+' 座';
+   const metrics='<div class="workshop-status"><span>'+scope+'</span><span class="state-badge '+(state?.active?'running':'')+'">'+run+'</span></div><div class="workshop-metrics"><div class="production-metric"><span class="metric-label">'+'固定产量'+' / 回合</span><strong>'+ico(rc.out,24)+rate+' <small>件'+E.GOODS[rc.out]+'</small></strong></div><div class="crew-metric"><span class="metric-label">工人</span><strong>'+ico('worker',22)+crew+' <small>/ '+capacity+'</small></strong></div></div>';
+   const bonuses=context.tile?E.productionBonuses(w,context.tile):[];
+   const bonus=bonuses.length?'<div class="tech-bonuses">'+bonuses.map(b=>'<span>'+ico(E.TECH[b.key].icon||'ui-gear',18)+escape(E.TECH[b.key].name)+' <b>+'+b.amount+'</b><small>件／回合</small></span>').join('')+'</div>':'';
+   const upgrade='<div class="tech-yield"><span>'+ico('worker',24)+'每人／回合</span><div><b>'+amount+'</b>'+arrow+'<b class="tech-yield-next">'+(amount+1)+'</b>'+ico(rc.out,28)+'</div><small>基础产量 · 手工产量同步 +1</small></div>';
+   const section=context.section||(context.tile?'overview':owned?'upgrade':'recipe');
+   const blockers=state&&!state.active?'<div class="detail-blocker">'+(crew?ins.filter(r=>!state.sources[r]).map(r=>'待连接'+E.RECIPES[E.BUILDINGS.find(b=>E.RECIPES[b].out===r)].name).join(' · '):'雇用第一名工人开始生产')+'</div>':'';
+   return '<section class="tech-visual">'+(section==='recipe'?recipe:section==='overview'?metrics+blockers:section==='bonuses'?bonus:upgrade)+'</section>';
   }
   const effects={
    waterway:()=>flow(tile('waterway','湖泊'),tile('rail','可修路')),

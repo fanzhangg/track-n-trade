@@ -17,17 +17,17 @@ const {pathToFileURL}=require('node:url'),path=require('node:path'),assert=requi
   assert.ok(await page.locator('#selection button').filter({hasText:'建造采石场'}).count()>0);
   await page.evaluate(()=>{selected=E.START_TILE;render();});
   const beforeCraft=await page.evaluate(()=>world.tech.campCraft);
-  await page.locator('#selection button').filter({hasText:'升级工艺'}).click();
+  await page.locator('#selection [data-key="craft"]>summary').click();await page.locator('#selection button').filter({hasText:'升级工艺'}).click();
   assert.equal(await page.evaluate(()=>world.tech.campCraft),beforeCraft+1);
   await page.evaluate(()=>{selected=E.START_TOWN;render();});
   const beforeEra=await page.evaluate(()=>world.tech.era);
-  await page.locator('#selection button').filter({hasText:'提升时代'}).click();
+  await page.locator('#selection [data-key="era"]>summary').click();await page.locator('#selection button').filter({hasText:'进入'}).click();
   assert.equal(await page.evaluate(()=>world.tech.era),beforeEra+1);
   await page.evaluate(()=>{
    while(!E.boughtGoods(world).has('tool')){const f=Object.values(world.flowers).find(f=>f.state==='fog');E.command(world,{type:'explore',flower:f.id});}E.command(world,{type:'tech',key:'sawmill'});E.command(world,{type:'tech',key:'mason'});
    selected=null;selectedEdge=Object.keys(world.edges)[0];render();
   });
-  await page.locator('#selection button').filter({hasText:'研究石工筑路'}).click();
+  await page.locator('#selection [data-key="research"]>summary').click();await page.locator('#selection button').filter({hasText:'研究石工筑路'}).click();
   assert.equal(await page.evaluate(()=>world.tech.roadEngineering),1);
   assert.deepEqual(errors,[]);await context.close();
   console.log(`Detail tech ${width}px: direct unlock, craft, era, no growth panel passed`);

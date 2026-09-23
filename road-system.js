@@ -2,32 +2,43 @@
 (function(root){
  const mix=(a,b,t=.5)=>a.map((v,i)=>v+(b[i]-v)*t);
  const quad=(a,b,c,t)=>mix(mix(a,b,t),mix(b,c,t),t);
+ const cubic=(a,b,c,d,t)=>mix(quad(a,b,c,t),quad(b,c,d,t),t);
+ // A stable spatial hash: previews, saved worlds and reversed edges get the same bends.
+ function noise(key){let h=2166136261;for(const ch of key)h=Math.imul(h^ch.charCodeAt(0),16777619);h^=h>>>16;h=Math.imul(h,0x7feb352d);h^=h>>>15;return (h>>>0)/4294967295*2-1;}
  const point=p=>p.map(n=>+n.toFixed(3)).join(' ');
  function layout(tiles,edges,position){
   const ports=new Map(),roads=new Map();
+  const depth=root.MapGeometry?.depth||1,plane=id=>{const p=position(tiles[id]);return [p[0],p[1]/depth];},project=p=>[p[0],p[1]*depth];
   for(const e of edges){
-   const mid=mix(position(tiles[e.a]),position(tiles[e.b]));
+   const [first,last]=[e.a,e.b].sort(),a=plane(first),b=plane(last),delta=b.map((v,i)=>v-a[i]),length=Math.hypot(...delta)||1;
+   const normal=delta.map(v=>v/length),seed=first+'|'+last,offset=noise('portal:'+seed)*9;
+   const middle=mix(a,b),portal=[middle[0]-normal[1]*offset,middle[1]+normal[0]*offset],handle=12+(noise('handle:'+seed)+1)*2;
    for(const id of [e.a,e.b]){
     if(!ports.has(id))ports.set(id,[]);
-    ports.get(id).push({edge:e.id,mid});
+    ports.get(id).push({edge:e.id,mid:project(portal),portal,normal:normal.map(v=>v*(id===first?1:-1)),handle});
    }
   }
   function half(id,edge){
-   const tile=tiles[id],c=position(tile),list=ports.get(id),p=list.find(p=>p.edge===edge).mid;
-   // Split a single quadratic at its midpoint: both road halves share exactly
-   // the same position AND tangent, including tight 60-degree hex turns.
+   const tile=tiles[id],center=plane(id),list=ports.get(id),port=list.find(p=>p.edge===edge),p=port.portal;
+   const c=[center[0]+noise('tile-x:'+id)*14,center[1]+noise('tile-y:'+id)*10];
+   let entry,control;
+   // The split quadratic supplies a shared interior point and tangent. Convert
+   // its tangent to cubic form, then constrain the other handle to the boundary normal.
+   // All four control points stay inside this convex hex, including tight turns.
    if(!tile.building&&list.length===2){
-    const q=list.find(p=>p.edge!==edge).mid;
-    return [quad(p,c,q,.5),mix(c,p),p];
+    const q=list.find(p=>p.edge!==edge).portal;
+    entry=quad(p,c,q,.5);control=mix(entry,mix(c,p),2/3);
+   }else{
+    // Buildings stay anchored in their courtyard. Preserve legacy junction centers.
+    entry=tile.building?[center[0],center[1]+7/depth]:list.length>2?center:c;
+    control=mix(entry,p,1/3);
    }
-   // Land the round road cap inside the shared building courtyard.
-   const entry=tile.building?[c[0],c[1]+7]:c;
-   return [entry,mix(c,p),p];
+   return [entry,control,p.map((v,i)=>v-port.normal[i]*port.handle),p].map(project);
   }
   for(const e of edges){
    const a=half(e.a,e.id),b=half(e.b,e.id);
-   const d=`M${point(a[0])}Q${point(a[1])} ${point(a[2])}Q${point(b[1])} ${point(b[0])}`;
-   const at=t=>t<=.5?quad(...a,t*2):quad(b[2],b[1],b[0],t*2-1);
+   const d=`M${point(a[0])}C${point(a[1])} ${point(a[2])} ${point(a[3])}C${point(b[2])} ${point(b[1])} ${point(b[0])}`;
+   const at=t=>t<=.5?cubic(...a,t*2):cubic(b[3],b[2],b[1],b[0],t*2-1);
    const hitPoints=Array.from({length:41},(_,i)=>at(i/40)).filter(p=>[e.a,e.b].every(id=>!tiles[id].building||Math.hypot(...p.map((v,i)=>v-position(tiles[id])[i]))>32));
    const hit=hitPoints.map((p,i)=>`${i?'L':'M'}${point(p)}`).join('');
    roads.set(e.id,{...e,d,hit,at,water:[tiles[e.a],tiles[e.b]].some(t=>t.terrain==='lake')});

@@ -114,23 +114,13 @@ test('a mine only stands on ore, a camp only on forest, a quarry only on rock, w
  w=E.apply(w,{type:'build',tile:at('ore'),buildType:'mine'});w=E.apply(w,{type:'build',tile:at('grass'),buildType:'smelter'});E.validate(w);
 });
 test('two goods sharing a road both get through; a segment has no capacity limit',()=>{
- let {w,town}=started(1);w=rich(w);w=hire(w,CAMP,3);
+ let w=hire(rich(fresh(1)),CAMP,3);
  w=tech(w,'quarry');terraform(w,'rock');let q;[w,q]=build(w,'quarry');w=hire(w,q,3);
- // a stone town that takes logs too, so both goods share its last segment
- let stoneTown;[w,stoneTown]=secondTown(w,{stone:30,log:25});
- w.tech.mountainPass=1;
- for(let i=0;i<6;i++)w=unlock(w);
- for(const source of [q,CAMP]){
-  if(E.path(w,source,stoneTown))continue;
-  let pair;
-  const sources=Object.values(w.tiles).filter(t=>t.building&&(t.id===source||E.path(w,source,t.id)));
-  const targets=Object.values(w.tiles).filter(t=>t.building&&(t.id===stoneTown||E.path(w,stoneTown,t.id)));
-  for(const from of sources)for(const to of targets){try{E.connection(w,from.id,to.id);pair={from:from.id,to:to.id};}catch{}}
-  assert.ok(pair,'a reachable building can attach the market using an independent road');
-  w=E.apply(w,{type:'connect',...pair});
- }
+ // Two independent connections meet at the quarry; both goods use its road to town.
+ w.tiles[TOWN].building.buys={stone:30,log:25};w.flowers[w.tiles[TOWN].flower].design.buys={stone:30,log:25};
+ w=E.apply(w,{type:'connect',from:q,to:TOWN});w=E.apply(w,{type:'connect',from:CAMP,to:q});
  run(w,40);
- assert.ok(w.sold[stoneTown].stone>0&&w.sold[stoneTown].log>0,'both goods got through');
+ assert.ok(w.sold[TOWN].stone>0&&w.sold[TOWN].log>0,'both goods got through');
 });
 test('full refunds: demolishing, firing and removing roads return exactly what was paid, so the engine can always be rebuilt',()=>{
  let {w}=started(1);w=rich(w,5000);E.tick(w);const m0=w.money;

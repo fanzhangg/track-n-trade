@@ -89,6 +89,7 @@ function place(type, tile) {
  render();
 }
 function connect(from, to) {
+ try{const route=E.connection(world,from,to);if(!route.segments.length){toast('这两座建筑已经连接');return;}if(!afford(route.cost)){toast(`金币不足 · 需要 ${coins(route.cost)}，还差 ${coins(route.cost-world.money)}`);return;}}catch(error){toast(error.message);return;}
  const town = [from,to].some(k => world.tiles[k]?.building?.type === 'town');
  if (act({type:'connect',from,to}, town ? '已连到城镇' : '道路已修好')) {
   selected = to; selectedEdge = null; selectedFlower = null; connectFrom = null;
@@ -289,6 +290,8 @@ function buildMap() {
   g.addEventListener('click', () => tileClick(g.dataset.tile));
   g.addEventListener('pointerenter', () => { hovered = g.dataset.tile; renderHighlight(); });
   g.addEventListener('pointerleave', () => { if (hovered === g.dataset.tile) { hovered = null; renderHighlight(); } });
+  g.addEventListener('focus',renderHighlight);
+  g.addEventListener('blur',renderHighlight);
   g.addEventListener('keydown', e => { if (['Enter',' '].includes(e.key)) { e.preventDefault(); suppressClick = false; tileClick(g.dataset.tile); } });
  }
  for (const g of svg.querySelectorAll('[data-flower]')) {
@@ -298,12 +301,28 @@ function buildMap() {
  }
  applyView();
 }
+let roadOptionsKey='',roadOptionsCache=new Map();
+function roadOptions(){
+ if(!connectFrom)return new Map();
+ const key=JSON.stringify([connectFrom,Object.values(world.tiles).map(t=>[t.id,t.terrain,t.building?.id,t.building?.type]),Object.values(world.edges).map(e=>[e.id,e.road,e.removing]),world.tech]);
+ if(key!==roadOptionsKey){
+  roadOptionsKey=key;roadOptionsCache=new Map();
+  for(const t of Object.values(world.tiles))if(t.building&&t.id!==connectFrom){
+   try{const route=E.connection(world,connectFrom,t.id);roadOptionsCache.set(t.id,route.segments.length?{cost:route.cost}:{reason:'已连接'});}
+   catch(error){roadOptionsCache.set(t.id,{reason:error.message});}
+  }
+ }
+ return roadOptionsCache;
+}
 // Outlines live in their own layer above the terrain, so a highlighted hex is never half-covered by its neighbours.
 function renderHighlight() {
  const ring = (t, cls) => { const [x,y] = position(t); return `<polygon class="hl ${cls}" points="${hexPoints(x,y,49)}"/>`; };
  let html = '';
  if (buildType) for (const t of Object.values(world.tiles)) if (canPlace(buildType, t)) html += ring(t, 'legal');
- if (hovered && world.tiles[hovered]) html += ring(world.tiles[hovered], 'hover');
+ if(connectFrom)for(const [id,option] of roadOptions())if(option.cost!==undefined){
+  const [x,y]=position(world.tiles[id]);html+=`<polygon class="hl legal road-target ${afford(option.cost)?'affordable':'unaffordable'} ${hovered===id||document.activeElement?.dataset.tile===id?'hover':''}" data-road-target="${id}" points="${hexPoints(x,y,49)}"><title>${afford(option.cost)?'可连接':'金币不足'} · ${coins(option.cost)}</title></polygon>`;
+ }
+ if (!connectFrom&&hovered && world.tiles[hovered]) html += ring(world.tiles[hovered], 'hover');
  if (selected && world.tiles[selected]) html += ring(world.tiles[selected], 'selected');
  $('highlight').innerHTML = html;
 }
@@ -337,6 +356,7 @@ let decorativeRoads=null,decorativeTraffic=null,travelClock=0,travelLast=perform
 const reducedTravelMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function renderMap() {
  buildMap();
+ const options=roadOptions();
  const st = windowStats();
  const roadLayout=RoadTiles.layout(world.tiles,Object.values(world.edges),position);
  const selectedRoads=new Set(selectedEdge?E.roadComponent(world,selectedEdge).map(e=>e.id):[]);
@@ -367,6 +387,7 @@ function renderMap() {
    // Production and stock pills, expanded into the full two rows while the tile is selected. See docs/ui-system.html「地图反馈」.
    content=BuildingTiles.render({...tileView(t,st),pills:true,expanded:false});
    g.setAttribute('aria-label',`${names[b.type]} (${t.id})`);
+   if(connectFrom){const option=options.get(t.id);g.setAttribute('aria-label',`${names[b.type]} (${t.id})，${t.id===connectFrom?'修路起点':option?.cost!==undefined?`${afford(option.cost)?'可连接':'金币不足'}，${coins(option.cost)}`:option?.reason||'不可连接'}`);}
   } else if (!['grass','lake'].includes(t.terrain)||!roadLayout.ports.has(t.id)) {
    // Resource land and mountains keep their scenery whatever runs across them. Empty grass and open water keep
    // theirs only until a road (or a waterway) arrives: from then on the road is the one thing drawn on that tile.
@@ -414,12 +435,8 @@ function ledgerTable(headers, rows, footer='') {
 }
 function goodCell(r) {return `<th scope="row"><span class="ledger-good">${ic(r)}<span>${names[r]}</span></span></th>`;}
 const detailIcon=(id,size=20)=>TradeIcons.icon(id,{base:'assets/icons/v1/',size,decorative:true});
-function workshopSupply(t,st) {
- const b=t.building,rc=E.RECIPES[b.type],state=E.productionState(world,t),inputs=Object.keys(rc.in);
- const recipe=inputs.length?inputs.map(r=>names[r]).join(' + ')+' → '+names[rc.out]:'生产'+names[rc.out];
- return `<div class="workshop-status"><span class="state-badge ${state.active?'running':''}">${detailIcon(state.active?'ui-checkmark':'ui-pause',12)}${state.active?'生产中':b.workers.length?'待连接':'待雇工'}</span><span>${recipe}</span></div>
- <div class="workshop-metrics"><div class="production-metric"><span class="metric-label">${state.active?'固定产量':'接通并雇工后产量'} / 回合</span><strong>${detailIcon(rc.out,24)}${E.rate(world,t)} <small>件${names[rc.out]}</small></strong></div><div class="crew-metric"><span class="metric-label">工人</span><strong>${detailIcon('worker',18)}${b.workers.length} <small>/ ${E.MAX_WORKERS}</small></strong></div></div>
- ${inputs.length?`<div class="input-connections" aria-label="上游连接">${inputs.map(r=>`<div class="input-connection"><span>${detailIcon(r,17)}${names[r]}</span><span class="connection-status ${state.sources[r]?'':'waiting'}">${detailIcon(state.sources[r]?'ui-checkmark':'ui-plus',12)}${state.sources[r]?'已接通':'待连接'+names[E.BUILDINGS.find(b=>E.RECIPES[b].out===r)]}</span></div>`).join('')}</div>`:''}`;
+function workshopSupply(t) {
+ return IndustryGraph.detail(E,world,t.building.type,'assets/icons/v1/',false,{tile:t});
 }
 function decorateDetailButtons(box){
  for(const btn of box.querySelectorAll('button')){
@@ -437,9 +454,7 @@ function refundLabel(title,amount){
 function townPanel(t) {
  const b=t.building,next=E.residentCost(world,t.id),goods=Object.entries(E.buys(world,t.id));
  const rows=goods.map(([r,d])=>`<tr>${goodCell(r)}<td>${coins(d.price)}</td><td>${coins(townRevenue(t.id,r))}</td></tr>`);
- return `<h2>城镇 ${BuildingTiles.formatLevel(E.eraPower(world))}</h2><p class="detail-caption">不限量收购 · 接通后每回合自动结算</p>
- <section class="ledger-section">${ledgerTable(['货物','单价 / 件','实际收入 / 回合'],rows,`<tfoot><tr><th colspan="2">总收入 / 回合</th><td>${coins(goods.reduce((n,[r])=>n+townRevenue(t.id,r),0))}</td></tr></tfoot>`)}</section>
- <p class="detail-caption">居民 ${b.residents} / ${E.MAX_RESIDENTS} · 售价加成 ${(b.residents-1+world.tech.era)*25}%</p><div class="actions detail-actions">${b.residents<E.MAX_RESIDENTS?button(purchaseLabel('增加居民',next,'本城镇基础售价 +25%'),{type:'resident',tile:t.id},true,!afford(next),costly(next)):''}</div>`;
+ return `<h2>城镇 ${BuildingTiles.formatLevel(E.eraPower(world))}</h2><div class="workshop-status"><span>当前城镇</span><span class="state-badge">不限量收购</span></div><div class="workshop-metrics"><div><span class="metric-label">实际收入 / 回合</span><strong>${coins(goods.reduce((n,[r])=>n+townRevenue(t.id,r),0))}</strong></div><div class="crew-metric"><span class="metric-label">居民</span><strong>${b.residents}<small>/ ${E.MAX_RESIDENTS}</small></strong></div></div><div class="actions detail-actions">${b.residents<E.MAX_RESIDENTS?button(purchaseLabel('增加居民',next,'本城镇基础售价 +25%'),{type:'resident',tile:t.id},true,!afford(next),costly(next)):''}<button id="connect-accessible">从这里修路</button></div>`+disclosure('market','收购明细',`<p class="detail-caption">售价加成 ${(b.residents-1+world.tech.era)*25}%</p>${ledgerTable(['货物','单价 / 件','实际收入 / 回合'],rows)}`);
 }
 function flowerPanel(f) {
  if (f.state === 'fog') {
@@ -452,12 +467,13 @@ function detailTechAction(key,label){
  if(E.techDiscoveryReason(world,key))return `<p class="tip">${E.techDiscoveryReason(world,key)}</p>`;
  const cost=E.techCost(world,key),missing=E.TECH[key].requires.filter(r=>!world.tech[r]);
  if(missing.length)return `<p class="tip">${E.TECH[key].name}需要先解锁${missing.map(r=>E.TECH[r].name).join('、')}</p>`;
- const description=E.TECH[key].building?'每名工人 +1 件 / 回合':key==='era'?'全图基础售价 +25%':E.BUILDINGS.includes(key)?buildingEffect(key):E.TECH[key].desc;
+ const description=E.TECH[key].building?'':key==='era'?'':E.BUILDINGS.includes(key)?buildingEffect(key):E.TECH[key].desc;
  return button(purchaseLabel(label,cost,description),{type:'tech',key},true,!afford(cost),`${E.TECH[key].repeat?'upgrade ':''}${costly(cost)}`);
 }
+function disclosure(key,title,content){return `<details class="detail-disclosure" data-key="${key}"><summary>${title}</summary><div class="detail-disclosure-body">${content}</div></details>`;}
 function detailResearch(keys){
  const ready=keys.filter(k=>!world.tech[k]&&E.techAvailable(world,k));
- return ready.length?`<section class="detail-tech"><h3>可研究科技</h3><div class="actions">${ready.map(k=>detailTechAction(k,`研究${E.TECH[k].name}`)).join('')}</div></section>`:'';
+ return ready.length?disclosure("research","关联研究",`<div class="actions">${ready.map(k=>detailTechAction(k,`研究${E.TECH[k].name}`)).join('')}</div>`):'';
 }
 // Patch unchanged elements in place so live updates do not restart hover transitions.
 function syncContent(target,source){
@@ -492,17 +508,19 @@ function renderSelection() {
   html=`<h2>道路</h2><p class="detail-caption">${endpoints} · 仅管理这条连接</p>${e.removing?'<p class="detail-caption">拆除中 · 下一回合退款</p>':''}<div class="actions">${button(e.removing?'撤销拆除':refundLabel('拆除整条路',paid),{type:e.removing?'restoreRoad':'removeRoad',edge:e.id},false,false,e.removing?'':'danger')}</div>`+detailResearch(['roadEngineering','navigation','mountainPass']);
  } else if (f && f.state !== 'placed') html=flowerPanel(f);
  else if (t?.building?.type==='town') {
-  html=townPanel(t)+`<div class="actions"><button id="connect-accessible">从这里修路</button></div><section class="detail-tech"><h3>科技</h3><div class="actions">${detailTechAction('era','提升时代')}</div></section>`;
+  html=townPanel(t)+disclosure('era','时代科技',IndustryGraph.detail(E,world,'era')+`<div class="actions">${detailTechAction('era',`进入${E.ERAS[world.tech.era+1]||E.ERAS[world.tech.era]}`)}</div>`);
  } else if (t?.building) {
   const b=t.building,next=E.workerCost(world,t),rc=E.RECIPES[b.type],r=rc.out,n=b.workers.length;
   const paid=b.paid+b.workers.reduce((n,m)=>n+m.paid,0);
   const recipe=Object.keys(rc.in).length?`${Object.keys(rc.in).map(i=>names[i]).join(' + ')} → ${names[r]}`:`生产${names[r]}`;
-  html=`<h2>${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2>${E.productionBonuses(world,t).length?`<p class="craft-now">自动生产加成：${E.productionBonuses(world,t).map(b=>E.TECH[b.key].name+' +'+b.amount+' 件/回合').join(' · ')}</p>`:''}`
-   +workshopSupply(t,st)
-   +`<div class="actions detail-actions">${n<E.MAX_WORKERS?button(purchaseLabel('雇用工人',next,`每回合多产 ${E.rate(world,t,n+1)-E.rate(world,t)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next)):''}<button id="produce"><span class="action-copy"><strong class="action-title">手工生产</strong><small class="action-description">+${E.clickPower(world,t)} 件${names[r]}</small></span></button></div>`
-   +`<section class="detail-tech"><h3>工艺科技</h3><div class="actions">${detailTechAction(E.craftOf(b.type),`升级工艺`)}</div></section>`;
-
-  html+=`<details class="more" data-key="manage"><summary>${detailIcon('ui-gear',14)}管理建筑</summary><div class="actions"><button id="connect-accessible">从这里修路</button>${n?button(refundLabel('辞退一名工人',b.workers[n-1].paid),{type:'fireWorker',tile:t.id}):''}${button(refundLabel('拆除建筑',paid),{type:'demolish',tile:t.id},false,false,'danger')}</div></details>`;
+  const craft=E.craftOf(b.type),upgrade=detailTechAction(craft,`升级工艺 · ${IndustryGraph.roman(world.tech[craft]+2)}`);
+  html=`<h2>${names[b.type]} ${BuildingTiles.formatLevel(E.workerPower(world,b.type))}</h2>`+workshopSupply(t,st)
+   +`<div class="actions detail-actions">${n<E.MAX_WORKERS?button(purchaseLabel('雇用工人',next,`每回合多产 ${E.rate(world,t,n+1)-E.rate(world,t)} 件`),{type:'worker',tile:t.id},true,!afford(next),costly(next)):upgrade}<button id="produce"><span class="action-copy"><strong class="action-title">手工生产</strong><small class="action-description">+${E.clickPower(world,t)} 件${names[r]}</small></span></button></div>`
+   +'<div class="actions"><button id="connect-accessible">从这里修路</button></div>'
+   +disclosure('recipe','生产配方',IndustryGraph.detail(E,world,b.type,'assets/icons/v1/',false,{tile:t,section:'recipe'}))
+   +disclosure('craft','工艺升级',IndustryGraph.detail(E,world,b.type,'assets/icons/v1/',false,{section:'upgrade'})+(n<E.MAX_WORKERS?`<div class="actions">${upgrade}</div>`:''))
+   +(E.productionBonuses(world,t).length?disclosure('bonuses','生产加成',IndustryGraph.detail(E,world,b.type,'assets/icons/v1/',false,{tile:t,section:'bonuses'})):'');
+  html+=disclosure('manage','管理建筑',`<div class="actions">${n?button(refundLabel('辞退一名工人',b.workers[n-1].paid),{type:'fireWorker',tile:t.id}):''}${button(refundLabel('拆除建筑',paid),{type:'demolish',tile:t.id},false,false,'danger')}</div>`);
   html+=detailResearch(b.type==='mine'?['deepMining']:E.processing(t)?['waterPower','specialization']:[]);
  } else if (t) {
   const fits=unlockedBuildings().filter(b=>E.RECIPES[b].fits.includes(t.terrain));
@@ -530,7 +548,7 @@ function renderSelection() {
  for(const d of box.querySelectorAll('details'))if(wasOpen.has(d.dataset.key))d.open=wasOpen.get(d.dataset.key);
  bindCommands(box);
 
- if($('connect-accessible'))$('connect-accessible').onclick=()=>{connectFrom=t.id;buildType=null;render();toast('点选另一座建筑，自动规划道路 · Esc 取消');};
+ if($('connect-accessible'))$('connect-accessible').onclick=()=>{connectFrom=t.id;buildType=null;render();toast($('build-intent').textContent+' · Esc 取消');};
  if($('produce'))$('produce').onclick=()=>produce(t.id);
  if(active)[...box.querySelectorAll('[data-command]')].find(b=>b.dataset.command===active)?.focus({preventScroll:true});
  else if(activeId)box.querySelector('#'+activeId)?.focus({preventScroll:true});
@@ -612,7 +630,7 @@ function renderTech() {
    const discovery=E.techDiscoveryReason(world,c.unlock);
    const missing=E.TECH[c.unlock].requires.filter(r=>!world.tech[r]).map(r=>E.TECH[r].name);
    cls=!avail?'locked':afford(cost)?'ready':'costly';
-   body=!avail?`<div class="locked-note">${icon('ui-locked')}${discovery||'需要先解锁'+missing.join('、')}</div>`:button(purchaseLabel(`${c.research?'研究':'解锁'}${c.name}`,cost,E.RECIPES[c.id]?buildingEffect(c.id):E.TECH[c.unlock].desc),{type:'tech',key:c.unlock},true,!afford(cost),costly(cost));
+   body=!avail?`<div class="locked-note">${icon('ui-locked')}${discovery||'需要先解锁'+missing.join('、')}</div>`:button(purchaseLabel(`${c.research?'研究':'解锁'}${c.name}`,cost),{type:'tech',key:c.unlock},true,!afford(cost),costly(cost));
   } else if (c.craft) {
    const cost=E.techCost(world,c.craft), maxed=E.techMaxed(world,c.craft);
    cls=maxed?'owned':afford(cost)?'owned ready':'owned costly';
@@ -620,7 +638,7 @@ function renderTech() {
   } else {
    cls='owned'; body=`<div class="owned-mark">${icon('check')}${c.research?'已研究':'已开通'}</div>`;
   }
-  return `<div class="node ${cls} kind-${c.kind}" data-tech="${c.id}"><div class="node-head"><b>${iconIds.has(c.icon)?icon(c.icon):`<span class="building-icon">${icon(c.icon)}</span>`}${c.title?c.title(level):c.name}</b>${c.branch?`<small>${c.branch}</small>`:''}</div>${IndustryGraph.detail(E,world,c.id)}${body}${state.reason?`<p class="tip">${state.reason}</p>`:''}${state.kind==='poor'?`<p class="tech-shortfall">还差 ${coins(state.cost-world.money)}</p>`:''}</div>`;
+  return `<div class="node ${cls} kind-${c.kind}" data-tech="${c.id}"><div class="node-head"><b>${iconIds.has(c.icon)?icon(c.icon):`<span class="building-icon">${icon(c.icon)}</span>`}${c.title?c.title(level):c.name}${E.RECIPES[c.id]&&owned?` <strong>${IndustryGraph.roman(level+1)}</strong>`:''}</b>${c.branch?`<small>${c.branch}</small>`:''}</div>${IndustryGraph.detail(E,world,c.id)}${body}${state.reason?`<p class="tip">${state.reason}</p>`:''}${state.kind==='poor'?`<p class="tech-shortfall">还差 ${coins(state.cost-world.money)}</p>`:''}</div>`;
  }).join('')}</div></div>`).join('');
  decorateDetailButtons($('tech-body'));
  bindCommands($('tech-body'));
@@ -637,6 +655,10 @@ function renderToolbar() {
  $('industry-open').classList.remove('upgrade');
  $('build-intent').hidden=!buildType&&!connectFrom;
  $('build-intent').textContent=buildType?`待建：${names[buildType]} · 点选${E.RECIPES[buildType].fits.map(f=>names[f]).join('/')}地块`:connectFrom?'点选另一座建筑以自动修路':'';
+ if(connectFrom){
+  const routes=[...roadOptions().values()].filter(o=>o.cost!==undefined),count=routes.filter(o=>afford(o.cost)).length;
+  $('build-intent').textContent=routes.length?`蓝色：${count} 座可连接 · 红色：${routes.length-count} 座金币不足`:'暂无可连接建筑 · 可建造或探索更多板块';
+ }
 }
 function plannerZoom(scale){
  industryScale=Math.max(.15,Math.min(1.5,scale));
@@ -661,8 +683,14 @@ function renderPlanner(){
  renderTech();
  const b=industrySelected,rc=E.RECIPES[b],owned=b==='camp'||world.tech[b]>0,ins=rc?Object.keys(rc.in):[],deps=E.TECH[b]?.requires||[];
  const go=(key,label)=>`<button class="tech-flow-item" data-planner-focus="${E.TECH[key]?.building||key}">${detailIcon(E.TECH[key]?.building||E.TECH[key]?.icon||key,28)}<span>${label}</span></button>`;
- $('planner-extra').innerHTML=(rc?`<div class="tech-facts"><span>${detailIcon(b,24)}<b>${Object.values(world.tiles).filter(t=>t.building?.type===b).length}</b> 已建</span>${E.SELLABLE.includes(rc.out)?`<span>${detailIcon("coin",22)}<b>${coins(E.BASE_PRICE[rc.out])}</b> / 件</span>`:'<span>中间原料</span>'}</div><div class="tech-terrain">建造地形 <b>${rc.fits.map(f=>names[f]).join(" / ")}</b></div>${owned?`<button class="primary purchase-action planner-build ${costly(E.buildingCost(world,b))}" data-build="${b}" ${afford(E.buildingCost(world,b))?'':'disabled'}>${purchaseLabel(`建造${names[b]}`,E.buildingCost(world,b),buildingEffect(b))}</button>`:''}`:'')
-  +(deps.length?`<h3>研究前置</h3><div class="planner-related">${deps.map(d=>go(d,E.TECH[d].name+(E.TECH[d].building?' II':''))).join('<span class="tech-flow-plus">+</span>')}</div>`:'');
+ const extraMarkup=(rc&&owned?`<button class="purchase-action planner-build ${costly(E.buildingCost(world,b))}" data-build="${b}" ${afford(E.buildingCost(world,b))?'':'disabled'}>${purchaseLabel(`建造${names[b]}`,E.buildingCost(world,b))}</button>`:'')
+  +(rc&&owned?disclosure('recipe','生产配方',IndustryGraph.detail(E,world,b,'assets/icons/v1/',true,{section:'recipe'})):'')
+  +(rc?disclosure('placement','建造条件与统计',`<div class="tech-terrain">建造地形 <b>${rc.fits.map(f=>names[f]).join(' / ')}</b></div><div class="tech-facts"><span>${detailIcon(b,24)}<b>${Object.values(world.tiles).filter(t=>t.building?.type===b).length}</b> 已建</span>${E.SELLABLE.includes(rc.out)?`<span>${detailIcon('coin',22)}<b>${coins(E.BASE_PRICE[rc.out])}</b> / 件</span>`:'<span>中间原料</span>'}</div>`):'')
+  +(deps.length?disclosure('prerequisites','研究前置',`<div class="planner-related">${deps.map(d=>go(d,E.TECH[d].name+(E.TECH[d].building?' II':''))).join('<span class="tech-flow-plus">+</span>')}</div>`):'');
+ const extra=$('planner-extra'),draft=document.createElement('div');draft.innerHTML=extraMarkup;
+ if(extra.dataset.selection!==b)for(const section of draft.querySelectorAll('details'))section.open=true;
+ if(extra.dataset.selection===b)syncContent(extra,draft);else extra.replaceChildren(...draft.childNodes);
+ extra.dataset.selection=b;
  decorateDetailButtons($('planner-extra'));
  for(const button of document.querySelectorAll('.planner-details [data-planner-focus]'))button.onclick=()=>{const id=button.dataset.plannerFocus;if(!industryLayout.nodes.some(n=>n.id===id))setIndustryMode('tech');selectIndustry(id,true);};
  const build=$('planner-extra').querySelector('[data-build]');if(build)build.onclick=()=>{buildType=b;connectFrom=null;$('industry-dialog').close();render();};

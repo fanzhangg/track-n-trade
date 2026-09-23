@@ -82,3 +82,29 @@
 .tech-facts>span{display:flex;align-items:center;gap:4px}.tech-facts b{font-size:16px;color:var(--text-primary)}
 .tech-terrain{font-size:11px;color:var(--text-secondary);margin-bottom:8px}.tech-terrain b{color:var(--text-primary)}
 .planner-related{align-items:center}.planner-related button.tech-flow-item{min-width:65px;max-width:105px}
+
+.tech-input{display:grid;gap:4px;min-width:0}.tech-input .connection-status{font-size:10px;text-align:center;justify-content:center;flex-wrap:wrap}.tech-bonuses{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text-secondary)}.tech-bonuses>span{display:flex;gap:4px;align-items:center}.tech-visual .workshop-metrics{margin:0}.tech-visual .workshop-status{margin:0}.detail-card .tech-visual{margin-top:0}.tech-visual .workshop-metrics strong{font-size:24px}.tech-visual .crew-metric strong{font-size:19px}
+
+/* Detail hierarchy: identity, one result surface, action, quiet disclosures. */
+.detail-disclosure{border-top:1px solid var(--border-subtle);margin-top:12px;padding-top:2px}
+.detail-disclosure>summary{display:flex;align-items:center;justify-content:space-between;min-height:42px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-primary);list-style:none}
+.detail-disclosure>summary::-webkit-details-marker{display:none}
+.detail-disclosure>summary::after{content:'＋';font-size:16px;font-weight:400;color:var(--text-secondary)}
+.detail-disclosure[open]>summary::after{content:'−'}
+.detail-disclosure>summary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.detail-disclosure-body{padding:4px 0 12px}
+.detail-disclosure .tech-recipe-flow,.detail-disclosure .tech-yield,.detail-disclosure .tech-effect-flow{background:transparent;padding:6px 0;border-radius:0}
+.tech-recipe-flow{gap:8px}.tech-flow-inputs{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:5px}
+.tech-input{flex:1;min-width:56px}.tech-flow-inputs .tech-flow-plus{font-size:11px}
+.tech-visual{margin:10px 0;gap:8px}.tech-yield,.tech-effect-flow{padding:12px}
+.tech-visual .workshop-metrics{background:var(--surface-inset);padding:14px 12px}
+.tech-visual .production-metric strong{font-size:28px}.tech-visual .crew-metric strong{font-size:18px}
+.detail-blocker{font-size:12px;color:var(--value-warning)}
+.planner-details .node{gap:0}.planner-details .node-head{margin-bottom:4px}
+.planner-details .node-head .tt-icon{--icon-size:28px!important}
+.planner-details .planner-build{margin:10px 0 0}
+.detail-card .more{margin-top:12px;padding-top:2px}.detail-card .more summary{min-height:42px;font-size:12px;font-weight:600}
+.detail-disclosure .actions{margin-top:8px}
+
+button.planner-build.action-button[data-action=build]{--button-bg:var(--surface-panel);--button-hover:var(--surface-inset);--button-pressed:var(--action-subtle);--button-border:var(--border-control);--button-ink:var(--text-primary)}
+button.planner-build.action-button[data-action=build]>.tt-control img{filter:none}
