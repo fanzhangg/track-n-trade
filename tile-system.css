@@ -36,7 +36,7 @@
 .ground{stroke:#303e4338;stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 /* Outline only the fog flower; its matching fill/stroke hides internal hex seams. */
 .fog-edge{stroke:#303e4338;stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round}
-.ambient-tile{pointer-events:none;filter:drop-shadow(0 1px 1px #303e4328)}
+.ambient-tile{pointer-events:none}
 .ambient-art{image-rendering:auto}
 .ambient-tile.is-preview{opacity:.78}
 .hex.has-building .ground{filter:saturate(.82) brightness(.98)}
@@ -64,21 +64,25 @@
 
 .bt-capsule .bt-quantity,.bt-capsule .bt-price{font-size:11px}
 
+.bt-pill{filter:drop-shadow(0 1px 1px #303e431f)}
+.bt-pill .bt-float-bg{fill:var(--surface-panel);fill-opacity:1;stroke:var(--border-subtle);stroke-width:.6}
 /* Production and stock pills. A problem turns its pill solid red with white text and icons stay as they are. */
 .bt-flow-num{font:700 10px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-primary);font-variant-numeric:tabular-nums}
-.bt-pill.is-bad .bt-float-bg{fill:#d63a2f;stroke:#fff;stroke-width:1.2;fill-opacity:1}
-.bt-pill.is-bad{filter:drop-shadow(0 1.5px 1.5px #5a1a1550)}
+.bt-pill.is-bad .bt-float-bg{fill:#d63a2f;stroke:#fff;stroke-width:.65;stroke-opacity:.8;fill-opacity:1}
+.bt-pill.is-bad{filter:drop-shadow(0 1px 1px #5a1a152b)}
 .bt-pill.is-bad .bt-flow-num{fill:#fff}
-.bt-cap{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:#8a918b;font-variant-numeric:tabular-nums}
+.bt-cap{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-secondary);font-variant-numeric:tabular-nums}
 .bt-pill.is-bad .bt-cap{fill:#ffffffc0}
-.bt-pill-sep{fill:none;stroke:var(--border-control);stroke-width:.8}
-.bt-pill.is-bad .bt-pill-sep{stroke:#ffffff99}
-.bt-flow-num.bt-arrow{fill:var(--text-disabled,#a4aaa3);font-weight:600}
-.bt-pill.is-bad .bt-flow-num.bt-arrow{fill:#ffffffb0}
+.bt-pill-sep{fill:none;stroke:var(--border-subtle);stroke-width:.65;stroke-linecap:round}
+.bt-pill.is-bad .bt-pill-sep{stroke:#ffffff66}
+.bt-arrow{fill:none;stroke:var(--text-secondary,#69736e);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+.bt-pill.is-bad .bt-arrow{stroke:#ffffffb0}
 .bt-flow-num.bt-bad{fill:#d63a2f}
-.bt-row-label{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:#8a918b}
-/* Upkeep pop: the one per-round animation. Red, bold, outlined so it reads over any terrain. */
-.upkeep-pop-body{animation:pop 1.1s ease-out forwards}
-.upkeep-pop-text{font:800 11px system-ui,"Microsoft YaHei",sans-serif;fill:#d63a2f;paint-order:stroke;stroke:#fff;stroke-width:2.5px;stroke-linejoin:round}
-.upkeep-pop image{filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)}
-@media(prefers-reduced-motion:reduce){.upkeep-pop-body{animation-duration:.01s}}
+.bt-row-label{font:600 8px system-ui,"Microsoft YaHei",sans-serif;fill:var(--text-secondary)}
+
+/* Untraded towns advertise prices in slate; active income stays warm white. */
+.bt-pill.is-undeveloped .bt-float-bg{fill:var(--action-primary);stroke:var(--action-subtle)}
+.bt-pill.is-undeveloped .bt-flow-num{fill:var(--surface-panel)}
+.bt-pill.is-undeveloped .bt-cap{fill:#ffffffd9}
+.bt-pill.is-undeveloped .bt-arrow{stroke:#ffffffc7}
+.bt-pill.is-undeveloped .bt-pill-sep{stroke:#ffffff55}

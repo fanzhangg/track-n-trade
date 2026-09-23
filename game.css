@@ -37,10 +37,6 @@
 .farrow{width:2px;height:10px;margin-left:44px;background:#c3d0dc}
 .verdict{margin-top:10px;padding:9px 12px;border-radius:8px;font-size:12px;line-height:1.7;background:#f2f6fb;color:#3f5f86}.verdict.warn{background:#fdf3e7;color:#9a5a17}.verdict.ok{background:#eef7f1;color:#3d6e52}.verdict b{display:block}.verdict span{display:block;font-size:11.5px}
 
-#mobile-warning{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:#1b2a3ad9;padding:20px}#mobile-warning[hidden]{display:none}
-.mobile-warning-box{background:#fff;border-radius:14px;padding:22px 20px;max-width:320px;text-align:center;box-shadow:0 12px 32px #1b2a3a40}
-.mobile-warning-box p{margin:0 0 10px;color:#3d4c5c;font-size:14px;line-height:1.7}
-.mobile-warning-box button{margin-top:8px;width:100%;padding:10px;border-radius:8px}
 
 #growth-body{padding:10px 14px}
 .growth-chart{display:block;width:100%;height:auto}
@@ -75,3 +71,95 @@ button .action-cost{flex:none;margin-left:auto;font-size:18px;font-weight:750;li
 @media(max-width:740px){.actions{grid-template-columns:1fr}.toolbar button[data-build]{flex:1 1 160px}.action-title{font-size:14px}}
 /* Logistics chart in the details panel: stage cards joined by labelled links. */
 .lchart{display:grid;gap:0;margin:12px 0}.lnode{position:relative;display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--surface-panel);font-size:12px}.lnode .lk{color:var(--text-secondary)}.lnode b{grid-row:1/3;grid-column:2;align-self:center;display:flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}.lnode .lv{color:var(--text-secondary);font-size:11px;display:flex;align-items:center;gap:2px}.lnode.bad{border-color:#bc352d;background:#fff0e9}.lnode.bad b{color:#bc352d}.lnode.wait{border-color:#d9a25a;background:#fdf3e7}.lnode.wait b{color:#9a5a17}.lalert{position:absolute;top:-9px;right:8px;padding:1px 7px;border-radius:4px;background:#bc352d;color:#fff;font:700 11px/16px system-ui,"Microsoft YaHei",sans-serif;font-style:normal}.llink{position:relative;height:18px;margin-left:22px;border-left:2px solid #c3d0dc}.llink span{position:absolute;left:10px;top:1px;font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:2px}.ic{position:relative;display:inline-flex;flex-shrink:0;width:14px;height:14px}.ic>.tt-icon{position:relative!important;inset:auto!important}.ic .tt-icon,.ic img,.ic svg{width:14px!important;height:14px!important}
+
+/* Contextual details occupy space only when an object is selected. */
+#selection-panel[hidden]{display:none}
+
+/* Detail hierarchy: identity → key figures → one issue → actions → optional diagnosis. */
+.detail-card .panel-head{padding:14px 18px;border-bottom:0}
+.detail-card .panel-title{font-size:18px;font-weight:750;line-height:1.3}
+#selection-panel .panel-body{padding:0 18px 16px}
+.detail-recipe{margin:0;color:var(--text-secondary);font-size:12px}
+.detail-stats{display:grid;grid-template-columns:minmax(0,1fr) minmax(76px,.65fr);gap:16px;margin:16px 0}
+.detail-stats>div{min-width:0}
+.detail-stats span{display:block;font-size:12px;color:var(--text-secondary)}
+.detail-stats strong{display:block;margin-top:3px;font-size:22px;font-weight:750;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--text-primary)}
+.detail-stats small{font-size:12px;font-weight:400;color:var(--text-secondary)}
+.detail-notice{border-left:3px solid var(--value-warning);padding:8px 10px;background:var(--surface-inset);font-size:13px}
+.detail-notice b{color:var(--text-primary);font-weight:700}
+.detail-notice p{margin:3px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.6}
+.detail-actions{margin-top:16px;gap:8px}
+.detail-actions:empty{display:none}
+.detail-actions>button:not(.purchase-action){font-size:13px;padding:10px 12px;font-weight:500}
+.detail-card .more{margin-top:16px;padding-top:12px}
+.detail-card .more summary{color:var(--text-secondary);font-size:12px}
+.detail-caption{font-size:11px;color:var(--text-secondary);margin:10px 0}
+.detail-card .empty-state{padding:0}
+.detail-card .lnode{grid-template-columns:minmax(0,1fr);gap:4px}
+.detail-card .lnode b{grid-row:auto;grid-column:1;flex-wrap:wrap}
+.topbar{gap:12px}
+.money-hud{min-width:0}
+.money-hud strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:740px){
+ .topbar{height:48px;flex-wrap:nowrap;gap:8px}
+ .topbar .controls{gap:4px;flex-shrink:0}
+ .topbar .controls button{min-width:38px;padding:6px 7px}
+ #menu summary{padding:8px}
+ .money-hud strong{font-size:18px}
+ .mobile-stack-wrap{top:auto;max-height:62dvh;overflow-y:auto;pointer-events:auto;overscroll-behavior:contain}
+ .mobile-stack-wrap .stack{flex:none;overflow:visible}
+ .detail-card .panel-head{padding:12px 16px}
+ #selection-panel .panel-body{padding:0 16px 14px}
+}
+/* One income rate, subordinate to the balance. */
+.money-hud .income-rate{font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:740px){
+ .money-hud{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:6px;row-gap:0;line-height:1.25}
+ .money-hud>.icon,.money-hud>.tt-icon{grid-row:1/3;align-self:center}
+ .money-hud strong{grid-column:2}
+ .money-hud .income-rate{grid-column:2;font-size:11px}
+}
+/* Supply and demand share a single reading order; rates and stock have distinct labels. */
+.supply-section{margin-top:16px}
+.supply-section h3{margin:0 0 8px;font-size:12px;color:var(--text-secondary);font-weight:600}
+.supply-good{padding:10px 0;border-bottom:1px solid var(--border-subtle)}
+.supply-good>b,.good-heading b{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text-primary)}
+.supply-values{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.supply-values>span{flex:1;min-width:65px;font-size:11px;color:var(--text-secondary)}
+.supply-values strong{display:block;font-size:13px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;margin-top:2px}
+.supply-good p{font-size:11px;line-height:1.65;color:var(--text-secondary);margin-top:6px}
+.production-summary{display:grid;gap:4px;padding:12px;background:var(--surface-inset);border-radius:8px}
+.production-summary>strong,.town-total strong{font-size:22px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.production-summary small{font-size:12px;font-weight:400;color:var(--text-primary)}
+.production-summary>span{font-size:11px;color:var(--text-secondary)}
+.town-total{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--border-subtle)}
+.town-total>span{font-size:12px;color:var(--text-secondary)}
+.good-heading{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.good-heading>span{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.supply-section+.detail-notice{margin-top:12px}
+/* Aligned ledgers: units in headings, one row per good. */
+.ledger-section{margin:16px 0 0}
+.ledger-section h3{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 7px;font-size:13px;font-weight:700;color:var(--text-primary)}
+.ledger-section h3 small{font-size:10px;font-weight:400;color:var(--text-secondary)}
+.detail-table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:12px}
+.detail-table th,.detail-table td{padding:9px 3px;text-align:right;vertical-align:middle;border-bottom:1px solid var(--border-subtle);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.detail-table th:first-child{text-align:left}
+.detail-table thead th{font-size:11px;color:var(--text-secondary);font-weight:400;vertical-align:top;padding-top:5px;padding-bottom:6px}
+.detail-table th small{display:block;font-size:9px;font-weight:400;line-height:1.5;color:var(--text-secondary)}
+.detail-table tbody th{font-weight:600}
+.detail-table td{font-weight:650;font-size:13px;color:var(--text-primary)}
+.detail-table td.warn{color:var(--value-warning)}
+.ledger-good{display:flex;align-items:center;gap:4px;line-height:1.35}
+.detail-table tfoot th,.detail-table tfoot td{border-bottom:0;padding-top:12px}
+.detail-table tfoot th{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.detail-table tfoot td{font-size:18px;font-weight:750}
+.ledger-note{font-size:11px;line-height:1.65;color:var(--text-secondary);margin:6px 0 0}
+.output-compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:var(--surface-inset);border-radius:8px;padding:11px 12px}
+.output-compare span{display:block;font-size:11px;color:var(--text-secondary)}
+.output-compare strong{font-size:24px;font-weight:750;line-height:1.4;font-variant-numeric:tabular-nums}
+.output-compare>div+div{border-left:1px solid var(--border-subtle);padding-left:14px}
+.efficiency-line{display:flex;justify-content:space-between;margin:8px 0 4px;font-size:11px;color:var(--text-secondary)}
+.efficiency-line b{font-weight:600;color:var(--text-primary)}
+.efficiency-track{height:4px;background:var(--surface-inset);border-radius:2px;overflow:hidden}
+.efficiency-track span{display:block;height:100%;background:var(--action-primary)}
+.ledger-section+.detail-caption{margin-top:12px}

@@ -27,7 +27,7 @@ test('junctions stay connected and building entries reach the ground-level yard'
   for(const r of layout.roads.values())close(r.at(0),[0,0]);
  }
  for(const r of fixture([0,1,2,3,4,5],true).roads.values()){
-  close(r.at(0),[0,12]);
+  close(r.at(0),[0,7]);
   assert.ok(!/NaN|undefined/.test(r.d+r.hit));
   const first=r.hit.match(/^M([\d.-]+) ([\d.-]+)/);
   assert.ok(Math.hypot(+first[1],+first[2])>31.99);

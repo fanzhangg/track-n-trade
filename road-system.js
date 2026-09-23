@@ -20,7 +20,8 @@
     const q=list.find(p=>p.edge!==edge).mid;
     return [quad(p,c,q,.5),mix(c,p),p];
    }
-   const entry=tile.building?[c[0],c[1]+12]:c;
+   // Land the round road cap inside the shared building courtyard.
+   const entry=tile.building?[c[0],c[1]+7]:c;
    return [entry,mix(c,p),p];
   }
   for(const e of edges){

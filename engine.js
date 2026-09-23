@@ -443,7 +443,7 @@ function sell(w,t,r,n,price){t.loose[r]-=n;w.consumption[r]+=n;w.sold[t.id][r]+=
 function steady(w,rounds=100,window=WINDOW){const v=copy(w);v.manual={out:zero(),tiles:{},sales:{},gross:0};for(let i=0;i<rounds;i++)tick(v);const S=v.stats.slice(-window);return S.length?S.reduce((n,s)=>n+s.income,0)/S.length:0;}
 function allocated(w,k){return w.shipments.filter(s=>s.key===k).length;}
 function release(w,s){w.tiles[s.node].loose[s.r]++;w.shipments.splice(w.shipments.indexOf(s),1);}
-function reconcile(w,ds){const map=new Map(ds.map(d=>[d.key,d]));for(const s of w.shipments)if(!map.has(s.key))s.key=null;for(const d of ds){const ss=w.shipments.filter(s=>s.key===d.key).sort((a,b)=>b.id.localeCompare(a.id));let excess=ss.length-Math.max(0,d.target-d.local);for(const s of ss){if(excess--<=0)break;s.key=null;}}for(const s of [...w.shipments])if(!s.edge){const d=map.get(s.key);if(!d){release(w,s);continue;}if(s.node===d.tile){w.tiles[d.tile].loose[s.r]++;w.shipments.splice(w.shipments.indexOf(s),1);continue;}const p=path(w,s.node,d.tile);if(!p){release(w,s);continue;}s.next=p[0];}}
+function reconcile(w,ds,sample){const map=new Map(ds.map(d=>[d.key,d]));for(const s of w.shipments)if(!map.has(s.key))s.key=null;for(const d of ds){const ss=w.shipments.filter(s=>s.key===d.key).sort((a,b)=>b.id.localeCompare(a.id));let excess=ss.length-Math.max(0,d.target-d.local);for(const s of ss){if(excess--<=0)break;s.key=null;}}for(const s of [...w.shipments])if(!s.edge){const d=map.get(s.key);if(!d){release(w,s);continue;}if(s.node===d.tile){w.tiles[d.tile].loose[s.r]++;if(sample){const row=sample.received[d.tile]||(sample.received[d.tile]=zero());row[s.r]++;}w.shipments.splice(w.shipments.indexOf(s),1);continue;}const p=path(w,s.node,d.tile);if(!p){release(w,s);continue;}s.next=p[0];}}
 // Among equally valuable demands the scheduler round-robins; higher value always goes first.
 function choose(w,scope,ds,eligible){const top=ds.filter(eligible);if(!top.length)return null;const best=Math.max(...top.map(d=>d.value));const ring=top.filter(d=>d.value===best).sort((a,b)=>a.key.localeCompare(b.key));let start=ring.findIndex(d=>d.key===w.scheduler[scope]);start=start<0?0:(start+1)%ring.length;const d=ring[start];w.scheduler[scope]=d.key;return d;}
 /* ---------- goals ---------- */
@@ -512,11 +512,11 @@ function updateWarnings(w,sample){
  b.warning=issue?{kind:issue.kind,rounds:b.warning?.kind===issue.kind?(b.warning.rounds||0)+1:1}:null;
  }
 }
-function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{},income:0,gross:0,upkeep:0,sales:{}};const oldEdges=new Set(Object.keys(w.edges));
+function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{},received:{},dispatched:{},manualTiles:{...w.manual.tiles},capacities:Object.fromEntries(Object.values(w.tiles).filter(t=>workshop(t.building)).map(t=>[t.id,rate(w,t)])),income:0,gross:0,upkeep:0,sales:{}};const oldEdges=new Set(Object.keys(w.edges));
  add(sample.out,w.manual.out);Object.assign(sample.tiles,w.manual.tiles);sample.gross+=w.manual.gross;for(const[k,v]of Object.entries(w.manual.sales))add(sample.sales[k]||(sample.sales[k]=zero()),v);w.manual={out:zero(),tiles:{},sales:{},gross:0};
  for(const s of w.shipments)if(s.edge){s.remaining--;if(s.remaining<=0){s.node=s.to;s.edge=null;s.remaining=0;}}
  for(const e of Object.values(w.edges))if(e.removing&&!w.shipments.some(s=>s.edge===e.id)){refund(w,e.paid);delete w.edges[e.id];}
- reconcile(w,demands(w));
+ reconcile(w,demands(w),sample);
  // Production: `rate` pieces per tick while the yard has room and every input is on hand.
  for(const t of Object.values(w.tiles)){const b=t.building;if(!workshop(b))continue;const rc=RECIPES[b.type];let n=Math.min(rate(w,t),YARD-t.loose[rc.out]);for(const r in rc.in)n=Math.min(n,t.loose[r]);if(n<=0)continue;for(const r in rc.in){t.loose[r]-=n;w.consumption[r]+=n;}t.loose[rc.out]+=n;w.production[rc.out]+=n;sample.out[rc.out]+=n;sample.tiles[t.id]=(sample.tiles[t.id]||0)+n;}
  for(const t of Object.values(w.tiles)){const b=t.building;if(workshop(b)&&t.loose[RECIPES[b.type].out]>=YARD)w.flags.yardFull=true;}
@@ -526,7 +526,7 @@ function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{}
  // Towns: each good in the warehouse is eaten `rate` at a time, all or nothing.
  for(const t of Object.values(w.tiles)){const b=t.building;if(b?.type!=='town')continue;sample.sales[t.id]=sample.sales[t.id]||zero();
   for(const[r,d]of Object.entries(buys(w,t.id))){if(t.loose[r]<d.rate)continue;sample.gross+=sell(w,t,r,d.rate,d.price);sample.sales[t.id][r]+=d.rate;}}
- const ds=demands(w);reconcile(w,ds);
+ const ds=demands(w);reconcile(w,ds,sample);
  // Roads that existed at the start of the round carry freight this round; a new segment opens next round.
  for(const e of Object.values(w.edges))if(oldEdges.has(e.id)&&!e.removing&&e.readyAt<=w.tick)sample.edges[e.id]={flows:{}};
  // Every piece moves one segment per round; a segment carries any number.
@@ -541,7 +541,7 @@ function tick(w){w.tick++;const sample={tick:w.tick,out:zero(),tiles:{},edges:{}
  // and every piece comes from the nearest source that still has one to spare.
  const groups=new Map();for(const d of ds){const g=d.r+'@'+d.value;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(d);}
  const source=d=>Object.values(w.tiles).filter(t=>t.id!==d.tile&&available(w,t,d.r)>0).map(t=>({t,p:openPath(t.id,d.tile)})).filter(x=>x.p&&x.p.length).sort((a,b)=>a.p.length-b.p.length||a.t.id.localeCompare(b.t.id))[0];
- for(const[scope,group]of groups)for(;;){const d=choose(w,scope,group,d=>d.target-d.local-allocated(w,d.key)>0&&source(d));if(!d)break;const x=source(d);x.t.loose[d.r]--;const s={id:id(w),key:d.key,r:d.r,node:x.t.id,destination:d.tile};w.shipments.push(s);send(s,x.p[0]);}
+ for(const[scope,group]of groups)for(;;){const d=choose(w,scope,group,d=>d.target-d.local-allocated(w,d.key)>0&&source(d));if(!d)break;const x=source(d);x.t.loose[d.r]--;const dispatched=sample.dispatched[x.t.id]||(sample.dispatched[x.t.id]=zero());dispatched[d.r]++;const s={id:id(w),key:d.key,r:d.r,node:x.t.id,destination:d.tile};w.shipments.push(s);send(s,x.p[0]);}
  updateWarnings(w,sample);
  sample.income=sample.gross-sample.upkeep;
  w.stats.push(sample);while(w.stats.length&&w.stats[0].tick<=w.tick-WINDOW)w.stats.shift();

@@ -3,8 +3,11 @@
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function ambient({terrain,preview=false},base='assets/icons/v1/terrain/'){
   if(!['grass','forest','rock','ore','mountain','lake'].includes(terrain))return '';
-  const size={grass:44,forest:46,rock:44,ore:44,mountain:46,lake:48}[terrain];
-  return `<g class="ambient-tile ambient-${esc(terrain)}${preview?' is-preview':''}" aria-hidden="true"><image class="env-object ambient-art" href="${base}${esc(terrain)}.png?v=terrain2" x="${-size/2}" y="${-size/2}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/></g>`;
+  const size={grass:62,forest:68,rock:62,ore:64,mountain:72,lake:66}[terrain];
+  const foot=terrain==='lake'?22:16;
+  // Low scenery has transparent vertical padding; align its visible base with the ground.
+  const inset={grass:13,forest:0,rock:12,ore:0,mountain:0,lake:17}[terrain];
+  return `<g class="ambient-tile ambient-${esc(terrain)}${preview?' is-preview':''}" aria-hidden="true"><image class="env-object ambient-art" href="${base}${esc(terrain)}.png?v=terrain2" x="${-size/2}" y="${foot-size+inset}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/></g>`;
  }
  function marker(kind,x,y,label){
   const shape='<circle class="bt-state-base" r="6"/><path class="bt-state-ink" d="M0-3v3.5m0 2v.2"/>';
@@ -37,43 +40,47 @@
  }
  // Two separate pills around the miniature, the same for buildings and towns; elements inside a pill are separated
  // by thin vertical dividers.
- //  Production (selected only): a building's "+[out]n" this round; a town's income per good, "[good] → +[coin]n   [good] → …".
+ //  Production (towns always, buildings selected only): a building's "+[out]n" this round; a town's income per good, "[good] → +[coin]n   [good] → …".
  //   At 0 the pill turns solid red. A red pill only states the number; it never adds a cause.
- //  Stock (only when the product warehouse holds something): "[warehouse] | [out] n/cap"; a town lists its goods.
+ //  Stock (only when a product or town warehouse is full, including selected tiles): "[warehouse] | [out] n/cap"; a town lists its goods.
  //   Inputs are never shown here. A full warehouse turns the pill solid red.
- // Selected (expanded): the same two pills with everything spelled out — 「本回合 | [coin]upkeep [in]n → +[out]n」
- //  (a town: 「本回合 | [good]n → +[coin]n | …」) and every warehouse including empty ones; problems in red text.
- // made:[{id,n}], used:[{id,n}], cost (buildings); offers:[{id,used,income}] (towns); starved:[input ids] (expanded only);
+ // Selected (expanded): the same two pills with everything spelled out — 「本回合 | [in]n → +[out]n」
+ //  (a town: 「本回合 | [good]n → +[coin]n | …」) and full-warehouse alerts; other inventory stays in the detail panel.
+ // made:[{id,n}], used:[{id,n}] (buildings); offers:[{id,used,income}] (towns); starved:[input ids] (expanded only);
  // store:[{id,count,cap,role:'in'|'out'|'buy'}]
  const WAREHOUSE='<path d="M.5 4.6 5 .8l4.5 3.8V9.5H.5Z" fill="#8c7a62"/><path d="M1.6 4.9 5 2l3.4 2.9" fill="none" stroke="#c9b58f" stroke-width=".8"/><rect x="3.1" y="5.6" width="3.8" height="3.9" fill="#f3ead8"/><path d="M3.1 6.9h3.8M3.1 8.2h3.8" stroke="#8c7a62" stroke-width=".5"/>';
- function pillTile({type,name,made=[],used=[],cost=0,offers=[],starved=[],store=[],status='',expanded=false},base){
+ function pillTile({type,name,made=[],used=[],offers=[],starved=[],store=[],status='',expanded=false,undeveloped=false},base){
+  expanded=false; // Selection highlights relationships; numerical detail lives in the side panel.
   const icon=(id,x,y,size)=>id==='warehouse'?`<g transform="translate(${x} ${y}) scale(${size/10})">${WAREHOUSE}</g>`:root.TradeIcons.svgIcon(id,{base,x,y,size});
-  const town=type==='town',w10=t=>labelWidth(t)*10/12,w8=t=>labelWidth(t)*8/12,ICON=10,GAP=1.5,PAD=4,H=expanded?18:14;
+  const town=type==='town',w10=t=>labelWidth(t)*10/12,w8=t=>labelWidth(t)*8/12,ICON=10,GAP=2,PAD=5,H=expanded?20:16;
   const num=n=>Math.round(n).toLocaleString('zh-CN');
   const SEP={sep:true},ARROW={arrow:true},SPACE={space:true};
   // item: {icon, text, pre, bad} | {sep} | {arrow} | {label}
-  const itemW=c=>c.space?3:c.sep?1:c.arrow?w10('→'):c.label?w8(c.label):(c.pre?w10(c.pre):0)+(c.icon?ICON+(c.text?1:0):0)+(c.text?w10(c.text):0)+(c.cap?w8(c.cap):0);
+  const itemW=c=>c.space?3:c.sep?1:c.arrow?7:c.label?w8(c.label):(c.pre?w10(c.pre):0)+(c.icon?ICON+(c.text?1:0):0)+(c.text?w10(c.text):0)+(c.cap?1.5+w8(c.cap):0);
   const rowW=items=>items.reduce((n,c)=>n+itemW(c)+(c.sep?GAP*2:0),0)+GAP*Math.max(0,items.length-1);
-  const pill=(items,y,bad,aria)=>{
-   const w=rowW(items),width=w+PAD*2,left=-width/2,cy=y+H/2;let x=-w/2;
-   let h=`<g class="bt-floating bt-pill ${bad?'is-bad':''}" role="img" aria-label="${aria}"><rect class="bt-float-bg" x="${left}" y="${y}" width="${width}" height="${H}" rx="${H/2}"/>`;
-   for(const c of items){
+  const pill=(items,y,bad,aria,price=false,rows=[items])=>{
+   const width=Math.max(...rows.map(row=>rowW(row)))+PAD*2,left=-width/2,height=rows.length*H+(rows.length-1)*2;
+   let h=`<g class="bt-floating bt-pill ${bad?'is-bad':''}${price?' is-undeveloped':''}" role="img" aria-label="${aria}"><rect class="bt-float-bg" x="${left}" y="${y}" width="${width}" height="${height}" rx="${H/2}"/>`;
+   for(const [i,row] of rows.entries()){
+   const cy=y+i*(H+2)+H/2;let x=-rowW(row)/2;
+   for(const c of row){
     if(c.space){x+=itemW(c)+GAP;continue;}
-    if(c.sep){x+=GAP;h+=`<path class="bt-pill-sep" d="M${x} ${y+4}v${H-8}"/>`;x+=1+GAP*2;continue;}
-    if(c.arrow){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="bt-flow-num bt-arrow">→</text>`;x+=itemW(c)+GAP;continue;}
+    if(c.sep){x+=GAP;h+=`<path class="bt-pill-sep" d="M${x} ${cy-3}v6"/>`;x+=1+GAP*2;continue;}
+    if(c.arrow){h+=`<path class="bt-arrow" transform="translate(${x+.5} ${cy})" d="M0 0h6m-2-2 2 2-2 2" aria-hidden="true"/>`;x+=itemW(c)+GAP;continue;}
     if(c.label){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="bt-row-label">${c.label}</text>`;x+=itemW(c)+GAP;continue;}
     const cls=`bt-flow-num ${c.bad?'bt-bad':''}`;
     if(c.pre){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="${cls}">${c.pre}</text>`;x+=w10(c.pre);}
     if(c.icon){h+=icon(c.icon,x,cy-ICON/2,ICON);x+=ICON+(c.text?1:0);}
     if(c.text){h+=`<text x="${x}" y="${cy}" dominant-baseline="central" class="${cls}">${esc(c.text)}</text>`;x+=w10(c.text);}
-    if(c.cap){h+=`<text x="${x}" y="${cy+.5}" dominant-baseline="central" class="bt-cap">${esc(c.cap)}</text>`;x+=w8(c.cap);}
+    if(c.cap){x+=1.5;h+=`<text x="${x}" y="${cy+.5}" dominant-baseline="central" class="bt-cap">${esc(c.cap)}</text>`;x+=w8(c.cap);}
     x+=GAP;}
+   }
    return h+'</g>';};
   const join=groups=>groups.flatMap((g,i)=>i?[SEP,...g]:g);
   const ins=store.filter(s=>s.role==='in'),outs=store.filter(s=>s.role!=='in');
   const slot=s=>({icon:s.id,text:num(s.count),cap:'/'+num(s.cap),bad:expanded&&(s.role==='in'?s.count<=0:s.count>=s.cap)});
   const idle=town?offers.every(o=>o.income<=0):made.every(m=>m.n<=0);
-  let prod,stock,prodBad=false,stockBad=false;
+  let prod,stock,prodBad=false,stockBad=outs.some(s=>s.count>0&&s.count>=s.cap);
   if(!expanded){
    // A town: each good, an arrow, what it earns; goods sit apart with a wider gap, no divider between them.
    prod=town?offers.flatMap((o,i)=>[...(i?[SPACE]:[]),{icon:o.id},ARROW,{pre:'+',icon:'coin',text:num(o.income)}])
@@ -81,28 +88,33 @@
    prodBad=idle;
    // The map shows only what the tile holds for others: its product, or a town's goods. Inputs stay in the details.
    const ho=outs.filter(s=>s.count>0);
-   if(ho.length){
+   if(stockBad){
     stock=[{icon:'warehouse'},SEP,...join(ho.map(s=>[slot(s)]))];
     stockBad=ho.some(s=>s.count>=s.cap);
    }
   }else{
    prod=[{label:'本回合'},SEP,...(town?join(offers.map(o=>[{icon:o.id,text:num(o.used),bad:o.used<=0},ARROW,{pre:'+',icon:'coin',text:num(o.income),bad:o.income<=0}]))
-    :[{icon:'coin',text:num(cost)},...used.map(u=>({icon:u.id,text:num(u.n),bad:u.n<=0&&starved.includes(u.id)})),ARROW,...made.map(m=>({pre:'+',icon:m.id,text:num(m.n),bad:m.n<=0}))])];
+    :[...used.map(u=>({icon:u.id,text:num(u.n),bad:u.n<=0&&starved.includes(u.id)})),...(used.length?[ARROW]:[]),...made.map(m=>({pre:'+',icon:m.id,text:num(m.n),bad:m.n<=0}))])];
    stock=[{icon:'warehouse'},SEP,...join(ins.map(s=>[slot(s)])),...(ins.length&&outs.length?[ARROW]:[]),...join(outs.map(s=>[slot(s)]))];
   }
-  const tip=[status,...(town?offers.map(o=>`每回合 +${num(o.income)}`):made.map(m=>`本回合产出 ${num(m.n)}`)),...store.map(s=>`仓库 ${s.count}/${s.cap}`)].filter(Boolean).join('，');
-  let html=`<g class="building-tile-ui ${expanded?'is-expanded':''}" pointer-events="none"><title>${esc(name)}${tip?' · '+esc(tip):''}</title><ellipse class="bt-site" cx="0" cy="8" rx="23" ry="5.5"/><g class="bt-miniature">${icon(type,-27,-39,54)}</g>`;
-  if(expanded)html+=pill(prod,15,prodBad,town?'每回合收入':'本回合产出');
-  if(stock)html+=pill(stock,expanded?15+H+2:12,stockBad,'仓库');
+  if(town&&undeveloped){
+   prod=join(offers.map(o=>[{icon:o.id},ARROW,{icon:'coin',text:num(o.price),cap:'/件'}]));
+   prodBad=false;
+  }
+  const tip=[status,...(town?offers.map(o=>undeveloped?`收购单价 ${num(o.price)}/件`:`每回合 +${num(o.income)}`):made.map(m=>`本回合产出 ${num(m.n)}`)),...store.map(s=>`仓库 ${s.count}/${s.cap}`)].filter(Boolean).join('，');
+  let html=`<g class="building-tile-ui ${expanded?'is-expanded':''}" pointer-events="none"><title>${esc(name)}${tip?' · '+esc(tip):''}</title><ellipse class="bt-site" cx="0" cy="7" rx="24" ry="9"/><g class="bt-miniature">${icon(type,-27,-39,54)}</g>`;
+  if(town){
+   const rows=offers.map(o=>[{icon:o.id},ARROW,undeveloped?{icon:'coin',text:num(o.price),cap:'/件'}:{pre:'+',icon:'coin',text:num(o.income)}]);
+   if(rows.length)html+=pill([],12,!undeveloped&&prodBad,undeveloped?'收购资源与单价':'每回合收入',undeveloped,rows);
+   const stockRows=outs.filter(s=>s.count>0&&s.count>=s.cap).map(s=>[{icon:'warehouse'},SEP,slot(s)]);
+   if(stockRows.length)html+=pill([],12+rows.length*(H+2),true,'仓库',false,stockRows);
+  }else{
+   if(expanded)html+=pill(prod,15,prodBad,'本回合产出');
+   if(stock&&stockBad)html+=pill(stock,expanded?15+H+2:12,true,'仓库');
+  }
   return html+'</g>';
  }
- // The upkeep is the one per-round animation: a red "−[coin]n" rises from above the tile and fades. Production has
- // no pop of its own; it is always on screen in the production pill.
- function upkeepPop(cost,x=0,y=0,base='assets/icons/v1/'){
-  if(!cost)return '';
-  const text=String(Math.round(cost)),w=labelWidth('−')*11/12+12+labelWidth(text)*11/12,x0=-w/2;
-  return `<g class="pop tick upkeep-pop" transform="translate(${x},${y})"><g class="upkeep-pop-body" role="img" aria-label="维护费 ${text}"><text x="${x0}" y="0" dominant-baseline="central" class="upkeep-pop-text">−</text>${root.TradeIcons.svgIcon('coin',{base,x:x0+labelWidth('−')*11/12+1,y:-5.5,size:11})}<text x="${x0+labelWidth('−')*11/12+13}" y="0" dominant-baseline="central" class="upkeep-pop-text">${text}</text></g></g>`;
- }
+
  function render(opts,base='assets/icons/v1/'){
   if(opts.pills)return pillTile(opts,base);
   const {type,name,output,count=0,status='',offers=[],level=null,notice=null}=opts;
@@ -129,6 +141,6 @@
   const label={shortage:'缺料',supply:'缺货',capacity:'亏空',backlog:'积压'}[notice.kind];
   return label?`<g class="pop tick warning-pop" transform="translate(${x},${y})" role="img" aria-label="${label}"><text text-anchor="middle" class="pop-text warning-pop-text">${label}</text></g>`:'';
  }
- root.BuildingTiles={render,people,marker,levelBadge,formatLevel,warningPop,upkeepPop};
+ root.BuildingTiles={render,people,marker,levelBadge,formatLevel,warningPop};
  root.AmbientTiles={render:ambient};
 })(window);
