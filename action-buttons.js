@@ -21,6 +21,7 @@ window.ActionButtons = (() => {
   const cost=button.querySelector('.action-cost');
   if(cost){
    for(const child of cost.querySelectorAll('.tt-icon,[data-icon]'))child.remove();
+   for(const node of cost.childNodes)if(node.nodeType===3)node.textContent=node.textContent.replace(/\$/g,'');
    cost.insertAdjacentHTML('afterbegin',TradeIcons.icon('coin',{base,size:18,decorative:true}));
   }
   if(button.disabled){
@@ -39,7 +40,7 @@ window.IndustryButtons=(()=>{
   const percent=progress?Math.floor(progress.done/progress.duration*100):0;
   const description=action+(level?' · '+level:'');
   const label=title+'，'+description+(progress?'，'+percent+'%':complete?'':'，'+E.formatMoney(cost))+(reason?'，'+reason:'');
-  const tail=progress?percent+'%':complete?ico('ui-checkmark',18):ico('coin',18)+escape(E.formatMoney(cost));
+  const tail=progress?percent+'%':complete?ico('ui-checkmark',18):ico('coin',18)+escape(E.formatMoney(cost).slice(1));
   const badge=kind==='unlock'?ico('ui-locked',11):kind==='upgrade'?'↑':'+';
   return `<button type="button" class="industry-button ${className}" data-industry-kind="${kind}" data-industry-state="${state}" ${attributes} ${selected?'aria-pressed="true"':''} ${!inspect&&state!=='ready'?'disabled':''} aria-label="${escape(label)}" title="${escape(description+(reason?' · '+reason:''))}" style="--industry-progress:${percent}%"><span class="industry-symbol">${ico(icon,30)}<span class="industry-action-badge" aria-hidden="true">${badge}</span></span><span class="industry-copy"><strong>${escape(title)}</strong><small class="industry-action-label">${escape(description)}</small></span><span class="industry-end"><span class="industry-value">${tail}</span></span>${progress?`<span class="industry-progress" role="progressbar" aria-label="${escape(title+' '+action)}进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><i></i></span>`:''}</button>`;
  }

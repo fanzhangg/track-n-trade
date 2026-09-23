@@ -753,7 +753,7 @@ function renderPlanner(){
  const go=(key,label)=>`<button class="tech-flow-item" data-planner-focus="${E.TECH[key]?.building||key}">${detailIcon(E.TECH[key]?.building||E.TECH[key]?.icon||key,28)}<span>${label}</span></button>`;
  const extraMarkup=(rc&&owned?IndustryButtons.build(E,world,b,{attributes:'data-build="'+b+'"'}):'')
   +(rc&&owned?disclosure('recipe','生产配方',IndustryGraph.detail(E,world,b,'assets/icons/v1/',true,{section:'recipe'})):'')
-  +(rc?disclosure('placement','建造条件与统计',`<div class="tech-terrain">建造地形 <b>${rc.fits.map(f=>names[f]).join(' / ')}</b></div><div class="tech-facts"><span>${detailIcon(b,24)}<b>${Object.values(world.tiles).filter(t=>t.building?.type===b).length}</b> 已建</span>${E.SELLABLE.includes(rc.out)?`<span>${detailIcon('coin',22)}<b>${coins(E.BASE_PRICE[rc.out])}</b> / 件</span>`:'<span>中间原料</span>'}</div>`):'')
+  +(rc?disclosure('placement','建造条件与统计',`<div class="tech-terrain">建造地形 <b>${rc.fits.map(f=>names[f]).join(' / ')}</b></div><div class="tech-facts"><span>${detailIcon(b,24)}<b>${Object.values(world.tiles).filter(t=>t.building?.type===b).length}</b> 已建</span>${E.SELLABLE.includes(rc.out)?`<span>${detailIcon('coin',22)}<b>${fmt(E.BASE_PRICE[rc.out])}</b> / 件</span>`:'<span>中间原料</span>'}</div>`):'')
   +(deps.length?disclosure('prerequisites','研究前置',`<div class="planner-related">${deps.map(d=>go(d,E.TECH[d].name+(E.TECH[d].building?' II':''))).join('<span class="tech-flow-plus">+</span>')}</div>`):'');
  const extra=$('planner-extra'),draft=document.createElement('div');draft.innerHTML=extraMarkup;
  if(extra.dataset.selection!==b)for(const section of draft.querySelectorAll('details'))section.open=true;
@@ -783,8 +783,8 @@ document.querySelector('.planner-tabs').onkeydown=event=>{if(['ArrowLeft','Arrow
 $('planner-minus').onclick=()=>plannerZoom(industryScale-.1);$('planner-plus').onclick=()=>plannerZoom(industryScale+.1);
 $('planner-fit').onclick=()=>{const view=$('planner-viewport');plannerZoom(Math.min(view.clientWidth/industryLayout.width,view.clientHeight/industryLayout.height,1));view.scrollTo(0,0);};
 function render() {
- $('money').textContent=coins(world.money);
- $('income').textContent=signed(windowStats().income)+'/回合';
+ $('money').textContent=fmt(world.money);
+ $('income').textContent=signed(windowStats().income).replace(/\$/g,'')+'/回合';
  $('pause').innerHTML=icon(world.paused?'ui-play':'ui-pause')+(world.paused?'继续':'暂停');$('speed').textContent=speed+'×';
  $('cancel').hidden=!buildType&&!connectFrom;
  renderToolbar();
