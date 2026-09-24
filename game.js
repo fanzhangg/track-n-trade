@@ -480,7 +480,6 @@ function renderRoadPrices(options){
    const wrap=document.createElement('div'),button=document.createElement('button');button.type='button';button.className='action-button road-price-button';button.dataset.action='build';
    button.innerHTML=icon('coin')+'<span class="road-price-value"></span>';wrap.appendChild(button);node.appendChild(wrap);layer.appendChild(node);
    button.onclick=event=>{event.stopPropagation();if(connectFrom&&!suppressClick)connect(connectFrom,id);};
-   node.addEventListener('pointerdown',event=>event.stopPropagation());
    node.addEventListener('click',event=>event.stopPropagation());
   }
   const road=E.edgeId(connectFrom,id),edges=option.route.segments.map(e=>({...e,road,id:E.edgeId(e.a,e.b)+'#preview'}));
@@ -828,7 +827,7 @@ document.addEventListener('pointerdown',()=>{interacting=true;suppressClick=fals
 document.addEventListener('click',event=>{
  if(!connectFrom)return;
  if(suppressClick){suppressClick=false;event.preventDefault();event.stopPropagation();return;}
- if(event.target.closest('[data-road-price], #selection-panel'))return;
+ if(event.target.closest('[data-road-price], #selection-panel, .map-touch-controls'))return;
  const tile=svg.contains(event.target)?event.target.closest('[data-tile]')?.dataset.tile||tileAt(event.clientX,event.clientY):null;
  if(tile&&roadOptions().get(tile)?.cost!==undefined)return;
  event.preventDefault();event.stopPropagation();cancelGesture();
@@ -862,7 +861,6 @@ svg.addEventListener('pointerdown',event=>{
  if(event.button!==0||gesture)return;
  // Map drags pan. Road building starts explicitly from a building detail action.
  const tile=event.target.closest('[data-tile]')?.dataset.tile||tileAt(event.clientX,event.clientY);
- if(event.target.closest('[data-road-price]'))return;
  const edge=event.target.closest('[data-edge]')?.dataset.edge;
  gesture={kind:'pan',x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,moved:false,pointerId:event.pointerId};
 });
@@ -915,7 +913,16 @@ document.addEventListener('pointerup',event=>{
  const finished=gesture;gesture=null;
  $('drag-label').style.display='none';if(!connectFrom)$('preview').innerHTML='';
  svg.classList.remove('panning');
- if(finished.kind==='pan'){if(finished.moved)suppressClick=true;return;}
+ if(finished.kind==='pan'){
+  if(finished.moved)suppressClick=true;
+  else if(event.pointerType==='touch'&&connectFrom){
+   const price=event.target.closest('[data-road-price]');
+   if(price&&!price.querySelector('button').disabled){
+    connect(connectFrom,price.dataset.roadPrice);suppressClick=true;
+   }
+  }
+  return;
+ }
  if(!finished.moved){
   // A press that never moved is a click: on a road it selects that road (the panel offers to remove it), on a
   // building it produces, on bare ground it just selects the tile.
@@ -930,7 +937,12 @@ document.addEventListener('pointerup',event=>{
   if(tile)place(finished.type,tile);else{buildType=null;render();}
  }else render();
 });
-document.addEventListener('pointercancel',()=>{interacting=false;cancelGesture();});
+document.addEventListener('pointercancel',event=>{
+ interacting=false;
+ if(!gesture||gesture.pointerId!==event.pointerId)return;
+ gesture=null;suppressClick=true;svg.classList.remove('panning');
+ $('drag-label').style.display='none';if(!connectFrom)$('preview').innerHTML='';
+});
 document.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&!$('industry-dialog').open)cancelGesture();
  if(['Enter',' '].includes(event.key)){interacting=true;suppressClick=false;}

@@ -11,6 +11,7 @@ test('building detail road action connects a clicked building on desktop and nar
   const page=await context.newPage();
   try{
    await page.goto(pathToFileURL(path.resolve('index.html')).href);
+   if(await page.locator('#mobile-advice').evaluate(e=>e.open))await page.getByRole('button',{name:'继续在手机上游玩'}).click();
    const entrances=await page.evaluate(()=>[...E.BUILDINGS,'town'].map(type=>{
     world=E.newWorld(1);world.paused=true;selected=type==='town'?E.START_TOWN:E.START_TILE;selectedEdge=null;
     if(type!=='town'){world.tiles[selected].building.type=type;world.tech[type]=1;}
@@ -69,7 +70,7 @@ test('building detail road action connects a clicked building on desktop and nar
     assert.equal(await page.evaluate(()=>connectFrom),null,`${selector} cancels`);
    }
    await page.locator('#connect-accessible').click();
-   await page.mouse.move(width/2,180);await page.mouse.down();await page.mouse.move(width/2+30,210,{steps:5});await page.mouse.up();
+   await page.mouse.move(width/2,300);await page.mouse.down();await page.mouse.move(width/2+30,330,{steps:5});await page.mouse.up();
    assert.notEqual(await page.evaluate(()=>connectFrom),null,'panning preserves road picking');
    assert.equal(await page.locator('[data-road-preview]').count(),1,'panning preserves preview paths');
    await page.keyboard.press('Escape');
